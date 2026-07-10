@@ -48,10 +48,12 @@ defmodule Algoie.Stores.Store do
       primary?(true)
       accept([:name, :slug, :custom_domain, :status])
 
-      change after_action(fn _changeset, store, _context ->
-        Algoie.Stores.create_registry_entry(store)
-        {:ok, store}
-      end)
+      change(
+        after_action(fn _changeset, store, _context ->
+          Algoie.Stores.create_registry_entry(store)
+          {:ok, store}
+        end)
+      )
     end
 
     update :update do

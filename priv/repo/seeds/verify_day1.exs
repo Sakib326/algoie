@@ -153,11 +153,15 @@ end
 # Owner can destroy default store (has :owner membership)
 # cascade_destroy handles StoreStaff deletion before Store
 case Ash.destroy(default_store, actor: owner_user, tenant: tenant_schema, context: %{store_id: default_store.id, tenant: tenant_schema}) do
+  :ok ->
+    IO.puts("   ✓ Owner can delete default store (with cascade)")
+
   {:ok, _} ->
     IO.puts("   ✓ Owner can delete default store (with cascade)")
 
-  {:error, _} ->
+  {:error, err} ->
     IO.puts("   ✗ Owner should be able to delete default store!")
+    IO.puts("   Error: #{inspect(err, limit: :infinity)}")
     System.halt(1)
 end
 

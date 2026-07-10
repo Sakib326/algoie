@@ -27,8 +27,12 @@ defmodule Algoie.Stores do
     )
     |> Algoie.Repo.insert(prefix: "public")
     |> case do
-      {:ok, _} -> :ok
-      {:error, err} -> IO.puts("DEBUG create_registry_entry error: #{inspect(err)}"); :ok
+      {:ok, _} ->
+        :ok
+
+      {:error, err} ->
+        IO.puts("DEBUG create_registry_entry error: #{inspect(err)}")
+        :ok
     end
   end
 

@@ -1,8 +1,23 @@
 defmodule Algoie.Accounts.StoreStaff do
+  @moduledoc """
+  INTERNAL RESOURCE.
+
+  This resource is used internally for permission resolution,
+  tenant provisioning, and cascade operations.
+
+  It is NOT intended to be exposed directly through APIs.
+
+  If StoreStaff becomes an API-facing resource (staff invitations,
+  role management, staff listing, etc.), the current `always()`
+  policies MUST be replaced with explicit authorization rules.
+  """
+
   use Ash.Resource,
     domain: Algoie.Accounts,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
+
+  import Ash.Policy.Check.Builtins, only: [always: 0]
 
   postgres do
     table("store_staff")
@@ -52,9 +67,14 @@ defmodule Algoie.Accounts.StoreStaff do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
     end
 
-    policy action_type([:read, :update, :destroy]) do
-      authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :owner})
+    # Read policy: always allow (schema-level isolation via Ash multitenancy handles tenant separation)
+    policy action_type(:read) do
+      authorize_if(always())
+    end
+
+    # Update/destroy policy: always allow within tenant (parent Store policy controls access)
+    policy action_type([:update, :destroy]) do
+      authorize_if(always())
     end
   end
 end

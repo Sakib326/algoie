@@ -3,7 +3,7 @@ defmodule Algoie.Policies.Checks.ActorHasStoreAccess do
   Policy check that verifies the actor has the required access level for a store.
 
   Looks up the StoreStaff row for (actor.id, store_id) and compares role.
-  Uses raw SQL to avoid circular authorization.
+  Uses Ash.read_one with authorize?: false to avoid circular authorization.
 
   The routing plug must set both:
   - context[:tenant] — the Tenant ID (for schema routing)
@@ -11,6 +11,9 @@ defmodule Algoie.Policies.Checks.ActorHasStoreAccess do
   """
 
   use Ash.Policy.SimpleCheck
+
+  alias Algoie.Accounts.StoreStaff
+  require Ash.Query
 
   @impl true
   def describe(opts), do: "actor has #{Keyword.get(opts, :level, :staff)} access to the store"
@@ -49,12 +52,11 @@ defmodule Algoie.Policies.Checks.ActorHasStoreAccess do
   defp get_store_staff_role(nil, _store_id, _tenant_id), do: nil
 
   defp get_store_staff_role(actor, store_id, tenant_id) do
-    case Ecto.Adapters.SQL.query(
-           Algoie.Repo,
-           "SELECT role FROM #{tenant_id}.store_staff WHERE user_id = $1 AND store_id = $2",
-           [actor.id, store_id]
-         ) do
-      {:ok, %{rows: [[role]]}} -> String.to_existing_atom(role)
+    StoreStaff
+    |> Ash.Query.filter(user_id == ^actor.id and store_id == ^store_id)
+    |> Ash.read_one(tenant: tenant_id, authorize?: false)
+    |> case do
+      {:ok, %{role: role}} -> role
       _ -> nil
     end
   end

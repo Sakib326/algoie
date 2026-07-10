@@ -28,7 +28,9 @@ defmodule Algoie.Tenants.Provisioner do
         %{
           name: attrs.name,
           owner_email: attrs.owner_email
-        }, actor: :system)
+        },
+        actor: :system
+      )
 
     schema_name = "tenant_#{tenant.id}"
 
@@ -44,7 +46,10 @@ defmodule Algoie.Tenants.Provisioner do
                      %{
                        name: "#{attrs.name} Store",
                        slug: generate_slug(attrs.name)
-                     }, actor: :system, tenant: schema_name),
+                     },
+                     actor: :system,
+                     tenant: schema_name
+                   ),
                  {:ok, user} <-
                    Ash.create(
                      User,
@@ -64,7 +69,10 @@ defmodule Algoie.Tenants.Provisioner do
                        user_id: user.id,
                        store_id: store.id,
                        role: :owner
-                     }, actor: :system, tenant: schema_name) do
+                     },
+                     actor: :system,
+                     tenant: schema_name
+                   ) do
               {:ok, %{tenant: tenant, user: user, store: store}}
             else
               {:error, changeset} ->
