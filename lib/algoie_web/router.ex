@@ -14,24 +14,27 @@ defmodule AlgoieWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :store do
+    plug AlgoieWeb.Plugs.StoreSlugPlug
+  end
+
   scope "/", AlgoieWeb do
     pipe_through :browser
 
     get "/", PageController, :home
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", AlgoieWeb do
-  #   pipe_through :api
-  # end
+  # Store-scoped routes
+  scope "/", AlgoieWeb do
+    pipe_through [:browser, :store]
 
-  # Enable Swoosh mailbox preview in development
-  if Application.compile_env(:algoie, :dev_routes) do
+    # Add store-specific routes here
+  end
 
-    scope "/dev" do
-      pipe_through :browser
+  # API routes
+  scope "/api", AlgoieWeb do
+    pipe_through [:api]
 
-      forward "/mailbox", Plug.Swoosh.MailboxPreview
-    end
+    # Add API routes here
   end
 end
