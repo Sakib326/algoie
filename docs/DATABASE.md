@@ -1,6 +1,6 @@
 # Database
 
-Schema design, tables, relationships, and migration strategy.
+Schema design, tables, relationships, and migration strategy. For resource-level behavior, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
@@ -214,3 +214,11 @@ Schema deletion is not yet implemented. When it is, it should:
 1. Drop the tenant schema with `CASCADE`
 2. Remove the Tenant record from the public schema
 3. Remove StoreRegistry entries
+
+---
+
+## See Also
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — Resource behavior and provisioning flow
+- [ADR/001](ADR/001-schema-multitenancy.md) — Schema-based multi-tenancy decision
+- [ADR/002](ADR/002-store-registry.md) — StoreRegistry decision

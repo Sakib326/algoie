@@ -68,3 +68,10 @@ This runs: `compile --warnings-as-errors`, `deps.unlock --unused`, `format`, `te
 - Store deletion with active staff
 - User deletion with staff memberships
 - Multiple stores with same slug (global uniqueness)
+
+---
+
+## See Also
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Pre-commit checks and workflow
+- [DAY1_FOUNDATION.md](DAY1_FOUNDATION.md) — Day 1 verification summary

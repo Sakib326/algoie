@@ -1,10 +1,10 @@
 # Architecture
 
-Deep architectural reference for the Algoie platform. This document describes every component, its purpose, and how components interact.
+Deep architectural reference for the Algoie platform. For a quick overview, see [AGENT_CONTEXT.md](AGENT_CONTEXT.md).
 
 ---
 
-## Project Architecture
+## High-Level Architecture
 
 ```mermaid
 graph TB
@@ -65,27 +65,33 @@ graph TB
 
 ---
 
-## Domain Architecture
+## Tenant Hierarchy
 
-### Accounts Domain (`Algoie.Accounts`)
+```mermaid
+graph TD
+    T[Tenant] -->|owns| S1[Store A]
+    T -->|owns| S2[Store B]
+    T -->|owns| S3[Store C]
+    
+    S1 -->|has staff| SS1[StoreStaff: Owner]
+    S1 -->|has staff| SS2[StoreStaff: Staff]
+    S2 -->|has staff| SS3[StoreStaff: Owner]
+    
+    SS1 -->|references| U1[User]
+    SS2 -->|references| U1
+    SS3 -->|references| U2[User]
+    
+    T -.->|lives in| PS[public schema]
+    S1 -.->|lives in| TS1[tenant_schema_1]
+    S2 -.->|lives in| TS1[tenant_schema_1]
+    
+    SR[StoreRegistry] -.->|lives in| PS[public schema]
+    SR -->|maps slug to| T
+```
 
-Manages tenants, users, authentication tokens, and store staff memberships.
-
-| Resource | Table | Schema | Purpose |
-|----------|-------|--------|---------|
-| Tenant | `tenants` | `public` | Business/account entity. Owns stores. |
-| User | `users` | `tenant_<uuid>` | Authenticated person. Can belong to multiple stores. |
-| Token | `tokens` | `public` | AshAuthentication JWT token storage. |
-| StoreStaff | `store_staff` | `tenant_<uuid>` | Join table linking Users to Stores with a role. |
-
-### Stores Domain (`Algoie.Stores`)
-
-Manages stores and the cross-tenant store registry.
-
-| Resource | Table | Schema | Purpose |
-|----------|-------|--------|---------|
-| Store | `stores` | `tenant_<uuid>` | An operational unit within a tenant. |
-| StoreRegistry | `store_registry` | `public` | Maps slugs to tenant IDs for subdomain routing. |
+- **One Tenant owns many Stores.** The Tenant is the business entity. Stores are the operational units.
+- **Tenant context represents the PostgreSQL schema.** When you set `tenant: "tenant_<uuid>"`, Ash queries that schema.
+- **Store permissions are independent from tenant routing.** A user can be staff of Store A but not Store B, even though both belong to the same tenant. Access is controlled by StoreStaff records, not by tenant context.
 
 ---
 
@@ -123,6 +129,32 @@ flowchart TD
 The plug extracts the subdomain from the host, looks it up in StoreRegistry (public schema), and sets two values in the Ash context:
 - `tenant:` — the schema name for query routing
 - `store_id:` — the store UUID for policy checks
+
+The domain is configurable via `APP_DOMAIN` environment variable (defaults to `localhost`). The plug uses `String.replace_suffix` to extract the subdomain.
+
+---
+
+## Ash Domains
+
+### Accounts Domain (`Algoie.Accounts`)
+
+Manages tenants, users, authentication tokens, and store staff memberships.
+
+| Resource | Table | Schema | Purpose |
+|----------|-------|--------|---------|
+| Tenant | `tenants` | `public` | Business/account entity. Owns stores. |
+| User | `users` | `tenant_<uuid>` | Authenticated person. Can belong to multiple stores. |
+| Token | `tokens` | `public` | AshAuthentication JWT token storage. |
+| StoreStaff | `store_staff` | `tenant_<uuid>` | Join table linking Users to Stores with a role. |
+
+### Stores Domain (`Algoie.Stores`)
+
+Manages stores and the cross-tenant store registry.
+
+| Resource | Table | Schema | Purpose |
+|----------|-------|--------|---------|
+| Store | `stores` | `tenant_<uuid>` | An operational unit within a tenant. |
+| StoreRegistry | `store_registry` | `public` | Maps slugs to tenant IDs for subdomain routing. |
 
 ---
 
@@ -171,7 +203,7 @@ Operational unit within a tenant. Lives in tenant schemas.
 
 ### StoreStaff (`Algoie.Accounts.StoreStaff`)
 
-Internal join table. See [AGENT_CONTEXT.md](AGENT_CONTEXT.md#why-storestaff-is-internal) for why it uses `always()` policies.
+Internal join table. See [ADR/003](ADR/003-storestaff-internal.md) for why it uses `always()` policies.
 
 ### StoreRegistry (`Algoie.Stores.StoreRegistry`)
 
@@ -281,43 +313,7 @@ flowchart TD
 
 ---
 
-## Routing
-
-### Subdomain Resolution
-
-```mermaid
-flowchart LR
-    Host[nike.algoie.com] --> Extract[Extract "nike"]
-    Extract --> Registry[StoreRegistry lookup]
-    Registry -->|Found| SetCtx[Set tenant + store_id]
-    Registry -->|Not found| 404[404]
-```
-
-The plug uses `String.replace_suffix` to extract the subdomain. The domain is configurable via `APP_DOMAIN` environment variable (defaults to `localhost`).
-
----
-
-## Store Registry
-
-StoreRegistry bridges the gap between public-schema routing and tenant-schema data. It lives in the `public` schema and stores the mapping: `slug → tenant_id + store_id`.
-
-### Why Ecto Instead of Ash
-
-StoreRegistry operations use Ecto directly (with `prefix: "public"`) because Ash's tenant context propagation would route these operations to the wrong schema. The Store's `after_action` hook calls `Algoie.Stores.create_registry_entry/1` which bypasses Ash entirely.
-
----
-
-## Schema Isolation
-
-Each tenant gets a dedicated Postgres schema named `tenant_<uuid>`. All tenant-scoped resources (Store, User, StoreStaff) live in this schema. Ash Postgres enforces this via `Ecto.Query.put_query_prefix/2`.
-
-The Tenant resource and StoreRegistry live in the `public` schema because they must be accessible cross-tenant.
-
----
-
-## Data Flow
-
-### Request Flow
+## Request Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -342,9 +338,28 @@ sequenceDiagram
     R-->>C: JSON/HTML
 ```
 
-### Provisioning Flow
+---
 
-See [Tenant Provisioning](#tenant-provisioning) section above.
+## Store Registry
+
+StoreRegistry bridges the gap between public-schema routing and tenant-schema data. It lives in the `public` schema and stores the mapping: `slug → tenant_id + store_id`.
+
+### Why Ecto Instead of Ash
+
+StoreRegistry operations use Ecto directly (with `prefix: "public"`) because Ash's tenant context propagation would route these operations to the wrong schema. The Store's `after_action` hook calls `Algoie.Stores.create_registry_entry/1` which bypasses Ash entirely.
+
+---
+
+## Schema Isolation
+
+Each tenant gets a dedicated Postgres schema named `tenant_<uuid>`. All tenant-scoped resources (Store, User, StoreStaff) live in this schema. Ash Postgres enforces this via `Ecto.Query.put_query_prefix/2`.
+
+The Tenant resource and StoreRegistry live in the `public` schema because they must be accessible cross-tenant.
+
+**Benefits:**
+1. **No cross-tenant queries:** A query in `tenant_a` cannot see `tenant_b` data.
+2. **No accidental data leakage:** Even with bugs in application code, the schema boundary prevents cross-tenant access.
+3. **Independent schema management:** Each tenant's schema can be migrated independently.
 
 ---
 

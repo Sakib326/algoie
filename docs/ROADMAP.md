@@ -11,8 +11,8 @@ Project milestones and future work.
 **Goals:** Establish multi-tenant architecture, store hierarchy, authentication, authorization, provisioning, and routing.
 
 **Deliverables:**
-- Ash domains and resources
-- Policy-based authorization
+- Ash domains and resources (6 resources, 2 domains)
+- Policy-based authorization (4 policy checks)
 - Password authentication strategy
 - Tenant provisioning pipeline
 - Subdomain routing via StoreRegistry

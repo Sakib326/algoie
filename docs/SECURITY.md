@@ -1,6 +1,6 @@
 # Security
 
-Authentication, authorization, isolation, and threat model.
+Authentication, authorization, isolation, and threat model. For resource-level policy details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
@@ -50,7 +50,7 @@ graph TD
 
 ---
 
-## Schema Isolation
+## Tenant Isolation
 
 Each tenant's data lives in a dedicated Postgres schema. This provides:
 
@@ -60,9 +60,9 @@ Each tenant's data lives in a dedicated Postgres schema. This provides:
 
 ---
 
-## Store Permissions
+## Store Isolation
 
-Store access is controlled by StoreStaff records. The policy checks work as follows:
+Store access is controlled by StoreStaff records:
 
 1. **ActorHasStoreAccess:** Looks up the StoreStaff record for `(actor.id, store_id)` and checks the role.
 2. **ActorHasAnyStoreAccess:** Checks if the actor has any StoreStaff membership in the tenant.
@@ -91,12 +91,32 @@ The Store policy uses `authorize_if` chains — any matching check grants access
 - Cross-tenant data leakage (schema isolation)
 - Unauthorized store access (StoreStaff policies)
 - Unauthorized user modification (ActorIsRecordOwner)
-- Brute force on registration (rate limiting TBD)
+- SQL injection (mitigated by Ecto parameterized queries)
+- CSRF (mitigated by Phoenix's `protect_from_forgery`)
 
 ### Not Yet Mitigated
 
 - Token theft (JWT not yet enabled)
 - Session fixation (session handling deferred)
 - Rate limiting on auth endpoints
-- SQL injection (mitigated by Ecto parameterized queries)
-- CSRF (mitigated by Phoenix's `protect_from_forgery`)
+- Brute force on registration (rate limiting TBD)
+
+---
+
+## Security Checklist
+
+Before deployment:
+- [ ] All secrets moved to environment variables
+- [ ] JWT tokens enabled with proper secret management
+- [ ] Rate limiting on authentication endpoints
+- [ ] Session handling updated from `:unsafe`
+- [ ] CORS configured for API endpoints
+- [ ] HTTPS enforced in production
+
+---
+
+## See Also
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — Policy architecture and checks
+- [ADR/004](ADR/004-authorization-model.md) — Authorization model decision
+- [ADR/003](ADR/003-storestaff-internal.md) — StoreStaff internal resource decision

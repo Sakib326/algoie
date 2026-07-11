@@ -1,6 +1,6 @@
 # Day 1 Foundation
 
-What was built, why, and what changed from the original plan.
+Historical record of what was built in Day 1.
 
 ---
 
@@ -96,3 +96,11 @@ The `mix ecto.drop` command had issues during development due to stale BEAM VM c
 - All `mix precommit` checks passing
 - 5 unit tests passing
 - 14 verification checks passing
+
+---
+
+## See Also
+
+- [AGENT_CONTEXT.md](AGENT_CONTEXT.md) — Current project state
+- [ARCHITECTURE.md](ARCHITECTURE.md) — Architecture reference
+- [ROADMAP.md](ROADMAP.md) — What comes next

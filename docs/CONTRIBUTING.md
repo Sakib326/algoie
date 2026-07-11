@@ -75,3 +75,11 @@ This runs:
 - New resources include policies
 - New features include verification or tests
 - No breaking changes without migration plan
+
+---
+
+## See Also
+
+- [AGENT_CONTEXT.md](AGENT_CONTEXT.md) — Coding principles and rules
+- [ARCHITECTURE.md](ARCHITECTURE.md) — System architecture
+- [DATABASE.md](DATABASE.md) — Migration strategy

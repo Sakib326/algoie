@@ -1,23 +1,16 @@
 # Architectural Decisions
 
-Every significant architectural decision, with context and rationale.
+Chronological index of significant architectural decisions. Each decision has a detailed ADR in the [ADR/](ADR/) folder.
 
 ---
 
 ## Decision 1: Schema-Based Multi-Tenancy
 
-**Decision:** Use PostgreSQL schema-per-tenant isolation via AshPostgres `context` strategy.
+Use PostgreSQL schema-per-tenant isolation via AshPostgres `context` strategy.
 
-**Context:** The platform serves multiple merchants. Each merchant's data (products, orders, customers) must be completely isolated. Row-level isolation (shared tables with `tenant_id` columns) was considered but rejected.
+Each tenant gets a dedicated schema named `tenant_<uuid>`. The `tenant:` parameter must be the schema name string, not a UUID. Tenant and StoreRegistry live in the `public` schema.
 
-**Alternatives considered:**
-- **Row-level isolation** (`tenant_id` column on every table): Simpler queries, easier cross-tenant analytics, but risk of data leakage through bugs in query filters.
-- **Database-per-tenant**: Maximum isolation, but operational overhead scales linearly with tenants.
-- **Schema-per-tenant** (chosen): Strong isolation at the Postgres level. No query can escape its schema. Moderate operational complexity.
-
-**Trade-offs:** Schema proliferation as tenants grow. Each new tenant creates a schema + runs migrations. Schema cleanup for deleted tenants is not yet implemented.
-
-**Future impact:** All tenant-scoped resources must have `multitenancy strategy(:context)`. The `tenant:` parameter must be the schema name string, not a UUID.
+**Alternatives considered:** Row-level isolation (simpler queries, higher leakage risk), database-per-tenant (maximum isolation, doesn't scale operationally).
 
 **ADR:** [001-schema-multitenancy.md](ADR/001-schema-multitenancy.md)
 
@@ -25,16 +18,11 @@ Every significant architectural decision, with context and rationale.
 
 ## Decision 2: StoreRegistry for Subdomain Routing
 
-**Decision:** Use a public-schema table to map slugs to tenant IDs, enabling cross-tenant slug lookups.
+Use a public-schema table to map slugs to tenant IDs, enabling cross-tenant slug lookups.
 
-**Context:** Subdomain routing (e.g., `nike.algoie.com`) requires looking up a store by slug. Since tenant schemas are isolated, you can't query across schemas to find a store. A public-schema routing table solves this.
+StoreRegistry operations use Ecto directly (not Ash) because Ash's tenant context propagation would route them to the wrong schema.
 
-**Alternatives considered:**
-- **Shared slug table with tenant_id column** (chosen): Simple, efficient, single query for routing.
-- **DNS-level routing**: Requires DNS provider integration, not flexible enough.
-- **Application-level cache**: Adds complexity and consistency concerns.
-
-**Trade-offs:** The registry must be kept in sync with Store creation/deletion. The current `after_action` hook handles creation, but deletion cleanup is deferred.
+**Alternatives considered:** DNS-level routing, application-level cache.
 
 **ADR:** [002-store-registry.md](ADR/002-store-registry.md)
 
@@ -42,15 +30,11 @@ Every significant architectural decision, with context and rationale.
 
 ## Decision 3: StoreStaff as Internal Resource
 
-**Decision:** StoreStaff uses `always()` policies and is not exposed through APIs.
+StoreStaff uses `always()` policies and is not exposed through APIs.
 
-**Context:** StoreStaff is a join table between Users and Stores. Exposing it directly would create circular authorization issues (StoreStaff policy checking StoreStaff to authorize Store operations).
+Schema isolation handles tenant separation. Parent Store policies handle access control. Exposing it directly would create circular authorization issues.
 
-**Alternatives considered:**
-- **Expose with strict policies**: Would require complex policy composition and risk circular authorization.
-- **Internal with `always()`** (chosen): Schema isolation handles tenant separation. Parent Store policy handles access control.
-
-**Trade-offs:** Future staff management APIs will need to replace the `always()` policies with proper authorization.
+**Alternatives considered:** Expose with strict policies (complex composition, circular auth risk).
 
 **ADR:** [003-storestaff-internal.md](ADR/003-storestaff-internal.md)
 
@@ -58,84 +42,116 @@ Every significant architectural decision, with context and rationale.
 
 ## Decision 4: Schema Name as Tenant Context
 
-**Decision:** Pass `"tenant_<uuid>"` as the tenant value, not the raw UUID.
+Pass `"tenant_<uuid>"` as the tenant value, not the raw UUID.
 
-**Context:** AshPostgres's `context` strategy uses the tenant value directly as the Postgres schema name via `Ecto.Query.put_query_prefix/2`.
+AshPostgres's `context` strategy uses the tenant value directly as the Postgres schema name via `Ecto.Query.put_query_prefix/2`.
 
-**Alternatives considered:**
-- **Pass raw UUID**: Would fail because the schema is named `"tenant_<uuid>"`, not just the UUID.
-- **Implement `Ash.ToTenant` protocol**: Could convert UUID to schema name, but adds indirection.
-- **Pass schema name directly** (chosen): Simple, direct, matches what the data layer expects.
+**Alternatives considered:** Pass raw UUID (fails), implement `Ash.ToTenant` protocol (adds indirection).
 
-**Trade-offs:** The schema name includes a prefix, making it slightly longer. But this is a minor concern.
+**ADR:** [001-schema-multitenancy.md](ADR/001-schema-multitenancy.md)
 
 ---
 
-## Decision 4: Store Authorization Boundary
+## Decision 5: Store Authorization Boundary
 
-**Decision:** Store policies are the primary authorization boundary. StoreStaff policies are permissive.
+Store policies are the primary authorization boundary. StoreStaff policies are permissive.
 
-**Context:** Every request flows through Store policies. StoreStaff policies exist but use `always()` because:
-1. Schema isolation already prevents cross-tenant access
-2. Parent Store policy controls who can access a specific store
+Every request flows through Store policies. StoreStaff uses `always()` because schema isolation prevents cross-tenant access and parent Store policy controls store-level access.
 
-**Alternatives considered:**
-- **StoreStaff as the authorization boundary**: Would require setting `store_id` context for every operation, and risk circular authorization.
-- **Store as the boundary** (chosen): Cleaner, simpler, no circular auth issues.
+**Alternatives considered:** StoreStaff as the authorization boundary (circular auth risk, requires `store_id` context on every operation).
+
+**ADR:** [004-authorization-model.md](ADR/004-authorization-model.md)
 
 ---
 
-## Decision 5: `after_action` for StoreRegistry Creation
+## Decision 6: `after_action` for StoreRegistry Creation
 
-**Decision:** Use Ash's `after_action` builtin to create StoreRegistry entries when a Store is created.
+Use Ash's `after_action` builtin to create StoreRegistry entries when a Store is created.
 
-**Context:** StoreRegistry entries must be created only when Store creation succeeds. They must be created within the same transaction.
+The `after_action` callback uses Ecto directly (with `prefix: "public"`) to bypass tenant context propagation. Automatically creates the entry for any successful Store creation, regardless of caller.
 
-**Alternatives considered:**
-- **Manual call in provisioner**: Would work for provisioning but miss direct `Ash.create(Store, ...)` calls.
-- **`after_action` builtin** (chosen): Automatically creates the entry for any successful Store creation, regardless of caller.
+**Alternatives considered:** Manual call in provisioner (misses direct `Ash.create` calls).
 
-**Trade-offs:** The `after_action` callback must use Ecto directly (with `prefix: "public"`) to bypass tenant context propagation.
+**ADR:** [002-store-registry.md](ADR/002-store-registry.md)
 
 ---
 
-## Decision 6: `cascade_destroy` for Store Staff
+## Decision 7: `cascade_destroy` for Store Staff
 
-**Decision:** Use `cascade_destroy(:staff_memberships, after_action?: false)` on the Store destroy action.
+Use `cascade_destroy(:staff_memberships, after_action?: false)` on the Store destroy action.
 
-**Context:** When a Store is destroyed, its StoreStaff records must also be destroyed. PostgreSQL FK constraints prevent deleting a Store with existing StoreStaff records.
+Deletes children before the parent. No deferrable FK constraints needed. Fires Ash lifecycle hooks on StoreStaff. The destroy action becomes non-atomic (`require_atomic?(false)`).
 
-**Alternatives considered:**
-- **Deferrable FK constraints**: Requires database schema changes and adds complexity.
-- **`cascade_destroy` with `after_action?: false`** (chosen): Deletes children before the parent. No deferrable constraints needed. Fires Ash lifecycle hooks on StoreStaff.
+**Alternatives considered:** Deferrable FK constraints (requires schema changes).
 
-**Trade-offs:** The destroy action becomes non-atomic (`require_atomic?(false)`), which means it can't be used in atomic bulk operations.
+**ADR:** [005-tenant-provisioning.md](ADR/005-tenant-provisioning.md)
 
 ---
 
-## Decision 7: Ash Over Custom Ecto
+## Decision 8: Ash Over Custom Ecto
 
-**Decision:** Use Ash resources, actions, and policies instead of custom Ecto schemas and context modules.
+Use Ash resources, actions, and policies instead of custom Ecto schemas and context modules.
 
-**Context:** Ash provides declarative resource definitions, built-in policy evaluation, lifecycle hooks, and data layer abstraction. Writing custom Ecto schemas would require reimplementing these features.
+Ash provides declarative resource definitions, built-in policy evaluation, lifecycle hooks, and data layer abstraction. Integrates natively with AshAuthentication and AshPostgres.
 
-**Alternatives considered:**
-- **Custom Ecto schemas with context modules**: More control, but requires manual policy enforcement, manual lifecycle hooks, manual query building.
-- **Ash resources** (chosen): Declarative, well-tested, integrates with AshAuthentication and AshPostgres.
+**Alternatives considered:** Custom Ecto schemas with context modules (more control, requires manual policy enforcement).
 
-**Trade-offs:** Ash has a learning curve. Some behaviors (like `after_action` arity, `primary?` on actions) are not obvious without reading the source.
+**ADR:** [008-domain-boundaries.md](ADR/008-domain-boundaries.md)
 
 ---
 
-## Decision 8: Ecto for StoreRegistry Operations
+## Decision 9: Ecto for StoreRegistry Operations
 
-**Decision:** Use Ecto directly (with `prefix: "public"`) for StoreRegistry create/read/delete, bypassing Ash.
+Use Ecto directly (with `prefix: "public"`) for StoreRegistry create/read/delete, bypassing Ash.
 
-**Context:** Ash's tenant context propagation would route StoreRegistry operations to the tenant schema, but StoreRegistry must live in the public schema. Ash's `set_tenant` doesn't work reliably for this use case within after_action hooks.
+Ash's tenant context propagation would route StoreRegistry operations to the tenant schema. Direct Ecto operations bypass this reliably.
 
-**Alternatives considered:**
-- **Ash with `set_tenant(nil)`**: Was attempted but failed because the context propagates within the transaction.
-- **Ash with `authorize?: false`**: Still routes to the wrong schema.
-- **Ecto with `prefix: "public"`** (chosen): Direct, reliable, explicit.
+**Alternatives considered:** Ash with `set_tenant(nil)` (failed within transactions), Ash with `authorize?: false` (still wrong schema).
 
-**Trade-offs:** Bypasses Ash's lifecycle hooks and policy evaluation for StoreRegistry. Acceptable because StoreRegistry is an internal routing table.
+**ADR:** [002-store-registry.md](ADR/002-store-registry.md)
+
+---
+
+## Decision 10: Domain Boundaries
+
+Two Ash domains:
+- **`Algoie.Accounts`**: Tenant, User, Token, StoreStaff — people and access
+- **`Algoie.Stores`**: Store, StoreRegistry — business entities
+
+StoreStaff lives in Accounts because it's primarily about access control. StoreRegistry lives in Stores despite being a routing table.
+
+**Alternatives considered:** Single domain (mixes concerns), three domains (over-engineered for Day 1).
+
+**ADR:** [008-domain-boundaries.md](ADR/008-domain-boundaries.md)
+
+---
+
+## Decision 11: Tenant Provisioning
+
+Sequential provisioning flow outside of Ecto transactions for schema creation/migration, followed by Ash resource creation.
+
+Schema creation cannot run inside a Postgres transaction with rollback support. If resource creation fails, the orphaned schema is dropped.
+
+**Alternatives considered:** Wrap everything in a single transaction (not possible due to DDL limitations).
+
+**ADR:** [005-tenant-provisioning.md](ADR/005-tenant-provisioning.md)
+
+---
+
+## Decision 12: Authentication Strategy
+
+Use AshAuthentication's password strategy with `register_action_accept([:name])` to extend the auto-generated register action. Tokens configured but disabled for Day 1.
+
+**Alternatives considered:** Custom auth with Comeonin/Bcrypt, Auth0/third-party SaaS.
+
+**ADR:** [006-authentication-strategy.md](ADR/006-authentication-strategy.md)
+
+---
+
+## Decision 13: Routing Strategy
+
+Use a Phoenix plug (`StoreSlugPlug`) that extracts the subdomain from the host, looks it up in StoreRegistry, and sets the Ash tenant context and store_id.
+
+**Alternatives considered:** DNS-level routing, middleware-based routing.
+
+**ADR:** [007-routing-strategy.md](ADR/007-routing-strategy.md)
