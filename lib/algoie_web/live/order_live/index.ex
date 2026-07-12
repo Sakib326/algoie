@@ -1,6 +1,8 @@
 defmodule AlgoieWeb.OrderLive.Index do
   use AlgoieWeb, :live_view
 
+  on_mount {AlgoieWeb.Live.OnStoreMount, :default}
+
   alias Algoie.Orders.Order
 
   @impl true

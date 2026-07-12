@@ -1,6 +1,8 @@
 defmodule AlgoieWeb.ProductLive.Index do
   use AlgoieWeb, :live_view
 
+  on_mount {AlgoieWeb.Live.OnStoreMount, :default}
+
   alias Algoie.Products.Product
 
   @impl true
@@ -16,19 +18,30 @@ defmodule AlgoieWeb.ProductLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     product = get_product(socket, id)
 
+    form =
+      AshPhoenix.Form.for_update(product, :update,
+        domain: Algoie.Products,
+        as: "product"
+      )
+
     socket
     |> assign(:page_title, "Edit Product")
     |> assign(:product, product)
-    |> assign(:form, to_form(Ash.Changeset.for_update(product, :update)))
+    |> assign(:form, to_form(form))
   end
 
   defp apply_action(socket, :new, _params) do
-    changeset = Ash.Changeset.for_create(Product, :create, %{store_id: socket.assigns.store_id})
+    form =
+      AshPhoenix.Form.for_create(Product, :create,
+        domain: Algoie.Products,
+        as: "product",
+        params: %{"store_id" => socket.assigns.store_id}
+      )
 
     socket
     |> assign(:page_title, "New Product")
     |> assign(:product, nil)
-    |> assign(:form, to_form(changeset))
+    |> assign(:form, to_form(form))
   end
 
   defp apply_action(socket, :index, _params) do
@@ -57,7 +70,10 @@ defmodule AlgoieWeb.ProductLive.Index do
          |> load_products()}
 
       {:error, changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        form =
+          AshPhoenix.Form.for_update(changeset, :update, domain: Algoie.Products, as: :product)
+
+        {:noreply, assign(socket, form: to_form(form))}
     end
   end
 
@@ -72,7 +88,10 @@ defmodule AlgoieWeb.ProductLive.Index do
          |> load_products()}
 
       {:error, changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        form =
+          AshPhoenix.Form.for_create(changeset, :create, domain: Algoie.Products, as: :product)
+
+        {:noreply, assign(socket, form: to_form(form))}
     end
   end
 

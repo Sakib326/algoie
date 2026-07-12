@@ -87,7 +87,7 @@ now = DateTime.utc_now()
 {:ok, coupon_expired} = Ash.create(Coupon, %{code: "OLD", discount_type: :percent, discount_value: Decimal.new("20"), store_id: store_a.id, starts_at: DateTime.add(now, -30, :day), expires_at: DateTime.add(now, -1, :day)}, actor: :system, tenant: schema)
 {:ok, coupon_future} = Ash.create(Coupon, %{code: "FUTURE", discount_type: :percent, discount_value: Decimal.new("15"), store_id: store_a.id, starts_at: DateTime.add(now, 7, :day), expires_at: DateTime.add(now, 37, :day)}, actor: :system, tenant: schema)
 {:ok, coupon_boundary_start} = Ash.create(Coupon, %{code: "BSTART", discount_type: :fixed, discount_value: Decimal.new("5"), store_id: store_a.id, starts_at: now, expires_at: DateTime.add(now, 1, :day)}, actor: :system, tenant: schema)
-{:ok, coupon_boundary_end} = Ash.create(Coupon, %{code: "BEND", discount_type: :fixed, discount_value: Decimal.new("5"), store_id: store_a.id, starts_at: DateTime.add(now, -1, :day), expires_at: now}, actor: :system, tenant: schema)
+{:ok, coupon_boundary_end} = Ash.create(Coupon, %{code: "BEND", discount_type: :fixed, discount_value: Decimal.new("5"), store_id: store_a.id, starts_at: DateTime.add(now, -1, :day), expires_at: DateTime.add(now, -5, :second)}, actor: :system, tenant: schema)
 
 # ── Run 18 verification scenarios ────────────────────────────
 IO.puts("\n========================================")

@@ -26,9 +26,9 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
 
             conn
             |> Ash.PlugHelpers.set_tenant(schema_name)
-            |> Ash.PlugHelpers.update_context(fn ctx ->
-              Map.put(ctx, :store_id, store_id)
-            end)
+            |> Ash.PlugHelpers.set_context(%{store_id: store_id})
+            |> put_session(:store_tenant, schema_name)
+            |> put_session(:store_id, store_id)
 
           {:error, :not_found} ->
             conn

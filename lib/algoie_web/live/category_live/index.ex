@@ -1,6 +1,8 @@
 defmodule AlgoieWeb.CategoryLive.Index do
   use AlgoieWeb, :live_view
 
+  on_mount {AlgoieWeb.Live.OnStoreMount, :default}
+
   alias Algoie.Products.Category
 
   @impl true
@@ -16,19 +18,30 @@ defmodule AlgoieWeb.CategoryLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     category = get_category(socket, id)
 
+    form =
+      AshPhoenix.Form.for_update(category, :update,
+        domain: Algoie.Products,
+        as: "category"
+      )
+
     socket
     |> assign(:page_title, "Edit Category")
     |> assign(:category, category)
-    |> assign(:form, to_form(Ash.Changeset.for_update(category, :update)))
+    |> assign(:form, to_form(form))
   end
 
   defp apply_action(socket, :new, _params) do
-    changeset = Ash.Changeset.for_create(Category, :create, %{store_id: socket.assigns.store_id})
+    form =
+      AshPhoenix.Form.for_create(Category, :create,
+        domain: Algoie.Products,
+        as: "category",
+        params: %{"store_id" => socket.assigns.store_id}
+      )
 
     socket
     |> assign(:page_title, "New Category")
     |> assign(:category, nil)
-    |> assign(:form, to_form(changeset))
+    |> assign(:form, to_form(form))
   end
 
   defp apply_action(socket, :index, _params) do
@@ -57,7 +70,10 @@ defmodule AlgoieWeb.CategoryLive.Index do
          |> load_categories()}
 
       {:error, changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        form =
+          AshPhoenix.Form.for_update(changeset, :update, domain: Algoie.Products, as: :category)
+
+        {:noreply, assign(socket, form: to_form(form))}
     end
   end
 
@@ -72,7 +88,10 @@ defmodule AlgoieWeb.CategoryLive.Index do
          |> load_categories()}
 
       {:error, changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        form =
+          AshPhoenix.Form.for_create(changeset, :create, domain: Algoie.Products, as: :category)
+
+        {:noreply, assign(socket, form: to_form(form))}
     end
   end
 

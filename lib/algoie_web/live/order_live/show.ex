@@ -1,6 +1,8 @@
 defmodule AlgoieWeb.OrderLive.Show do
   use AlgoieWeb, :live_view
 
+  on_mount {AlgoieWeb.Live.OnStoreMount, :default}
+
   alias Algoie.Orders.Order
   require Ash.Query
 
