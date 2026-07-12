@@ -1,0 +1,63 @@
+<Layouts.app flash={@flash}>
+  <!-- Hero Section -->
+  <div class="text-center py-16">
+    <h1 class="text-5xl font-bold mb-6">
+      Build Your Online Store
+    </h1>
+    <p class="text-xl text-base-content/70 mb-8 max-w-2xl mx-auto">
+      A multi-tenant ecommerce platform that lets you create, manage, and scale your online store. Multi-store support, inventory management, and order tracking — all in one place.
+    </p>
+    <div class="flex gap-4 justify-center">
+      <.button navigate="/register" variant="primary" class="btn-lg">
+        Get Started Free
+      </.button>
+      <.button navigate="/sign-in" class="btn-lg">
+        Sign In
+      </.button>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="grid md:grid-cols-3 gap-8 py-16">
+    <div class="card bg-base-200">
+      <div class="card-body items-center text-center">
+        <.icon name="hero-cube" class="size-12 text-primary" />
+        <h2 class="card-title">Product Management</h2>
+        <p class="text-base-content/70">
+          Create and manage your product catalog with categories, brands, and variants.
+        </p>
+      </div>
+    </div>
+
+    <div class="card bg-base-200">
+      <div class="card-body items-center text-center">
+        <.icon name="hero-clipboard-document-list" class="size-12 text-primary" />
+        <h2 class="card-title">Order Tracking</h2>
+        <p class="text-base-content/70">
+          Track orders from placement to fulfillment with status workflows.
+        </p>
+      </div>
+    </div>
+
+    <div class="card bg-base-200">
+      <div class="card-body items-center text-center">
+        <.icon name="hero-building-storefront" class="size-12 text-primary" />
+        <h2 class="card-title">Multi-Store</h2>
+        <p class="text-base-content/70">
+          Run multiple stores from one account, each with its own products and orders.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="text-center py-16">
+    <h2 class="text-3xl font-bold mb-4">Ready to start selling?</h2>
+    <p class="text-base-content/70 mb-8">
+      Create your free account and launch your store in minutes.
+    </p>
+    <.button navigate="/register" variant="primary" class="btn-lg">
+      Create Your Store
+    </.button>
+  </div>
+</Layouts.app>

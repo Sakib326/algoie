@@ -1,9 +1,9 @@
-<Layouts.app flash={@flash}>
+<Layouts.dashboard flash={@flash} current_user={@current_user}>
   <.header>
     Order Details
     <:subtitle>View order and manage status</:subtitle>
     <:actions>
-      <.button navigate={~p"/orders"}>Back to Orders</.button>
+      <.button navigate={~p"/dashboard/orders"}>Back to Orders</.button>
     </:actions>
   </.header>
 
@@ -60,4 +60,4 @@
   <div :if={!@order} class="text-center py-12">
     <p class="text-base-content/60">Order not found.</p>
   </div>
-</Layouts.app>
+</Layouts.dashboard>

@@ -1,8 +1,6 @@
 defmodule AlgoieWeb.OrderLive.Show do
   use AlgoieWeb, :live_view
 
-  on_mount {AlgoieWeb.Live.OnStoreMount, :default}
-
   alias Algoie.Orders.Order
   require Ash.Query
 
@@ -23,7 +21,10 @@ defmodule AlgoieWeb.OrderLive.Show do
         {:noreply, put_flash(socket, :error, "Invalid status")}
 
       status_atom ->
-        case Ash.update(socket.assigns.order, :update_status, %{status: status_atom}) do
+        changeset =
+          Ash.Changeset.for_update(socket.assigns.order, :update_status, %{status: status_atom})
+
+        case Ash.update(changeset, actor: socket.assigns.current_user) do
           {:ok, order} ->
             {:noreply,
              socket
@@ -49,13 +50,13 @@ defmodule AlgoieWeb.OrderLive.Show do
   defp parse_status(_), do: nil
 
   defp load_order(socket, id) do
-    case Ash.get(Order, id, tenant: socket.assigns.tenant, authorize?: false) do
+    case Ash.get(Order, id, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
       {:ok, order} ->
         line_items =
           case Algoie.Orders.OrderLineItem
                |> Ash.Query.filter(order_id == ^order.id)
                |> Ash.Query.for_read(:read)
-               |> Ash.read(tenant: socket.assigns.tenant, authorize?: false) do
+               |> Ash.read(tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
             {:ok, items} -> items
             _ -> []
           end

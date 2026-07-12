@@ -1,15 +1,9 @@
 defmodule Algoie.Accounts.StoreStaff do
   @moduledoc """
-  INTERNAL RESOURCE.
+  INTERNAL RESOURCE — links users to stores with a role.
 
-  This resource is used internally for permission resolution,
-  tenant provisioning, and cascade operations.
-
-  It is NOT intended to be exposed directly through APIs.
-
-  If StoreStaff becomes an API-facing resource (staff invitations,
-  role management, staff listing, etc.), the current `always()`
-  policies MUST be replaced with explicit authorization rules.
+  This resource uses raw user_id/store_id attributes (no foreign key constraints)
+  because users are in the public schema while store_staff is in tenant schemas.
   """
 
   use Ash.Resource,
@@ -36,13 +30,11 @@ defmodule Algoie.Accounts.StoreStaff do
       constraints: [one_of: [:owner, :staff]]
     )
 
+    attribute(:user_id, :uuid, allow_nil?: false)
+    attribute(:store_id, :uuid, allow_nil?: false)
+
     create_timestamp(:inserted_at)
     update_timestamp(:updated_at)
-  end
-
-  relationships do
-    belongs_to :user, Algoie.Accounts.User, allow_nil?: false
-    belongs_to :store, Algoie.Stores.Store, allow_nil?: false
   end
 
   identities do
@@ -67,12 +59,10 @@ defmodule Algoie.Accounts.StoreStaff do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
     end
 
-    # Read policy: always allow (schema-level isolation via Ash multitenancy handles tenant separation)
     policy action_type(:read) do
       authorize_if(always())
     end
 
-    # Update/destroy policy: always allow within tenant (parent Store policy controls access)
     policy action_type([:update, :destroy]) do
       authorize_if(always())
     end

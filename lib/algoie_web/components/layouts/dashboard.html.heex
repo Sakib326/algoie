@@ -1,0 +1,110 @@
+<div class="drawer lg:drawer-open">
+  <input id="dashboard-drawer" type="checkbox" class="drawer-toggle" />
+
+  <!-- Sidebar -->
+  <div class="drawer-side z-40">
+    <label for="dashboard-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+    <aside class="bg-base-200 w-64 min-h-screen flex flex-col">
+      <!-- Logo -->
+      <div class="px-4 py-4 border-b border-base-300">
+        <a href="/dashboard" class="flex items-center gap-2">
+          <.icon name="hero-shopping-bag" class="size-8 text-primary" />
+          <span class="text-lg font-bold">Algoie</span>
+        </a>
+      </div>
+
+      <!-- Nav Links -->
+      <ul class="menu p-4 gap-1 flex-1">
+        <li>
+          <.link
+            navigate={~p"/dashboard"}
+            class={if @socket.assigns[:live_action] == :index, do: "active"}
+          >
+            <.icon name="hero-home" class="size-5" /> Dashboard
+          </.link>
+        </li>
+        <li>
+          <.link
+            navigate={~p"/dashboard/products"}
+            class={
+              if to_string(@socket.assigns[:live_action]) =~ "product" or
+                   @socket.view_module == AlgoieWeb.ProductLive.Index,
+                 do: "active"
+            }
+          >
+            <.icon name="hero-cube" class="size-5" /> Products
+          </.link>
+        </li>
+        <li>
+          <.link
+            navigate={~p"/dashboard/categories"}
+            class={if @socket.view_module == AlgoieWeb.CategoryLive.Index, do: "active"}
+          >
+            <.icon name="hero-folder" class="size-5" /> Categories
+          </.link>
+        </li>
+        <li>
+          <.link
+            navigate={~p"/dashboard/brands"}
+            class={if @socket.view_module == AlgoieWeb.BrandLive.Index, do: "active"}
+          >
+            <.icon name="hero-tag" class="size-5" /> Brands
+          </.link>
+        </li>
+        <li>
+          <.link
+            navigate={~p"/dashboard/orders"}
+            class={
+              if @socket.view_module == AlgoieWeb.OrderLive.Index or
+                   @socket.view_module == AlgoieWeb.OrderLive.Show,
+                 do: "active"
+            }
+          >
+            <.icon name="hero-clipboard-document-list" class="size-5" /> Orders
+          </.link>
+        </li>
+      </ul>
+
+      <!-- User section -->
+      <div class="border-t border-base-300 p-4">
+        <div class="flex items-center gap-3">
+          <div class="avatar placeholder">
+            <div class="bg-primary text-primary-content rounded-full w-10">
+              <span class="text-sm">{String.first(@current_user.email || "?") |> String.upcase()}</span>
+            </div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium truncate">
+              {@current_user.name || @current_user.email}
+            </p>
+            <p class="text-xs text-base-content/50 truncate">{@current_user.email}</p>
+          </div>
+          <.link href="/sign-out" method="delete" class="btn btn-ghost btn-sm btn-square">
+            <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
+          </.link>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Main content -->
+  <div class="drawer-content flex flex-col">
+    <!-- Top bar (mobile) -->
+    <div class="navbar bg-base-100 lg:hidden border-b border-base-200">
+      <label for="dashboard-drawer" class="btn btn-ghost btn-square lg:hidden">
+        <.icon name="hero-bars-3" class="size-5" />
+      </label>
+      <div class="flex-1">
+        <span class="text-lg font-semibold">{assigns[:page_title] || "Dashboard"}</span>
+      </div>
+    </div>
+
+    <!-- Page content -->
+    <main class="flex-1 p-6 lg:p-8">
+      <div class="max-w-7xl mx-auto">
+        <.flash_group flash={@flash} />
+        {render_slot(@inner_block)}
+      </div>
+    </main>
+  </div>
+</div>

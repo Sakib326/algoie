@@ -1,9 +1,9 @@
-<Layouts.app flash={@flash}>
+<Layouts.dashboard flash={@flash} current_user={@current_user}>
   <.header>
     Brands
     <:subtitle>Manage your product brands</:subtitle>
     <:actions>
-      <.button navigate={~p"/brands/new"}>
+      <.button navigate={~p"/dashboard/brands/new"}>
         New Brand
       </.button>
     </:actions>
@@ -12,12 +12,15 @@
   <.table id="brands" rows={@brands}>
     <:col :let={brand} label="Name">{brand.name}</:col>
     <:action :let={brand}>
-      <.button navigate={~p"/brands/#{brand}/edit"} variant="primary">
+      <.button navigate={~p"/dashboard/brands/#{brand}/edit"} variant="primary">
         Edit
       </.button>
     </:action>
     <:action :let={brand}>
-      <.button phx-click={JS.push("delete", value: %{id: brand.id})} data-confirm="Are you sure?">
+      <.button
+        phx-click={JS.push("delete", value: %{id: brand.id})}
+        data-confirm="Are you sure?"
+      >
         Delete
       </.button>
     </:action>
@@ -32,12 +35,11 @@
       <h2 class="card-title">{if @live_action == :new, do: "New Brand", else: "Edit Brand"}</h2>
       <.form for={@form} id="brand-form" phx-submit="save">
         <.input field={@form[:name]} type="text" label="Name" />
-
         <div class="mt-4 flex justify-end gap-2">
-          <.button navigate={~p"/brands"}>Cancel</.button>
+          <.button navigate={~p"/dashboard/brands"}>Cancel</.button>
           <button type="submit" class="btn btn-primary">Save</button>
         </div>
       </.form>
     </div>
   </div>
-</Layouts.app>
+</Layouts.dashboard>

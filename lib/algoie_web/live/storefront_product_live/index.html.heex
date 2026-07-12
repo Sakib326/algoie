@@ -1,0 +1,24 @@
+<Layouts.storefront flash={@flash}>
+  <.header>
+    Products
+    <:subtitle>Browse our product catalog</:subtitle>
+  </.header>
+
+  <div :if={@products == []} class="text-center py-12">
+    <p class="text-base-content/60">No products available yet.</p>
+  </div>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div :for={product <- @products} class="card bg-base-200">
+      <div class="card-body">
+        <h2 class="card-title">{product.name}</h2>
+        <p class="text-base-content/70">{product.description || "No description"}</p>
+        <div class="card-actions justify-end">
+          <.button navigate={~p"/products/#{product}"} variant="primary">
+            View
+          </.button>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layouts.storefront>

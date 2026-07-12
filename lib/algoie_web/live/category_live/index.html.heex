@@ -1,9 +1,9 @@
-<Layouts.app flash={@flash}>
+<Layouts.dashboard flash={@flash} current_user={@current_user}>
   <.header>
     Categories
     <:subtitle>Manage your product categories</:subtitle>
     <:actions>
-      <.button navigate={~p"/categories/new"}>
+      <.button navigate={~p"/dashboard/categories/new"}>
         New Category
       </.button>
     </:actions>
@@ -12,7 +12,7 @@
   <.table id="categories" rows={@categories}>
     <:col :let={category} label="Name">{category.name}</:col>
     <:action :let={category}>
-      <.button navigate={~p"/categories/#{category}/edit"} variant="primary">
+      <.button navigate={~p"/dashboard/categories/#{category}/edit"} variant="primary">
         Edit
       </.button>
     </:action>
@@ -37,12 +37,11 @@
       </h2>
       <.form for={@form} id="category-form" phx-submit="save">
         <.input field={@form[:name]} type="text" label="Name" />
-
         <div class="mt-4 flex justify-end gap-2">
-          <.button navigate={~p"/categories"}>Cancel</.button>
+          <.button navigate={~p"/dashboard/categories"}>Cancel</.button>
           <button type="submit" class="btn btn-primary">Save</button>
         </div>
       </.form>
     </div>
   </div>
-</Layouts.app>
+</Layouts.dashboard>

@@ -1,0 +1,35 @@
+<Layouts.storefront flash={@flash}>
+  <div :if={@product}>
+    <.button navigate={~p"/products"} class="mb-4">
+      &larr; Back to Products
+    </.button>
+
+    <.header>
+      {@product.name}
+      <:subtitle>{@product.description || "No description"}</:subtitle>
+    </.header>
+
+    <div class="card bg-base-200 mt-6">
+      <div class="card-body">
+        <h2 class="card-title">Details</h2>
+        <.list>
+          <:item title="Status">
+            <span class={[
+              "badge",
+              @product.status == :active && "badge-success",
+              @product.status == :draft && "badge-warning",
+              @product.status == :archived && "badge-ghost"
+            ]}>
+              {@product.status}
+            </span>
+          </:item>
+          <:item title="Created">{@product.inserted_at}</:item>
+        </.list>
+      </div>
+    </div>
+  </div>
+
+  <div :if={!@product} class="text-center py-12">
+    <p class="text-base-content/60">Product not found.</p>
+  </div>
+</Layouts.storefront>

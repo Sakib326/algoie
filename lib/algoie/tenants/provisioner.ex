@@ -59,8 +59,7 @@ defmodule Algoie.Tenants.Provisioner do
                        password: attrs.owner_password
                      },
                      action: :register_with_password,
-                     actor: :system,
-                     tenant: schema_name
+                     actor: :system
                    ),
                  {:ok, _staff} <-
                    Ash.create(
@@ -72,7 +71,9 @@ defmodule Algoie.Tenants.Provisioner do
                      },
                      actor: :system,
                      tenant: schema_name
-                   ) do
+                   ),
+                 {:ok, _updated_user} <-
+                   Ash.update(user, %{default_tenant: schema_name}, actor: :system) do
               {:ok, %{tenant: tenant, user: user, store: store}}
             else
               {:error, changeset} ->

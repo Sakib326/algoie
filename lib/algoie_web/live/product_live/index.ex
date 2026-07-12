@@ -1,8 +1,6 @@
 defmodule AlgoieWeb.ProductLive.Index do
   use AlgoieWeb, :live_view
 
-  on_mount {AlgoieWeb.Live.OnStoreMount, :default}
-
   alias Algoie.Products.Product
 
   @impl true
@@ -57,12 +55,12 @@ defmodule AlgoieWeb.ProductLive.Index do
 
   def handle_event("delete", %{"id" => id}, socket) do
     product = get_product(socket, id)
-    Ash.destroy!(product, actor: :system)
+    Ash.destroy!(product, actor: socket.assigns.current_user)
     {:noreply, load_products(socket)}
   end
 
   defp save_product(socket, :edit, product_params) do
-    case Ash.update(socket.assigns.product, product_params, actor: :system) do
+    case Ash.update(socket.assigns.product, product_params, actor: socket.assigns.current_user) do
       {:ok, _product} ->
         {:noreply,
          socket
@@ -71,7 +69,7 @@ defmodule AlgoieWeb.ProductLive.Index do
 
       {:error, changeset} ->
         form =
-          AshPhoenix.Form.for_update(changeset, :update, domain: Algoie.Products, as: :product)
+          AshPhoenix.Form.for_update(changeset, :update, domain: Algoie.Products, as: "product")
 
         {:noreply, assign(socket, form: to_form(form))}
     end
@@ -80,7 +78,7 @@ defmodule AlgoieWeb.ProductLive.Index do
   defp save_product(socket, :new, product_params) do
     params = Map.put(product_params, "store_id", socket.assigns.store_id)
 
-    case Ash.create(Product, params, actor: :system) do
+    case Ash.create(Product, params, actor: socket.assigns.current_user) do
       {:ok, _product} ->
         {:noreply,
          socket
@@ -89,24 +87,21 @@ defmodule AlgoieWeb.ProductLive.Index do
 
       {:error, changeset} ->
         form =
-          AshPhoenix.Form.for_create(changeset, :create, domain: Algoie.Products, as: :product)
+          AshPhoenix.Form.for_create(changeset, :create, domain: Algoie.Products, as: "product")
 
         {:noreply, assign(socket, form: to_form(form))}
     end
   end
 
   defp load_products(socket) do
-    case Ash.read(Product, tenant: socket.assigns.tenant, authorize?: false) do
-      {:ok, products} ->
-        assign(socket, :products, products)
-
-      _ ->
-        assign(socket, :products, [])
+    case Ash.read(Product, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
+      {:ok, products} -> assign(socket, :products, products)
+      _ -> assign(socket, :products, [])
     end
   end
 
   defp get_product(socket, id) do
-    case Ash.get(Product, id, tenant: socket.assigns.tenant, authorize?: false) do
+    case Ash.get(Product, id, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
       {:ok, product} -> product
       _ -> nil
     end

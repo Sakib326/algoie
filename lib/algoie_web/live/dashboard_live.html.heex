@@ -1,0 +1,52 @@
+<Layouts.dashboard flash={@flash} current_user={@current_user}>
+  <.header>
+    Dashboard
+    <:subtitle>Welcome back, {@current_user.name || @current_user.email}</:subtitle>
+  </.header>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+    <.link
+      navigate={~p"/dashboard/products"}
+      class="card bg-base-200 hover:bg-base-300 transition cursor-pointer"
+    >
+      <div class="card-body items-center text-center">
+        <.icon name="hero-cube" class="size-10 text-primary" />
+        <h3 class="card-title text-lg">Products</h3>
+        <p class="text-base-content/60">Manage your catalog</p>
+      </div>
+    </.link>
+
+    <.link
+      navigate={~p"/dashboard/categories"}
+      class="card bg-base-200 hover:bg-base-300 transition cursor-pointer"
+    >
+      <div class="card-body items-center text-center">
+        <.icon name="hero-folder" class="size-10 text-primary" />
+        <h3 class="card-title text-lg">Categories</h3>
+        <p class="text-base-content/60">Organize products</p>
+      </div>
+    </.link>
+
+    <.link
+      navigate={~p"/dashboard/brands"}
+      class="card bg-base-200 hover:bg-base-300 transition cursor-pointer"
+    >
+      <div class="card-body items-center text-center">
+        <.icon name="hero-tag" class="size-10 text-primary" />
+        <h3 class="card-title text-lg">Brands</h3>
+        <p class="text-base-content/60">Manage brands</p>
+      </div>
+    </.link>
+
+    <.link
+      navigate={~p"/dashboard/orders"}
+      class="card bg-base-200 hover:bg-base-300 transition cursor-pointer"
+    >
+      <div class="card-body items-center text-center">
+        <.icon name="hero-clipboard-document-list" class="size-10 text-primary" />
+        <h3 class="card-title text-lg">Orders</h3>
+        <p class="text-base-content/60">View orders</p>
+      </div>
+    </.link>
+  </div>
+</Layouts.dashboard>

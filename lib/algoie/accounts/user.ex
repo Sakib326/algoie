@@ -8,10 +8,7 @@ defmodule Algoie.Accounts.User do
   postgres do
     table("users")
     repo(Algoie.Repo)
-  end
-
-  multitenancy do
-    strategy(:context)
+    schema("public")
   end
 
   authentication do
@@ -22,15 +19,16 @@ defmodule Algoie.Accounts.User do
         identity_field(:email)
         hashed_password_field(:hashed_password)
         confirmation_required?(false)
-        sign_in_tokens_enabled?(false)
+        sign_in_tokens_enabled?(true)
         register_action_accept([:name])
       end
     end
 
     tokens do
-      enabled?(false)
+      enabled?(true)
       token_resource(Algoie.Accounts.Token)
       signing_algorithm("HS256")
+      signing_secret("dev-secret-change-in-prod")
     end
   end
 
@@ -39,6 +37,7 @@ defmodule Algoie.Accounts.User do
     attribute(:email, :ci_string, allow_nil?: false, public?: true)
     attribute(:hashed_password, :string, allow_nil?: false, sensitive?: true)
     attribute(:name, :string)
+    attribute(:default_tenant, :string)
     create_timestamp(:inserted_at)
     update_timestamp(:updated_at)
   end
@@ -56,7 +55,7 @@ defmodule Algoie.Accounts.User do
 
     update :update do
       primary?(true)
-      accept([:email])
+      accept([:email, :default_tenant])
     end
   end
 

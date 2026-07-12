@@ -1,124 +1,225 @@
 defmodule AlgoieWeb.Layouts do
   @moduledoc """
-  This module holds layouts and related functionality
-  used by your application.
+  Layouts for the application.
   """
   use AlgoieWeb, :html
 
-  # Embed all files in layouts/* within this module.
-  # The default root.html.heex file contains the HTML
-  # skeleton of your application, namely HTML headers
-  # and other static content.
-  embed_templates "layouts/*"
+  # ── Root layout (HTML skeleton) ──
+  def root(assigns) do
+    ~H"""
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="csrf-token" content={get_csrf_token()} />
+        <.live_title default="Algoie" suffix="" phx-no-format>{assigns[:page_title]}</.live_title>
+        <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+        <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+        </script>
+        <script>
+          (() => {
+            const systemTheme = () => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+            const setTheme = (theme) => {
+              if (theme === "system") {
+                localStorage.removeItem("phx:theme");
+                document.documentElement.setAttribute("data-theme", systemTheme());
+                document.documentElement.setAttribute("data-theme-source", "system");
+              } else {
+                localStorage.setItem("phx:theme", theme);
+                document.documentElement.setAttribute("data-theme", theme);
+                document.documentElement.setAttribute("data-theme-source", "user");
+              }
+            };
+            if (!document.documentElement.hasAttribute("data-theme")) {
+              setTheme(localStorage.getItem("phx:theme") || "system");
+            }
+            window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+            document.addEventListener("DOMContentLoaded", () => {
+              document.querySelectorAll("button[data-phx-theme]").forEach((el) => {
+                el.addEventListener("click", () => setTheme(el.dataset.phxTheme))
+              })
+            });
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+              if (document.documentElement.getAttribute("data-theme-source") === "system") {
+                document.documentElement.setAttribute("data-theme", systemTheme());
+              }
+            });
+          })();
+        </script>
+      </head>
+      <body>{@inner_content}</body>
+    </html>
+    """
+  end
 
-  @doc """
-  Renders your app layout.
-
-  This function is typically invoked from every template,
-  and it often contains your application menu, sidebar,
-  or similar.
-
-  ## Examples
-
-      <Layouts.app flash={@flash}>
-        <h1>Content</h1>
-      </Layouts.app>
-
-  """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-
-  attr :current_scope, :map,
-    default: nil,
-    doc: "the current [scope](https://phoenix.hexdocs.pm/scopes.html)"
-
+  # ── Public layout ──
+  attr :flash, :map, required: true
+  attr :current_scope, :map, default: nil
+  attr :current_user, :any, default: nil
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
+    <header class="navbar bg-base-100 border-b border-base-200 px-4 sm:px-6 lg:px-8">
       <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
+        <.link navigate="/" class="flex items-center gap-2">
+          <.icon name="hero-shopping-bag" class="size-8 text-primary" />
+          <span class="text-lg font-bold">Algoie</span>
+        </.link>
       </div>
       <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://phoenix.hexdocs.pm/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
+        <ul class="menu menu-horizontal gap-1 items-center">
+          <li><.link navigate="/">Home</.link></li>
+          <li><.link navigate="/sign-in">Sign In</.link></li>
+          <li><.link navigate="/register" class="btn btn-primary btn-sm">Register</.link></li>
+          <li><.theme_toggle /></li>
         </ul>
       </div>
     </header>
-
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
-        {render_slot(@inner_block)}
-      </div>
+    <main class="px-4 py-8 sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-2xl space-y-4">{render_slot(@inner_block)}</div>
     </main>
-
+    <footer class="footer footer-center p-4 bg-base-200 text-base-content">
+      <div>
+        <p>Algoie — Multi-tenant ecommerce platform</p>
+      </div>
+    </footer>
     <.flash_group flash={@flash} />
     """
   end
 
-  @doc """
-  Shows the flash group with standard titles and content.
+  # ── Dashboard layout ──
+  attr :flash, :map, required: true
+  attr :current_user, :any, required: true
+  slot :inner_block, required: true
 
-  ## Examples
+  def dashboard(assigns) do
+    ~H"""
+    <div class="drawer lg:drawer-open">
+      <input id="dashboard-drawer" type="checkbox" class="drawer-toggle" />
+      <div class="drawer-side z-40">
+        <label for="dashboard-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+        <aside class="bg-base-200 w-64 min-h-screen flex flex-col">
+          <div class="px-4 py-4 border-b border-base-300">
+            <.link navigate="/dashboard" class="flex items-center gap-2">
+              <.icon name="hero-shopping-bag" class="size-8 text-primary" />
+              <span class="text-lg font-bold">Algoie</span>
+            </.link>
+          </div>
+          <ul class="menu p-4 gap-1 flex-1">
+            <li>
+              <.link navigate="/dashboard"><.icon name="hero-home" class="size-5" /> Dashboard</.link>
+            </li>
+            <li>
+              <.link navigate="/dashboard/products"><.icon name="hero-cube" class="size-5" /> Products</.link>
+            </li>
+            <li>
+              <.link navigate="/dashboard/categories"><.icon name="hero-folder" class="size-5" />
+              Categories</.link>
+            </li>
+            <li>
+              <.link navigate="/dashboard/brands"><.icon name="hero-tag" class="size-5" /> Brands</.link>
+            </li>
+            <li>
+              <.link navigate="/dashboard/orders"><.icon
+                name="hero-clipboard-document-list"
+                class="size-5"
+              /> Orders</.link>
+            </li>
+          </ul>
+          <div class="border-t border-base-300 p-4">
+            <div class="flex items-center gap-3">
+              <div class="avatar placeholder">
+                <div class="bg-primary text-primary-content rounded-full w-10">
+                  <span class="text-sm">{String.first(@current_user.email || "?") |> String.upcase()}</span>
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate">
+                  {@current_user.name || @current_user.email}
+                </p>
+              </div>
+              <.link href="/sign-out" method="delete" class="btn btn-ghost btn-sm btn-square">
+                <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
+              </.link>
+            </div>
+          </div>
+        </aside>
+      </div>
+      <div class="drawer-content flex flex-col">
+        <div class="navbar bg-base-100 lg:hidden border-b border-base-200">
+          <label for="dashboard-drawer" class="btn btn-ghost btn-square lg:hidden">
+            <.icon name="hero-bars-3" class="size-5" />
+          </label>
+          <div class="flex-1">
+            <span class="text-lg font-semibold">{assigns[:page_title] || "Dashboard"}</span>
+          </div>
+        </div>
+        <main class="flex-1 p-6 lg:p-8">
+          <div class="max-w-7xl mx-auto">
+            <.flash_group flash={@flash} />
+            {render_slot(@inner_block)}
+          </div>
+        </main>
+      </div>
+    </div>
+    """
+  end
 
-      <.flash_group flash={@flash} />
-  """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-  attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
+  # ── Storefront layout ──
+  attr :flash, :map, required: true
+  slot :inner_block, required: true
 
+  def storefront(assigns) do
+    ~H"""
+    <div class="min-h-screen flex flex-col">
+      <header class="navbar bg-base-100 border-b border-base-200 px-4 sm:px-6 lg:px-8">
+        <div class="flex-1"><.link navigate="/" class="text-lg font-bold">Algoie</.link></div>
+        <div class="flex-none">
+          <ul class="menu menu-horizontal gap-1">
+            <li><.link navigate="/">Home</.link></li>
+            <li><.link navigate="/products">Products</.link></li>
+          </ul>
+        </div>
+      </header>
+      <main class="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        <div class="max-w-7xl mx-auto">
+          <.flash_group flash={@flash} />
+          {render_slot(@inner_block)}
+        </div>
+      </main>
+      <footer class="footer footer-center p-4 bg-base-200 text-base-content">
+        <div>
+          <p>Algoie — Multi-tenant ecommerce platform</p>
+        </div>
+      </footer>
+    </div>
+    """
+  end
+
+  # ── Flash group ──
   def flash_group(assigns) do
     ~H"""
-    <div id={@id} aria-live="polite">
+    <div id={assigns[:id] || "flash-group"} aria-live="polite">
       <.flash kind={:info} flash={@flash} />
       <.flash kind={:error} flash={@flash} />
     </div>
     """
   end
 
-  @doc """
-  Provides dark vs light theme toggle based on themes defined in app.css.
-
-  See <head> in root.html.heex which applies the theme before page load.
-  """
+  # ── Theme toggle ──
   def theme_toggle(assigns) do
     ~H"""
     <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
       <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 [[data-theme-source=system]_&]:!left-0 transition-[left]" />
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        data-phx-theme="system"
-      >
+      <button class="flex p-2 cursor-pointer w-1/3" data-phx-theme="system">
         <.icon name="hero-computer-desktop-micro" class="size-4 opacity-75 hover:opacity-100" />
       </button>
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        data-phx-theme="light"
-      >
+      <button class="flex p-2 cursor-pointer w-1/3" data-phx-theme="light">
         <.icon name="hero-sun-micro" class="size-4 opacity-75 hover:opacity-100" />
       </button>
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        data-phx-theme="dark"
-      >
+      <button class="flex p-2 cursor-pointer w-1/3" data-phx-theme="dark">
         <.icon name="hero-moon-micro" class="size-4 opacity-75 hover:opacity-100" />
       </button>
     </div>

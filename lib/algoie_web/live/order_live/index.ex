@@ -1,8 +1,6 @@
 defmodule AlgoieWeb.OrderLive.Index do
   use AlgoieWeb, :live_view
 
-  on_mount {AlgoieWeb.Live.OnStoreMount, :default}
-
   alias Algoie.Orders.Order
 
   @impl true
@@ -22,25 +20,15 @@ defmodule AlgoieWeb.OrderLive.Index do
   end
 
   defp load_orders(socket) do
-    case Ash.read(Order, tenant: socket.assigns.tenant, authorize?: false) do
-      {:ok, orders} ->
-        assign(socket, :orders, orders)
-
-      _ ->
-        assign(socket, :orders, [])
+    case Ash.read(Order, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
+      {:ok, orders} -> assign(socket, :orders, orders)
+      _ -> assign(socket, :orders, [])
     end
   end
 
   defp filter_orders(socket, "all"), do: load_orders(socket)
 
-  defp filter_orders(socket, status) do
-    case Ash.read(Order,
-           tenant: socket.assigns.tenant,
-           query: [filter: [status: String.to_existing_atom(status)]],
-           authorize?: false
-         ) do
-      {:ok, orders} -> orders
-      _ -> []
-    end
+  defp filter_orders(_socket, _status) do
+    []
   end
 end

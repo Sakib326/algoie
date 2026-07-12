@@ -1,8 +1,6 @@
 defmodule AlgoieWeb.CategoryLive.Index do
   use AlgoieWeb, :live_view
 
-  on_mount {AlgoieWeb.Live.OnStoreMount, :default}
-
   alias Algoie.Products.Category
 
   @impl true
@@ -17,12 +15,7 @@ defmodule AlgoieWeb.CategoryLive.Index do
 
   defp apply_action(socket, :edit, %{"id" => id}) do
     category = get_category(socket, id)
-
-    form =
-      AshPhoenix.Form.for_update(category, :update,
-        domain: Algoie.Products,
-        as: "category"
-      )
+    form = AshPhoenix.Form.for_update(category, :update, domain: Algoie.Products, as: "category")
 
     socket
     |> assign(:page_title, "Edit Category")
@@ -45,69 +38,67 @@ defmodule AlgoieWeb.CategoryLive.Index do
   end
 
   defp apply_action(socket, :index, _params) do
-    socket
-    |> assign(:page_title, "Categories")
-    |> assign(:category, nil)
+    socket |> assign(:page_title, "Categories") |> assign(:category, nil)
   end
 
   @impl true
-  def handle_event("save", %{"category" => category_params}, socket) do
-    save_category(socket, socket.assigns.live_action, category_params)
+  def handle_event("save", %{"category" => params}, socket) do
+    save_category(socket, socket.assigns.live_action, params)
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
     category = get_category(socket, id)
-    Ash.destroy!(category, actor: :system)
+    Ash.destroy!(category, actor: socket.assigns.current_user)
     {:noreply, load_categories(socket)}
   end
 
-  defp save_category(socket, :edit, category_params) do
-    case Ash.update(socket.assigns.category, category_params, actor: :system) do
-      {:ok, _category} ->
+  defp save_category(socket, :edit, params) do
+    case Ash.update(socket.assigns.category, params, actor: socket.assigns.current_user) do
+      {:ok, _} ->
+        {:noreply, socket |> put_flash(:info, "Category updated") |> load_categories()}
+
+      {:error, cs} ->
         {:noreply,
-         socket
-         |> put_flash(:info, "Category updated successfully")
-         |> load_categories()}
-
-      {:error, changeset} ->
-        form =
-          AshPhoenix.Form.for_update(changeset, :update, domain: Algoie.Products, as: :category)
-
-        {:noreply, assign(socket, form: to_form(form))}
+         assign(socket,
+           form:
+             to_form(
+               AshPhoenix.Form.for_update(cs, :update, domain: Algoie.Products, as: "category")
+             )
+         )}
     end
   end
 
-  defp save_category(socket, :new, category_params) do
-    params = Map.put(category_params, "store_id", socket.assigns.store_id)
+  defp save_category(socket, :new, params) do
+    params = Map.put(params, "store_id", socket.assigns.store_id)
 
-    case Ash.create(Category, params, actor: :system) do
-      {:ok, _category} ->
+    case Ash.create(Category, params, actor: socket.assigns.current_user) do
+      {:ok, _} ->
+        {:noreply, socket |> put_flash(:info, "Category created") |> load_categories()}
+
+      {:error, cs} ->
         {:noreply,
-         socket
-         |> put_flash(:info, "Category created successfully")
-         |> load_categories()}
-
-      {:error, changeset} ->
-        form =
-          AshPhoenix.Form.for_create(changeset, :create, domain: Algoie.Products, as: :category)
-
-        {:noreply, assign(socket, form: to_form(form))}
+         assign(socket,
+           form:
+             to_form(
+               AshPhoenix.Form.for_create(cs, :create, domain: Algoie.Products, as: "category")
+             )
+         )}
     end
   end
 
   defp load_categories(socket) do
-    case Ash.read(Category, tenant: socket.assigns.tenant, authorize?: false) do
-      {:ok, categories} ->
-        assign(socket, :categories, categories)
-
-      _ ->
-        assign(socket, :categories, [])
+    case Ash.read(Category, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
+      {:ok, cats} -> assign(socket, :categories, cats)
+      _ -> assign(socket, :categories, [])
     end
   end
 
   defp get_category(socket, id) do
-    case Ash.get(Category, id, tenant: socket.assigns.tenant, authorize?: false) do
-      {:ok, category} -> category
+    case Ash.get(Category, id,
+           tenant: socket.assigns.tenant,
+           actor: socket.assigns[:current_user]
+         ) do
+      {:ok, c} -> c
       _ -> nil
     end
   end

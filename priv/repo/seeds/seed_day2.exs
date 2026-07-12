@@ -18,6 +18,7 @@ IO.puts("  Day 2 Verification — 18 Scenarios")
 IO.puts("========================================\n")
 
 # ── Clean slate ──────────────────────────────────────────────
+Repo.query!("TRUNCATE public.users CASCADE")
 Repo.query!("TRUNCATE public.tenants CASCADE")
 Repo.query!("TRUNCATE public.store_registry CASCADE")
 Repo.query!("TRUNCATE public.tokens CASCADE")

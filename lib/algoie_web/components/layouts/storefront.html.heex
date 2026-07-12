@@ -1,0 +1,29 @@
+<div class="min-h-screen flex flex-col">
+  <!-- Top nav -->
+  <header class="navbar bg-base-100 border-b border-base-200 px-4 sm:px-6 lg:px-8">
+    <div class="flex-1">
+      <a href="/" class="text-lg font-bold">Algoie</a>
+    </div>
+    <div class="flex-none">
+      <ul class="menu menu-horizontal gap-1">
+        <li><.link navigate={~p"/"}>Home</.link></li>
+        <li><.link navigate={~p"/products"}>Products</.link></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <main class="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto">
+      <.flash_group flash={@flash} />
+      {render_slot(@inner_block)}
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer footer-center p-4 bg-base-200 text-base-content">
+    <div>
+      <p>Algoie — Multi-tenant ecommerce platform</p>
+    </div>
+  </footer>
+</div>

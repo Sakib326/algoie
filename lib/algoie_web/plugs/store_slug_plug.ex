@@ -2,12 +2,8 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
   @moduledoc """
   Resolves store-slug.yourdomain.com → Store by slug → sets Ash tenant context.
 
-  Uses StoreRegistry (public schema) for the lookup, since Store itself
-  lives inside tenant schemas and can't be queried cross-tenant.
-
-  Sets two context values:
-  - :tenant — the Tenant ID (for schema routing via Ash multitenancy)
-  - :store_id — the Store ID (for StoreAccessPolicy checks)
+  When a subdomain is detected and the path is "/", redirects to "/products"
+  to serve the storefront home without conflicting with the platform "/" route.
   """
 
   import Plug.Conn
@@ -24,11 +20,23 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
           {:ok, %{tenant_id: tenant_id, store_id: store_id}} ->
             schema_name = "tenant_#{tenant_id}"
 
-            conn
-            |> Ash.PlugHelpers.set_tenant(schema_name)
-            |> Ash.PlugHelpers.set_context(%{store_id: store_id})
-            |> put_session(:store_tenant, schema_name)
-            |> put_session(:store_id, store_id)
+            conn =
+              conn
+              |> Ash.PlugHelpers.set_tenant(schema_name)
+              |> Ash.PlugHelpers.set_context(%{store_id: store_id})
+              |> put_session(:store_tenant, schema_name)
+              |> put_session(:store_id, store_id)
+
+            # If path is "/", redirect to the storefront home
+            # to avoid conflicting with the platform "/" route
+            if conn.request_path == "/" do
+              conn
+              |> put_resp_header("location", "/store")
+              |> send_resp(302, "")
+              |> halt()
+            else
+              conn
+            end
 
           {:error, :not_found} ->
             conn

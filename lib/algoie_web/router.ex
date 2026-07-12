@@ -1,5 +1,6 @@
 defmodule AlgoieWeb.Router do
   use AlgoieWeb, :router
+  use AshAuthentication.Phoenix.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -8,6 +9,9 @@ defmodule AlgoieWeb.Router do
     plug :put_root_layout, html: {AlgoieWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug AlgoieWeb.Plugs.StoreSlugPlug
+    plug AlgoieWeb.Plugs.LoadTenantFromSession
+    plug :load_from_session
   end
 
   pipeline :api do
@@ -18,36 +22,75 @@ defmodule AlgoieWeb.Router do
     plug AlgoieWeb.Plugs.StoreSlugPlug
   end
 
+  # ═══════════════════════════════════════════════════════════
+  # PLATFORM ROUTES (algoie.com)
+  # ═══════════════════════════════════════════════════════════
+
   scope "/", AlgoieWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", HomeLive, :index
+
+    sign_in_route(
+      path: "/sign-in",
+      auth_routes_prefix: "/auth",
+      register_path: "/register",
+      overrides: [AshAuthentication.Phoenix.Overrides.DaisyUI]
+    )
+
+    sign_out_route(AuthController, "/sign-out")
+    auth_routes(AuthController, Algoie.Accounts.User, path: "/auth")
+
+    reset_route(
+      auth_routes_prefix: "/auth",
+      overrides: [AshAuthentication.Phoenix.Overrides.DaisyUI]
+    )
   end
 
-  # Store-scoped routes
+  # ═══════════════════════════════════════════════════════════
+  # DASHBOARD ROUTES (algoie.com/dashboard — auth required)
+  # ═══════════════════════════════════════════════════════════
+
+  scope "/", AlgoieWeb do
+    pipe_through [:browser]
+
+    ash_authentication_live_session :dashboard,
+      otp_app: :algoie,
+      on_mount_prepend: [{AlgoieWeb.Live.OnDashboardMount, :default}] do
+      live "/dashboard", DashboardLive, :index
+      live "/dashboard/products", ProductLive.Index, :index
+      live "/dashboard/products/new", ProductLive.Index, :new
+      live "/dashboard/products/:id/edit", ProductLive.Index, :edit
+      live "/dashboard/categories", CategoryLive.Index, :index
+      live "/dashboard/categories/new", CategoryLive.Index, :new
+      live "/dashboard/categories/:id/edit", CategoryLive.Index, :edit
+      live "/dashboard/brands", BrandLive.Index, :index
+      live "/dashboard/brands/new", BrandLive.Index, :new
+      live "/dashboard/brands/:id/edit", BrandLive.Index, :edit
+      live "/dashboard/orders", OrderLive.Index, :index
+      live "/dashboard/orders/:id", OrderLive.Show, :show
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════
+  # STOREFRONT ROUTES (store1.algoie.com — subdomain-based)
+  # ═══════════════════════════════════════════════════════════
+
   scope "/", AlgoieWeb do
     pipe_through [:browser, :store]
 
-    live "/products", ProductLive.Index, :index
-    live "/products/new", ProductLive.Index, :new
-    live "/products/:id/edit", ProductLive.Index, :edit
-
-    live "/categories", CategoryLive.Index, :index
-    live "/categories/new", CategoryLive.Index, :new
-    live "/categories/:id/edit", CategoryLive.Index, :edit
-
-    live "/brands", BrandLive.Index, :index
-    live "/brands/new", BrandLive.Index, :new
-    live "/brands/:id/edit", BrandLive.Index, :edit
-
-    live "/orders", OrderLive.Index, :index
-    live "/orders/:id", OrderLive.Show, :show
+    # Storefront routes — only match on subdomains via :store pipeline.
+    # "/" redirects to "/store" via StoreSlugPlug to avoid platform conflict.
+    live "/store", StorefrontHomeLive, :index
+    live "/products", StorefrontProductLive.Index, :index
+    live "/products/:id", StorefrontProductLive.Show, :show
   end
 
-  # API routes
+  # ═══════════════════════════════════════════════════════════
+  # API ROUTES
+  # ═══════════════════════════════════════════════════════════
+
   scope "/api", AlgoieWeb do
     pipe_through [:api]
-
-    # Add API routes here
   end
 end
