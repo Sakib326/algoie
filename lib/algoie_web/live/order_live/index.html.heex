@@ -1,0 +1,53 @@
+<Layouts.app flash={@flash}>
+  <.header>
+    Orders
+    <:subtitle>View and manage orders</:subtitle>
+  </.header>
+
+  <div class="mb-4">
+    <form phx-change="filter" class="flex gap-2">
+      <select name="status" class="select select-bordered select-sm">
+        <option value="all">All</option>
+        <option value="pending">Pending</option>
+        <option value="pre_order">Pre-Order</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="fulfilled">Fulfilled</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </form>
+  </div>
+
+  <.table id="orders" rows={@orders}>
+    <:col :let={order} label="Order ID">
+      <span class="font-mono text-sm">{String.slice(
+        Ecto.UUID.dump!(order.id) |> Base.encode16(case: :lower),
+        0,
+        8
+      )}...</span>
+    </:col>
+    <:col :let={order} label="Status">
+      <span class={[
+        "badge badge-sm",
+        order.status == :pending && "badge-warning",
+        order.status == :confirmed && "badge-info",
+        order.status == :fulfilled && "badge-success",
+        order.status == :cancelled && "badge-error",
+        order.status == :pre_order && "badge-secondary"
+      ]}>
+        {order.status}
+      </span>
+    </:col>
+    <:col :let={order} label="Total">
+      ${Decimal.to_string(order.total_amount)}
+    </:col>
+    <:action :let={order}>
+      <.button navigate={~p"/orders/#{order}"} variant="primary">
+        View
+      </.button>
+    </:action>
+  </.table>
+
+  <div :if={@orders == []} class="text-center py-12">
+    <p class="text-base-content/60">No orders yet.</p>
+  </div>
+</Layouts.app>

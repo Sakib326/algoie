@@ -1,0 +1,63 @@
+<Layouts.app flash={@flash}>
+  <.header>
+    Order Details
+    <:subtitle>View order and manage status</:subtitle>
+    <:actions>
+      <.button navigate={~p"/orders"}>Back to Orders</.button>
+    </:actions>
+  </.header>
+
+  <div :if={@order} class="space-y-6">
+    <.list>
+      <:item title="Order ID">{@order.id}</:item>
+      <:item title="Status">
+        <span class={[
+          "badge",
+          @order.status == :pending && "badge-warning",
+          @order.status == :confirmed && "badge-info",
+          @order.status == :fulfilled && "badge-success",
+          @order.status == :cancelled && "badge-error",
+          @order.status == :pre_order && "badge-secondary"
+        ]}>
+          {@order.status}
+        </span>
+      </:item>
+      <:item title="Total">${Decimal.to_string(@order.total_amount)}</:item>
+      <:item title="Created At">{@order.inserted_at}</:item>
+    </.list>
+
+    <div :if={@line_items != []}>
+      <h3 class="text-lg font-semibold mb-2">Line Items</h3>
+      <.table id="line-items" rows={@line_items}>
+        <:col :let={item} label="Variant ID">
+          <span class="font-mono text-xs">{item.variant_id}</span>
+        </:col>
+        <:col :let={item} label="Quantity">{item.quantity}</:col>
+        <:col :let={item} label="Unit Price">${Decimal.to_string(item.unit_price)}</:col>
+        <:col :let={item} label="Subtotal">
+          ${Decimal.to_string(Decimal.mult(item.unit_price, Decimal.new(item.quantity)))}
+        </:col>
+      </.table>
+    </div>
+
+    <div :if={allowed_next_statuses(@order.status) != []} class="card bg-base-200">
+      <div class="card-body">
+        <h3 class="card-title">Update Status</h3>
+        <form phx-submit="update_status" class="flex gap-2 items-end">
+          <div class="flex-1">
+            <select name="status" class="select select-bordered w-full">
+              <%= for status <- allowed_next_statuses(@order.status) do %>
+                <option value={status}>{status}</option>
+              <% end %>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Update Status</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div :if={!@order} class="text-center py-12">
+    <p class="text-base-content/60">Order not found.</p>
+  </div>
+</Layouts.app>

@@ -1,0 +1,48 @@
+<Layouts.app flash={@flash}>
+  <.header>
+    Categories
+    <:subtitle>Manage your product categories</:subtitle>
+    <:actions>
+      <.button navigate={~p"/categories/new"}>
+        New Category
+      </.button>
+    </:actions>
+  </.header>
+
+  <.table id="categories" rows={@categories}>
+    <:col :let={category} label="Name">{category.name}</:col>
+    <:action :let={category}>
+      <.button navigate={~p"/categories/#{category}/edit"} variant="primary">
+        Edit
+      </.button>
+    </:action>
+    <:action :let={category}>
+      <.button
+        phx-click={JS.push("delete", value: %{id: category.id})}
+        data-confirm="Are you sure?"
+      >
+        Delete
+      </.button>
+    </:action>
+  </.table>
+
+  <div :if={@categories == []} class="text-center py-12">
+    <p class="text-base-content/60">No categories yet.</p>
+  </div>
+
+  <div :if={@live_action in [:new, :edit]} class="mt-8 card bg-base-200">
+    <div class="card-body">
+      <h2 class="card-title">
+        {if @live_action == :new, do: "New Category", else: "Edit Category"}
+      </h2>
+      <.form for={@form} id="category-form" phx-submit="save">
+        <.input field={@form[:name]} type="text" label="Name" />
+
+        <div class="mt-4 flex justify-end gap-2">
+          <.button navigate={~p"/categories"}>Cancel</.button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </.form>
+    </div>
+  </div>
+</Layouts.app>

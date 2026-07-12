@@ -28,7 +28,20 @@ defmodule AlgoieWeb.Router do
   scope "/", AlgoieWeb do
     pipe_through [:browser, :store]
 
-    # Add store-specific routes here
+    live "/products", ProductLive.Index, :index
+    live "/products/new", ProductLive.Index, :new
+    live "/products/:id/edit", ProductLive.Index, :edit
+
+    live "/categories", CategoryLive.Index, :index
+    live "/categories/new", CategoryLive.Index, :new
+    live "/categories/:id/edit", CategoryLive.Index, :edit
+
+    live "/brands", BrandLive.Index, :index
+    live "/brands/new", BrandLive.Index, :new
+    live "/brands/:id/edit", BrandLive.Index, :edit
+
+    live "/orders", OrderLive.Index, :index
+    live "/orders/:id", OrderLive.Show, :show
   end
 
   # API routes

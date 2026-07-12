@@ -63,7 +63,10 @@ config :phoenix, :json_library, Jason
 
 config :algoie, :ash_domains, [
   Algoie.Accounts,
-  Algoie.Stores
+  Algoie.Stores,
+  Algoie.Products,
+  Algoie.Customers,
+  Algoie.Orders
 ]
 
 config :algoie, Algoie.Accounts.User, token_signing_secret: "dev-secret-change-in-prod"

@@ -1,0 +1,66 @@
+<Layouts.app flash={@flash}>
+  <.header>
+    Products
+    <:subtitle>Manage your product catalog</:subtitle>
+    <:actions>
+      <.button navigate={~p"/products/new"}>
+        New Product
+      </.button>
+    </:actions>
+  </.header>
+
+  <.table id="products" rows={@products}>
+    <:col :let={product} label="Name">{product.name}</:col>
+    <:col :let={product} label="Status">
+      <span class={[
+        "badge badge-sm",
+        product.status == :active && "badge-success",
+        product.status == :draft && "badge-warning",
+        product.status == :archived && "badge-ghost"
+      ]}>
+        {product.status}
+      </span>
+    </:col>
+    <:action :let={product}>
+      <.button navigate={~p"/products/#{product}/edit"} variant="primary">
+        Edit
+      </.button>
+    </:action>
+    <:action :let={product}>
+      <.button
+        phx-click={JS.push("delete", value: %{id: product.id})}
+        data-confirm="Are you sure?"
+      >
+        Delete
+      </.button>
+    </:action>
+  </.table>
+
+  <div :if={@products == []} class="text-center py-12">
+    <p class="text-base-content/60">No products yet. Create your first product.</p>
+  </div>
+
+  <div :if={@live_action in [:new, :edit]} class="mt-8 card bg-base-200">
+    <div class="card-body">
+      <h2 class="card-title">
+        {if @live_action == :new, do: "New Product", else: "Edit Product"}
+      </h2>
+      <.form for={@form} id="product-form" phx-submit="save">
+        <.input field={@form[:name]} type="text" label="Name" />
+        <.input field={@form[:description]} type="textarea" label="Description" />
+        <.input
+          field={@form[:status]}
+          type="select"
+          label="Status"
+          prompt="Choose a status"
+          options={[{"Draft", "draft"}, {"Active", "active"}, {"Archived", "archived"}]}
+        />
+
+        <div class="mt-4 flex justify-end gap-2">
+          <.button navigate={~p"/products"}>Cancel</.button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </.form>
+    </div>
+  </div>
+</Layouts.app>

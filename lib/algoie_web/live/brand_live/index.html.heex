@@ -1,0 +1,43 @@
+<Layouts.app flash={@flash}>
+  <.header>
+    Brands
+    <:subtitle>Manage your product brands</:subtitle>
+    <:actions>
+      <.button navigate={~p"/brands/new"}>
+        New Brand
+      </.button>
+    </:actions>
+  </.header>
+
+  <.table id="brands" rows={@brands}>
+    <:col :let={brand} label="Name">{brand.name}</:col>
+    <:action :let={brand}>
+      <.button navigate={~p"/brands/#{brand}/edit"} variant="primary">
+        Edit
+      </.button>
+    </:action>
+    <:action :let={brand}>
+      <.button phx-click={JS.push("delete", value: %{id: brand.id})} data-confirm="Are you sure?">
+        Delete
+      </.button>
+    </:action>
+  </.table>
+
+  <div :if={@brands == []} class="text-center py-12">
+    <p class="text-base-content/60">No brands yet.</p>
+  </div>
+
+  <div :if={@live_action in [:new, :edit]} class="mt-8 card bg-base-200">
+    <div class="card-body">
+      <h2 class="card-title">{if @live_action == :new, do: "New Brand", else: "Edit Brand"}</h2>
+      <.form for={@form} id="brand-form" phx-submit="save">
+        <.input field={@form[:name]} type="text" label="Name" />
+
+        <div class="mt-4 flex justify-end gap-2">
+          <.button navigate={~p"/brands"}>Cancel</.button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </.form>
+    </div>
+  </div>
+</Layouts.app>
