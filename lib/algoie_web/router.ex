@@ -19,7 +19,7 @@ defmodule AlgoieWeb.Router do
   end
 
   pipeline :store do
-    plug AlgoieWeb.Plugs.StoreSlugPlug
+    plug AlgoieWeb.Plugs.StoreSlugPlug, require_subdomain: true
   end
 
   # ═══════════════════════════════════════════════════════════
@@ -30,11 +30,13 @@ defmodule AlgoieWeb.Router do
     pipe_through :browser
 
     live "/", HomeLive, :index
+    live "/register", RegistrationLive, :index
+
+    get "/switch-store/:store_id", StoreSwitchController, :switch
 
     sign_in_route(
       path: "/sign-in",
       auth_routes_prefix: "/auth",
-      register_path: "/register",
       overrides: [AshAuthentication.Phoenix.Overrides.DaisyUI]
     )
 
@@ -69,6 +71,9 @@ defmodule AlgoieWeb.Router do
       live "/dashboard/brands/:id/edit", BrandLive.Index, :edit
       live "/dashboard/orders", OrderLive.Index, :index
       live "/dashboard/orders/:id", OrderLive.Show, :show
+      live "/dashboard/conversations", ConversationLive.Index, :index
+      live "/dashboard/campaigns", CampaignLive.Index, :index
+      live "/store-select", StoreSelectorLive, :index
     end
   end
 
@@ -79,8 +84,6 @@ defmodule AlgoieWeb.Router do
   scope "/", AlgoieWeb do
     pipe_through [:browser, :store]
 
-    # Storefront routes — only match on subdomains via :store pipeline.
-    # "/" redirects to "/store" via StoreSlugPlug to avoid platform conflict.
     live "/store", StorefrontHomeLive, :index
     live "/products", StorefrontProductLive.Index, :index
     live "/products/:id", StorefrontProductLive.Show, :show

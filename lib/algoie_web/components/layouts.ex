@@ -92,6 +92,10 @@ defmodule AlgoieWeb.Layouts do
   # ── Dashboard layout ──
   attr :flash, :map, required: true
   attr :current_user, :any, required: true
+  attr :tenant, :string, default: nil
+  attr :store_id, :string, default: nil
+  attr :store_name, :string, default: "Store"
+  attr :user_stores, :list, default: []
   slot :inner_block, required: true
 
   def dashboard(assigns) do
@@ -107,6 +111,48 @@ defmodule AlgoieWeb.Layouts do
               <span class="text-lg font-bold">Algoie</span>
             </.link>
           </div>
+
+          <%!-- Store Switcher --%>
+          <%= if length(@user_stores) > 1 do %>
+            <div class="px-4 py-3 border-b border-base-300" id="store-switcher">
+              <.link
+                navigate="/store-select"
+                class="flex items-center gap-2 p-2 rounded-lg hover:bg-base-300 transition group"
+              >
+                <div class="avatar placeholder">
+                  <div class="bg-secondary text-secondary-content rounded-full w-8">
+                    <span class="text-xs">
+                      {String.first(@store_name || "?") |> String.upcase()}
+                    </span>
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-base-content/50">Switch store</p>
+                  <p class="text-sm font-medium truncate">{@store_name}</p>
+                </div>
+                <.icon
+                  name="hero-arrows-up-down"
+                  class="size-4 text-base-content/30 group-hover:text-base-content/50"
+                />
+              </.link>
+            </div>
+          <% else %>
+            <div class="px-4 py-3 border-b border-base-300">
+              <div class="flex items-center gap-2 p-2">
+                <div class="avatar placeholder">
+                  <div class="bg-secondary text-secondary-content rounded-full w-8">
+                    <span class="text-xs">
+                      {String.first(@store_name || "?") |> String.upcase()}
+                    </span>
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium truncate">{@store_name}</p>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
           <ul class="menu p-4 gap-1 flex-1">
             <li>
               <.link navigate="/dashboard"><.icon name="hero-home" class="size-5" /> Dashboard</.link>
@@ -127,7 +173,20 @@ defmodule AlgoieWeb.Layouts do
                 class="size-5"
               /> Orders</.link>
             </li>
+            <li>
+              <.link navigate="/dashboard/conversations"><.icon
+                name="hero-chat-bubble-left-right"
+                class="size-5"
+              /> Conversations</.link>
+            </li>
+            <li>
+              <.link navigate="/dashboard/campaigns"><.icon
+                name="hero-megaphone"
+                class="size-5"
+              /> Ad Campaigns</.link>
+            </li>
           </ul>
+
           <div class="border-t border-base-300 p-4">
             <div class="flex items-center gap-3">
               <div class="avatar placeholder">
@@ -173,13 +232,23 @@ defmodule AlgoieWeb.Layouts do
 
   def storefront(assigns) do
     ~H"""
-    <div class="min-h-screen flex flex-col">
-      <header class="navbar bg-base-100 border-b border-base-200 px-4 sm:px-6 lg:px-8">
-        <div class="flex-1"><.link navigate="/" class="text-lg font-bold">Algoie</.link></div>
+    <div class="min-h-screen flex flex-col bg-base-100">
+      <header class="navbar bg-base-100 border-b border-base-200 sticky top-0 z-30 px-4 sm:px-6 lg:px-8">
+        <div class="flex-1">
+          <.link navigate="/" class="flex items-center gap-2">
+            <.icon name="hero-shopping-bag" class="size-7 text-primary" />
+            <span class="text-xl font-bold">Store</span>
+          </.link>
+        </div>
         <div class="flex-none">
-          <ul class="menu menu-horizontal gap-1">
-            <li><.link navigate="/">Home</.link></li>
-            <li><.link navigate="/products">Products</.link></li>
+          <ul class="menu menu-horizontal gap-1 items-center">
+            <li><.link navigate="/" class="text-sm">Home</.link></li>
+            <li><.link navigate="/products" class="text-sm">Products</.link></li>
+            <li>
+              <.link navigate="/products" class="btn btn-primary btn-sm">
+                <.icon name="hero-shopping-bag" class="size-4" /> Shop
+              </.link>
+            </li>
           </ul>
         </div>
       </header>
@@ -189,9 +258,37 @@ defmodule AlgoieWeb.Layouts do
           {render_slot(@inner_block)}
         </div>
       </main>
-      <footer class="footer footer-center p-4 bg-base-200 text-base-content">
-        <div>
-          <p>Algoie — Multi-tenant ecommerce platform</p>
+      <footer class="bg-base-200 border-t border-base-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
+            <div>
+              <div class="flex items-center gap-2 mb-4">
+                <.icon name="hero-shopping-bag" class="size-6 text-primary" />
+                <span class="text-lg font-bold">Store</span>
+              </div>
+              <p class="text-sm text-base-content/60">
+                Your one-stop shop for quality products.
+              </p>
+            </div>
+            <div>
+              <h3 class="font-semibold mb-3">Quick Links</h3>
+              <ul class="space-y-2 text-sm">
+                <li><.link navigate="/" class="link link-hover text-base-content/60">Home</.link></li>
+                <li>
+                  <.link navigate="/products" class="link link-hover text-base-content/60">Products</.link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="font-semibold mb-3">Support</h3>
+              <ul class="space-y-2 text-sm">
+                <li><span class="text-base-content/60">Contact us anytime</span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="border-t border-base-300 mt-8 pt-8 text-center text-sm text-base-content/40">
+            <p>&copy; {DateTime.utc_now().year} Store. Powered by Algoie.</p>
+          </div>
         </div>
       </footer>
     </div>

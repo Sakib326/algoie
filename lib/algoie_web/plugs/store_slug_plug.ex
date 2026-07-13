@@ -2,18 +2,31 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
   @moduledoc """
   Resolves store-slug.yourdomain.com → Store by slug → sets Ash tenant context.
 
-  When a subdomain is detected and the path is "/", redirects to "/products"
-  to serve the storefront home without conflicting with the platform "/" route.
+  Options:
+    - `:require_subdomain` (default: false) — when true, halts with 404 if no subdomain is detected.
+      Used in the `:store` pipeline to ensure storefront routes are only accessible via subdomain.
   """
 
   import Plug.Conn
 
   def init(opts), do: opts
 
-  def call(conn, _opts) do
+  def call(conn, opts) do
+    require_subdomain? = Keyword.get(opts, :require_subdomain, false)
+
     case extract_store_slug(conn) do
       nil ->
-        conn
+        if require_subdomain? do
+          conn
+          |> put_resp_content_type("text/html")
+          |> send_resp(
+            404,
+            "<h1>Store not found</h1><p>Storefront is only accessible via a store subdomain.</p>"
+          )
+          |> halt()
+        else
+          conn
+        end
 
       slug ->
         case Algoie.Stores.lookup_store_by_slug(slug) do
@@ -27,8 +40,6 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
               |> put_session(:store_tenant, schema_name)
               |> put_session(:store_id, store_id)
 
-            # If path is "/", redirect to the storefront home
-            # to avoid conflicting with the platform "/" route
             if conn.request_path == "/" do
               conn
               |> put_resp_header("location", "/store")
@@ -50,6 +61,9 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
   defp extract_store_slug(conn) do
     host = conn.host
     domain = System.get_env("APP_DOMAIN") || "localhost"
+
+    # Strip port if present (e.g. "store.localhost:4000" → "store.localhost")
+    host = String.split(host, ":") |> List.first()
 
     case String.replace_suffix(host, ".#{domain}", "") do
       ^host -> nil

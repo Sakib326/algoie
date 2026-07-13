@@ -1,4 +1,11 @@
-<Layouts.dashboard flash={@flash} current_user={@current_user}>
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+>
   <.header>
     Order Details
     <:subtitle>View order and manage status</:subtitle>

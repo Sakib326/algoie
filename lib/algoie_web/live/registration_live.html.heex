@@ -1,0 +1,124 @@
+<Layouts.app flash={@flash}>
+  <div class="max-w-lg mx-auto">
+    <%= if @step == :success do %>
+      <div class="text-center py-12">
+        <div class="mb-6">
+          <.icon name="hero-check-circle" class="size-16 text-success mx-auto" />
+        </div>
+        <h1 class="text-3xl font-bold mb-4">Store Created!</h1>
+        <p class="text-base-content/70 mb-8">
+          Your account and store have been set up successfully.
+        </p>
+        <.link href="/sign-in" class="btn btn-primary btn-lg">
+          Sign In to Your Dashboard
+        </.link>
+      </div>
+    <% else %>
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold mb-2">Create Your Store</h1>
+        <p class="text-base-content/70">
+          Set up your online store in just a few steps.
+        </p>
+      </div>
+
+      <.form
+        for={@form}
+        id="registration-form"
+        phx-change="validate"
+        phx-submit="register"
+        class="card bg-base-200"
+      >
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-lg">Business Details</h2>
+
+          <.input
+            field={@form[:business_name]}
+            type="text"
+            label="Business Name"
+            placeholder="My Awesome Store"
+            required
+          />
+
+          <.input
+            field={@form[:store_name]}
+            type="text"
+            label="Store Name"
+            placeholder="My Store"
+            required
+          />
+
+          <div>
+            <.input
+              field={@form[:store_slug]}
+              type="text"
+              label="Store URL"
+              placeholder="my-store"
+              required
+              phx-debounce="400"
+            />
+            <div class="mt-1 text-sm">
+              <%= cond do %>
+                <% @slug_available == true -> %>
+                  <span class="text-success flex items-center gap-1">
+                    <.icon name="hero-check-circle" class="size-4" />
+                    my-store.localhost:4000 is available
+                  </span>
+                <% @slug_available == false -> %>
+                  <span class="text-error flex items-center gap-1">
+                    <.icon name="hero-x-circle" class="size-4" /> This URL is already taken
+                  </span>
+                <% true -> %>
+                  <span class="text-base-content/50">
+                    Your store will be at my-store.localhost:4000
+                  </span>
+              <% end %>
+            </div>
+          </div>
+
+          <divider class="divider" />
+
+          <h2 class="card-title text-lg">Owner Account</h2>
+
+          <.input
+            field={@form[:email]}
+            type="email"
+            label="Email Address"
+            placeholder="you@example.com"
+            required
+          />
+
+          <.input
+            field={@form[:password]}
+            type="password"
+            label="Password"
+            placeholder="At least 8 characters"
+            required
+          />
+
+          <.input
+            field={@form[:password_confirmation]}
+            type="password"
+            label="Confirm Password"
+            placeholder="Re-enter your password"
+            required
+          />
+
+          <div class="card-actions justify-end pt-4">
+            <button
+              type="submit"
+              class="btn btn-primary btn-lg"
+              disabled={@slug_available == false}
+            >
+              Create Store
+            </button>
+          </div>
+        </div>
+      </.form>
+
+      <p class="text-center mt-6 text-sm text-base-content/60">
+        Already have an account?
+        <.link navigate="/sign-in" class="link link-primary">Sign in</.link>
+      </p>
+    <% end %>
+  </div>
+</Layouts.app>

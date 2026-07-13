@@ -1,24 +1,54 @@
 <Layouts.storefront flash={@flash}>
-  <.header>
-    Products
-    <:subtitle>Browse our product catalog</:subtitle>
-  </.header>
-
-  <div :if={@products == []} class="text-center py-12">
-    <p class="text-base-content/60">No products available yet.</p>
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold mb-2">All Products</h1>
+    <p class="text-base-content/60">Browse our complete collection</p>
   </div>
 
-  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-    <div :for={product <- @products} class="card bg-base-200">
-      <div class="card-body">
-        <h2 class="card-title">{product.name}</h2>
-        <p class="text-base-content/70">{product.description || "No description"}</p>
-        <div class="card-actions justify-end">
-          <.button navigate={~p"/products/#{product}"} variant="primary">
-            View
-          </.button>
-        </div>
-      </div>
+  <%= if @products == [] do %>
+    <div class="text-center py-16 bg-base-200 rounded-xl">
+      <.icon name="hero-shopping-bag" class="size-16 text-base-content/20 mx-auto mb-4" />
+      <p class="text-lg text-base-content/50">No products available yet.</p>
     </div>
-  </div>
+  <% else %>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+      <%= for product <- @products do %>
+        <.link
+          navigate={~p"/products/#{product}"}
+          class="card bg-base-200 hover:bg-base-300 transition-all group hover:shadow-lg"
+        >
+          <figure class="aspect-square bg-base-300 rounded-t-xl flex items-center justify-center">
+            <%= if product.images != [] do %>
+              <img
+                src={List.first(product.images)}
+                alt={product.name}
+                class="w-full h-full object-cover"
+              />
+            <% else %>
+              <.icon name="hero-photo" class="size-12 text-base-content/15" />
+            <% end %>
+          </figure>
+          <div class="card-body p-3 sm:p-4">
+            <h2 class="font-semibold text-sm sm:text-base truncate group-hover:text-primary transition-colors">
+              {product.name}
+            </h2>
+            <p class="text-xs text-base-content/50 line-clamp-2">
+              {product.description || "No description"}
+            </p>
+            <div class="flex items-center justify-between mt-2">
+              <%= if product.min_price do %>
+                <span class="text-primary font-bold">${Decimal.to_string(product.min_price)}</span>
+              <% else %>
+                <span class="text-base-content/40 text-sm">Price TBD</span>
+              <% end %>
+              <%= if product.in_stock do %>
+                <span class="badge badge-success badge-sm">In Stock</span>
+              <% else %>
+                <span class="badge badge-ghost badge-sm">Out of Stock</span>
+              <% end %>
+            </div>
+          </div>
+        </.link>
+      <% end %>
+    </div>
+  <% end %>
 </Layouts.storefront>

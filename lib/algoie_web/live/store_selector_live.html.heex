@@ -1,0 +1,41 @@
+<Layouts.app flash={@flash}>
+  <div class="max-w-lg mx-auto">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold mb-2">Select a Store</h1>
+      <p class="text-base-content/70">
+        You have access to multiple stores. Choose one to continue.
+      </p>
+    </div>
+
+    <div class="space-y-3">
+      <%= for store <- @stores do %>
+        <button
+          class="card bg-base-200 hover:bg-base-300 transition cursor-pointer w-full text-left"
+          phx-click="select_store"
+          phx-value-store_id={store.store_id}
+        >
+          <div class="card-body flex-row items-center gap-4 py-4 px-6">
+            <div class="avatar placeholder">
+              <div class="bg-primary text-primary-content rounded-full w-12">
+                <span class="text-lg">
+                  {String.first(store.store_name || "?") |> String.upcase()}
+                </span>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold truncate">{store.store_name}</p>
+              <p class="text-sm text-base-content/50 capitalize">{store.role}</p>
+            </div>
+            <.icon name="hero-chevron-right" class="size-5 text-base-content/30" />
+          </div>
+        </button>
+      <% end %>
+    </div>
+
+    <div class="text-center mt-8">
+      <.link href="/sign-out" method="delete" class="btn btn-ghost btn-sm">
+        Sign out
+      </.link>
+    </div>
+  </div>
+</Layouts.app>

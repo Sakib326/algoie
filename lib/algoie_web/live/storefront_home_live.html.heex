@@ -1,9 +1,158 @@
 <Layouts.storefront flash={@flash}>
-  <div class="text-center py-16">
-    <h1 class="text-4xl font-bold mb-4">Welcome to our store</h1>
-    <p class="text-lg text-base-content/70 mb-8">Browse our products and find what you need.</p>
-    <.button navigate={~p"/products"} class="btn-primary btn-lg">
-      View Products
-    </.button>
+  <%!-- Hero Section --%>
+  <div class="relative overflow-hidden bg-gradient-to-br from-primary/10 via-base-200 to-secondary/10 rounded-2xl mb-12">
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,oklch(var(--p)/0.08),transparent_60%)]" />
+    <div class="relative px-8 py-16 sm:px-12 sm:py-20 text-center">
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
+        Discover Something <span class="text-primary">Amazing</span>
+      </h1>
+      <p class="text-lg sm:text-xl text-base-content/60 max-w-2xl mx-auto mb-8">
+        Browse our curated collection of quality products. Fast shipping, great prices, and exceptional service.
+      </p>
+      <div class="flex flex-wrap gap-3 justify-center">
+        <.link navigate="/products" class="btn btn-primary btn-lg">
+          <.icon name="hero-shopping-bag" class="size-5" /> Shop Now
+        </.link>
+        <%= if @categories != [] do %>
+          <.link navigate="#categories" class="btn btn-outline btn-lg">
+            Browse Categories
+          </.link>
+        <% end %>
+      </div>
+    </div>
   </div>
+
+  <%!-- Collections --%>
+  <%= if @collections != [] do %>
+    <section class="mb-16">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold">Collections</h2>
+      </div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <%= for collection <- @collections do %>
+          <div class="card bg-base-200 hover:bg-base-300 transition-colors group cursor-pointer">
+            <div class="card-body">
+              <div class="flex items-start justify-between">
+                <div>
+                  <h3 class="card-title text-lg group-hover:text-primary transition-colors">
+                    {collection.name}
+                  </h3>
+                  <%= if collection.description do %>
+                    <p class="text-sm text-base-content/60 mt-1">{collection.description}</p>
+                  <% end %>
+                </div>
+                <div class="badge badge-primary badge-outline">
+                  {collection.product_count} items
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <%!-- Featured Products --%>
+  <section class="mb-16">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-2xl font-bold">Featured Products</h2>
+      <.link navigate="/products" class="btn btn-ghost btn-sm">
+        View All <.icon name="hero-arrow-right" class="size-4" />
+      </.link>
+    </div>
+
+    <%= if @featured_products == [] do %>
+      <div class="text-center py-16 bg-base-200 rounded-xl">
+        <.icon name="hero-shopping-bag" class="size-16 text-base-content/20 mx-auto mb-4" />
+        <p class="text-lg text-base-content/50">No products available yet.</p>
+      </div>
+    <% else %>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+        <%= for product <- @featured_products do %>
+          <.link
+            navigate={~p"/products/#{product}"}
+            class="card bg-base-200 hover:bg-base-300 transition-all group hover:shadow-lg"
+          >
+            <figure class="aspect-square bg-base-300 rounded-t-xl flex items-center justify-center">
+              <%= if product.images != [] do %>
+                <img
+                  src={List.first(product.images)}
+                  alt={product.name}
+                  class="w-full h-full object-cover"
+                />
+              <% else %>
+                <.icon name="hero-photo" class="size-12 text-base-content/15" />
+              <% end %>
+            </figure>
+            <div class="card-body p-3 sm:p-4">
+              <h3 class="font-semibold text-sm sm:text-base truncate group-hover:text-primary transition-colors">
+                {product.name}
+              </h3>
+              <div class="flex items-center gap-2 mt-1">
+                <%= if product.min_price do %>
+                  <span class="text-primary font-bold text-sm sm:text-base">
+                    ${Decimal.to_string(product.min_price)}
+                  </span>
+                <% else %>
+                  <span class="text-base-content/40 text-sm">Price TBD</span>
+                <% end %>
+              </div>
+              <div class="mt-1">
+                <%= if product.in_stock do %>
+                  <span class="text-xs text-success">In Stock</span>
+                <% else %>
+                  <span class="text-xs text-base-content/40">Out of Stock</span>
+                <% end %>
+              </div>
+            </div>
+          </.link>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+
+  <%!-- Categories --%>
+  <%= if @categories != [] do %>
+    <section class="mb-16" id="categories">
+      <h2 class="text-2xl font-bold mb-6">Shop by Category</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <%= for category <- @categories do %>
+          <div class="card bg-base-200 hover:bg-base-300 transition-colors cursor-pointer group">
+            <div class="card-body items-center text-center py-6">
+              <.icon
+                name="hero-folder"
+                class="size-10 text-primary group-hover:scale-110 transition-transform"
+              />
+              <h3 class="font-semibold mt-2 group-hover:text-primary transition-colors">
+                {category.name}
+              </h3>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <%!-- Brands --%>
+  <%= if @brands != [] do %>
+    <section class="mb-16">
+      <h2 class="text-2xl font-bold mb-6">Our Brands</h2>
+      <div class="flex flex-wrap gap-3">
+        <%= for brand <- @brands do %>
+          <div class="badge badge-lg badge-outline badge-primary px-4 py-3 text-sm font-medium">
+            {brand.name}
+          </div>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <%!-- Bottom CTA --%>
+  <section class="bg-base-200 rounded-2xl px-8 py-12 text-center">
+    <h2 class="text-2xl font-bold mb-2">Can't find what you're looking for?</h2>
+    <p class="text-base-content/60 mb-6">Browse our full catalog to see everything we offer.</p>
+    <.link navigate="/products" class="btn btn-primary">
+      View All Products
+    </.link>
+  </section>
 </Layouts.storefront>
