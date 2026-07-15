@@ -35,10 +35,9 @@ defmodule AlgoieWeb.Layouts do
               setTheme(localStorage.getItem("phx:theme") || "system");
             }
             window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
-            document.addEventListener("DOMContentLoaded", () => {
-              document.querySelectorAll("button[data-phx-theme]").forEach((el) => {
-                el.addEventListener("click", () => setTheme(el.dataset.phxTheme))
-              })
+            document.addEventListener("click", (e) => {
+              const btn = e.target.closest("button[data-phx-theme]");
+              if (btn) setTheme(btn.dataset.phxTheme);
             });
             matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
               if (document.documentElement.getAttribute("data-theme-source") === "system") {
@@ -57,6 +56,7 @@ defmodule AlgoieWeb.Layouts do
   attr :flash, :map, required: true
   attr :current_scope, :map, default: nil
   attr :current_user, :any, default: nil
+  attr :wide, :boolean, default: false
   slot :inner_block, required: true
 
   def app(assigns) do
@@ -78,7 +78,9 @@ defmodule AlgoieWeb.Layouts do
       </div>
     </header>
     <main class="px-4 py-8 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">{render_slot(@inner_block)}</div>
+      <div class={"mx-auto space-y-4 #{if @wide, do: "max-w-5xl", else: "max-w-2xl"}"}>
+        {render_slot(@inner_block)}
+      </div>
     </main>
     <footer class="footer footer-center p-4 bg-base-200 text-base-content">
       <div>

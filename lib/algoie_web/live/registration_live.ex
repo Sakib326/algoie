@@ -13,6 +13,7 @@ defmodule AlgoieWeb.RegistrationLive do
      |> assign(:step, :form)
      |> assign(:slug_available, nil)
      |> assign(:slug_debounce_timer, nil)
+     |> assign(:password_strength, nil)
      |> assign(
        :form,
        to_form(%{
@@ -37,28 +38,36 @@ defmodule AlgoieWeb.RegistrationLive do
 
     socket = assign(socket, :form, to_form(Map.put(params, "store_slug", slug)))
 
-    if String.length(slug) >= 3 do
-      if timer = socket.assigns.slug_debounce_timer, do: Process.cancel_timer(timer)
+    socket =
+      socket
+      |> assign(:password_strength, compute_password_strength(params["password"] || ""))
 
-      timer = Process.send_after(self(), {:check_slug, slug}, 400)
-      {:noreply, assign(socket, slug_debounce_timer: timer, slug_available: nil)}
+    if slug == "" do
+      {:noreply, assign(socket, slug_available: nil)}
     else
-      {:noreply, assign(socket, slug_available: false)}
+      if String.length(slug) >= 3 do
+        if timer = socket.assigns.slug_debounce_timer, do: Process.cancel_timer(timer)
+
+        timer = Process.send_after(self(), {:check_slug, slug}, 400)
+        {:noreply, assign(socket, slug_debounce_timer: timer, slug_available: nil)}
+      else
+        {:noreply, assign(socket, slug_available: false)}
+      end
     end
   end
 
   def handle_event("validate", params, socket) do
-    {:noreply, assign(socket, :form, to_form(params))}
+    {:noreply,
+     socket
+     |> assign(:form, to_form(params))
+     |> assign(:password_strength, compute_password_strength(params["password"] || ""))}
   end
 
-  def handle_event("check_slug", %{"slug" => slug}, socket) do
-    {:noreply, do_slug_check(socket, slug)}
-  end
-
-  def handle_event("register", %{"_target" => _} = params, socket) do
+  def handle_event("register", params, socket) do
     registration_params = Map.get(params, "registration", params)
 
-    with {:ok, _} <- validate_required_fields(registration_params),
+    with :ok <- validate_required_fields(registration_params),
+         :ok <- validate_email_unique(registration_params["email"]),
          :ok <- validate_slug_available(registration_params["store_slug"]),
          :ok <- validate_password_match(registration_params),
          :ok <- validate_password_length(registration_params) do
@@ -76,10 +85,8 @@ defmodule AlgoieWeb.RegistrationLive do
              owner_name: business_name,
              owner_password: password
            }) do
-        {:ok, %{tenant: _tenant, user: _user, store: store}} ->
-          # Override the auto-generated slug with user's chosen slug
-          store_tenant =
-            "tenant_#{store.__metadata__.tenant |> String.replace_leading("tenant_", "")}"
+        {:ok, %{tenant: tenant, user: _user, store: store}} ->
+          store_tenant = "tenant_#{tenant.id}"
 
           case Ash.update(store, %{slug: store_slug},
                  action: :update,
@@ -87,30 +94,35 @@ defmodule AlgoieWeb.RegistrationLive do
                  tenant: store_tenant
                ) do
             {:ok, updated_store} ->
-              # Update registry entry
-              Algoie.Repo.query!(
-                "UPDATE public.store_registry SET slug = '#{store_slug}' WHERE store_id = '#{updated_store.id}'"
-              )
+              case Ash.read_one(StoreRegistry,
+                     query: [filter: [store_id: updated_store.id]],
+                     authorize?: false
+                   ) do
+                {:ok, registry} ->
+                  registry
+                  |> Ecto.Changeset.change(%{slug: store_slug})
+                  |> Algoie.Repo.update(prefix: "public")
+
+                _ ->
+                  :ok
+              end
 
               {:noreply,
                socket
                |> assign(:step, :success)
-               |> assign(:email, email)
-               |> assign(:password, password)}
+               |> assign(:email, email)}
 
             {:error, _} ->
-              # Store was created with auto-slug, that's fine
               {:noreply,
                socket
                |> assign(:step, :success)
-               |> assign(:email, email)
-               |> assign(:password, password)}
+               |> assign(:email, email)}
           end
 
         {:error, changeset} ->
           error_message =
             cond do
-              changeset.errors != [] ->
+              is_struct(changeset) and Map.has_key?(changeset, :errors) and changeset.errors != [] ->
                 changeset.errors
                 |> Enum.map(fn
                   %{field: field, message: msg} -> "#{field} #{msg}"
@@ -118,8 +130,12 @@ defmodule AlgoieWeb.RegistrationLive do
                 end)
                 |> Enum.join(", ")
 
-              changeset.valid? == false ->
+              is_struct(changeset) and Map.has_key?(changeset, :valid?) and
+                  changeset.valid? == false ->
                 "Validation failed. Please check your inputs."
+
+              is_binary(changeset) ->
+                changeset
 
               true ->
                 "Registration failed. Please try again."
@@ -146,7 +162,7 @@ defmodule AlgoieWeb.RegistrationLive do
         _ -> true
       end
 
-    {:noreply, assign(socket, slug_available: available?, slug_debounce_timer: nil)}
+    assign(socket, slug_available: available?, slug_debounce_timer: nil)
   end
 
   defp validate_required_fields(params) do
@@ -172,6 +188,16 @@ defmodule AlgoieWeb.RegistrationLive do
     end
   end
 
+  defp validate_email_unique(email) do
+    alias Algoie.Accounts.User
+
+    case Ash.read_one(User, query: [filter: [email: email]], authorize?: false) do
+      {:ok, nil} -> :ok
+      {:ok, _} -> {:error, "This email is already registered"}
+      _ -> :ok
+    end
+  end
+
   defp validate_password_match(params) do
     if params["password"] == params["password_confirmation"],
       do: :ok,
@@ -182,5 +208,23 @@ defmodule AlgoieWeb.RegistrationLive do
     if String.length(params["password"] || "") >= 8,
       do: :ok,
       else: {:error, "Password must be at least 8 characters"}
+  end
+
+  defp compute_password_strength(password) do
+    cond do
+      password == "" ->
+        nil
+
+      String.length(password) < 6 ->
+        1
+
+      true ->
+        score = 1
+        score = if String.length(password) >= 8, do: score + 1, else: score
+        score = if Regex.match?(~r/[A-Z]/, password), do: score + 1, else: score
+        score = if Regex.match?(~r/[0-9]/, password), do: score + 1, else: score
+        score = if Regex.match?(~r/[^A-Za-z0-9]/, password), do: score + 1, else: score
+        min(score, 4)
+    end
   end
 end

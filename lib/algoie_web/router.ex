@@ -31,14 +31,9 @@ defmodule AlgoieWeb.Router do
 
     live "/", HomeLive, :index
     live "/register", RegistrationLive, :index
+    live "/sign-in", LoginLive, :index
 
     get "/switch-store/:store_id", StoreSwitchController, :switch
-
-    sign_in_route(
-      path: "/sign-in",
-      auth_routes_prefix: "/auth",
-      overrides: [AshAuthentication.Phoenix.Overrides.DaisyUI]
-    )
 
     sign_out_route(AuthController, "/sign-out")
     auth_routes(AuthController, Algoie.Accounts.User, path: "/auth")

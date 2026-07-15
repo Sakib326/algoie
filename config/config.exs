@@ -69,12 +69,8 @@ config :algoie, :ash_domains, [
   Algoie.Orders
 ]
 
-config :algoie, Algoie.Accounts.User,
-  authentication: [
-    tokens: [
-      signing_secret: "dev-secret-change-in-prod"
-    ]
-  ]
+config :algoie, :token_signing_secret,
+  System.get_env("TOKEN_SIGNING_SECRET", "dev-secret-change-in-prod")
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

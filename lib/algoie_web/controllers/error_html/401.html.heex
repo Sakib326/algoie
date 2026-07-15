@@ -1,8 +1,98 @@
-<div class="min-h-screen flex items-center justify-center bg-base-100">
-  <div class="text-center">
-    <h1 class="text-6xl font-bold text-error mb-4">401</h1>
-    <h2 class="text-2xl font-semibold mb-4">Unauthorized</h2>
-    <p class="text-base-content/70 mb-8">You need to sign in to access this page.</p>
-    <a href="/sign-in" class="btn btn-primary">Sign In</a>
-  </div>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Unauthorized — Algoie</title>
+    <link rel="stylesheet" href="/assets/css/app.css" />
+    <script>
+      (() => {
+        const systemTheme = () => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            document.documentElement.setAttribute("data-theme", systemTheme());
+          } else {
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        };
+        setTheme(localStorage.getItem("phx:theme") || "system");
+      })();
+    </script>
+  </head>
+  <body class="bg-base-100 text-base-content">
+    <div class="min-h-screen flex items-center justify-center px-4">
+      <div class="card bg-base-200 shadow-xl overflow-hidden max-w-4xl w-full">
+        <div class="grid lg:grid-cols-2">
+          <div class="card-body p-8 sm:p-10 items-center justify-center text-center">
+            <div class="w-24 h-24 rounded-full bg-info/10 flex items-center justify-center mb-6">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="size-12 text-info"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+                />
+              </svg>
+            </div>
+            <h1 class="text-6xl font-bold text-info mb-2">401</h1>
+            <h2 class="text-2xl font-bold mb-3">Unauthorized</h2>
+            <p class="text-base-content/60 mb-8 max-w-sm">
+              You need to sign in to access this page. Please authenticate to continue.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <a href="/sign-in" class="btn btn-primary">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="size-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
+                  />
+                </svg>
+                Sign In
+              </a>
+              <a href="/" class="btn btn-outline">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="size-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+                  />
+                </svg>
+                Go Home
+              </a>
+            </div>
+          </div>
+          <div class="hidden lg:flex bg-gradient-to-br from-info/10 via-base-200 to-primary/10 relative overflow-hidden">
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,oklch(var(--in)/0.08),transparent_60%)]" />
+            <div class="relative flex flex-col items-center justify-center p-10 text-center">
+              <div class="text-8xl font-bold text-base-content/5 select-none">401</div>
+              <p class="text-base-content/40 mt-4 text-sm max-w-[200px]">
+                This area is for authenticated members only.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -21,74 +21,73 @@ defmodule Algoie.Tenants.Provisioner do
   Returns {:ok, %{tenant, user, store}} on success, {:error, reason} on failure.
   """
   def create_tenant_with_setup(attrs) do
-    # Step 1: Create the tenant record
-    {:ok, tenant} =
-      Ash.create(
-        Tenant,
-        %{
-          name: attrs.name,
-          owner_email: attrs.owner_email
-        },
-        actor: :system
-      )
+    case Ash.create(
+           Tenant,
+           %{
+             name: attrs.name,
+             owner_email: attrs.owner_email
+           },
+           actor: :system
+         ) do
+      {:ok, tenant} ->
+        schema_name = "tenant_#{tenant.id}"
 
-    schema_name = "tenant_#{tenant.id}"
-
-    # Step 2: Create schema and run migrations (outside Ecto transaction)
-    case Repo.create_tenant_schema(schema_name) do
-      :ok ->
-        case run_tenant_migrations(schema_name) do
+        case Repo.create_tenant_schema(schema_name) do
           :ok ->
-            # Step 3: Create resources in tenant schema (each in its own transaction)
-            with {:ok, store} <-
-                   Ash.create(
-                     Store,
-                     %{
-                       name: "#{attrs.name} Store",
-                       slug: generate_slug(attrs.name)
-                     },
-                     actor: :system,
-                     tenant: schema_name
-                   ),
-                 {:ok, user} <-
-                   Ash.create(
-                     User,
-                     %{
-                       email: attrs.owner_email,
-                       name: attrs.owner_name,
-                       password: attrs.owner_password
-                     },
-                     action: :register_with_password,
-                     actor: :system
-                   ),
-                 {:ok, _staff} <-
-                   Ash.create(
-                     StoreStaff,
-                     %{
-                       user_id: user.id,
-                       store_id: store.id,
-                       role: :owner
-                     },
-                     actor: :system,
-                     tenant: schema_name
-                   ),
-                 {:ok, _updated_user} <-
-                   Ash.update(user, %{default_tenant: schema_name}, actor: :system) do
-              {:ok, %{tenant: tenant, user: user, store: store}}
-            else
-              {:error, changeset} ->
+            case run_tenant_migrations(schema_name) do
+              :ok ->
+                with {:ok, store} <-
+                       Ash.create(
+                         Store,
+                         %{
+                           name: "#{attrs.name} Store",
+                           slug: generate_slug(attrs.name)
+                         },
+                         actor: :system,
+                         tenant: schema_name
+                       ),
+                     {:ok, user} <-
+                       Ash.create(
+                         User,
+                         %{
+                           email: attrs.owner_email,
+                           name: attrs.owner_name,
+                           password: attrs.owner_password
+                         },
+                         action: :register_with_password,
+                         actor: :system
+                       ),
+                     {:ok, _staff} <-
+                       Ash.create(
+                         StoreStaff,
+                         %{
+                           user_id: user.id,
+                           store_id: store.id,
+                           role: :owner
+                         },
+                         actor: :system,
+                         tenant: schema_name
+                       ),
+                     {:ok, _updated_user} <-
+                       Ash.update(user, %{default_tenant: schema_name}, actor: :system) do
+                  {:ok, %{tenant: tenant, user: user, store: store}}
+                else
+                  {:error, changeset} ->
+                    drop_tenant_schema(schema_name)
+                    {:error, changeset}
+                end
+
+              {:error, reason} ->
                 drop_tenant_schema(schema_name)
-                {:error, changeset}
+                {:error, reason}
             end
 
           {:error, reason} ->
-            drop_tenant_schema(schema_name)
             {:error, reason}
         end
 
-      {:error, reason} ->
-        drop_tenant_schema(schema_name)
-        {:error, reason}
+      {:error, changeset} ->
+        {:error, changeset}
     end
   end
 

@@ -28,7 +28,7 @@ defmodule Algoie.Accounts.User do
       enabled?(true)
       token_resource(Algoie.Accounts.Token)
       signing_algorithm("HS256")
-      signing_secret("dev-secret-change-in-prod")
+      signing_secret(Application.compile_env(:algoie, :token_signing_secret, "dev-secret-change-in-prod"))
     end
   end
 
@@ -64,7 +64,13 @@ defmodule Algoie.Accounts.User do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
     end
 
-    policy action_type([:read, :update]) do
+    policy action(:read) do
+      authorize_if(Algoie.Policies.Checks.ActorIsSystem)
+      authorize_if(Algoie.Policies.Checks.ActorIsRecordOwner)
+      authorize_if expr(is_nil(actor))
+    end
+
+    policy action_type(:update) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
       authorize_if(Algoie.Policies.Checks.ActorIsRecordOwner)
     end

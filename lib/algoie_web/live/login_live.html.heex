@@ -1,0 +1,99 @@
+<Layouts.app flash={@flash} wide>
+  <div class="min-h-[calc(100vh-8rem)] flex items-center justify-center">
+    <div class="w-full max-w-5xl">
+      <div class="card bg-base-200 shadow-xl overflow-hidden">
+        <div class="grid lg:grid-cols-2">
+          <%!-- Form Side --%>
+          <div class="card-body p-8 sm:p-10">
+            <div class="mb-6">
+              <.link navigate="/" class="flex items-center gap-2 mb-6">
+                <.icon name="hero-shopping-bag" class="size-8 text-primary" />
+                <span class="text-lg font-bold">Algoie</span>
+              </.link>
+              <h1 class="text-2xl font-bold">Welcome back</h1>
+              <p class="text-base-content/60 mt-1">Sign in to your store dashboard</p>
+            </div>
+
+            <.form
+              for={@form}
+              id="login-form"
+              action={~p"/auth/user/password/sign_in"}
+              method="post"
+              phx-change="validate"
+              class="space-y-4"
+            >
+              <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+
+              <.input
+                field={@form[:email]}
+                type="email"
+                label="Email address"
+                placeholder="you@example.com"
+                required
+                autocomplete="email"
+              />
+
+              <.input
+                field={@form[:password]}
+                type="password"
+                label="Password"
+                placeholder="Enter your password"
+                required
+                autocomplete="current-password"
+              />
+
+              <div class="flex items-center justify-between text-sm">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="user[remember_me]"
+                    value="true"
+                    class="checkbox checkbox-sm checkbox-primary"
+                  />
+                  <span class="text-base-content/70">Remember me</span>
+                </label>
+              </div>
+
+              <button type="submit" class="btn btn-primary w-full">
+                Sign In
+              </button>
+            </.form>
+
+            <p class="text-center mt-6 text-sm text-base-content/60">
+              Don't have an account?
+              <.link navigate="/register" class="link link-primary font-medium">Create your store</.link>
+            </p>
+          </div>
+
+          <%!-- Decorative Side --%>
+          <div class="hidden lg:flex bg-gradient-to-br from-primary/20 via-secondary/10 to-accent/20 relative overflow-hidden">
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,oklch(var(--p)/0.15),transparent_60%)]" />
+            <div class="relative flex flex-col items-center justify-center p-10 text-center">
+              <div class="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
+                <.icon name="hero-shopping-bag" class="size-10 text-primary" />
+              </div>
+              <h2 class="text-2xl font-bold mb-3">Manage Your Store</h2>
+              <p class="text-base-content/60 max-w-xs mb-8">
+                Access your dashboard to manage products, track orders, and grow your business.
+              </p>
+              <div class="space-y-3 w-full max-w-xs">
+                <div class="flex items-center gap-3 bg-base-100/50 rounded-lg px-4 py-3">
+                  <.icon name="hero-cube" class="size-5 text-primary shrink-0" />
+                  <span class="text-sm text-base-content/70">Product management & inventory</span>
+                </div>
+                <div class="flex items-center gap-3 bg-base-100/50 rounded-lg px-4 py-3">
+                  <.icon name="hero-clipboard-document-list" class="size-5 text-primary shrink-0" />
+                  <span class="text-sm text-base-content/70">Order tracking & fulfillment</span>
+                </div>
+                <div class="flex items-center gap-3 bg-base-100/50 rounded-lg px-4 py-3">
+                  <.icon name="hero-chart-bar" class="size-5 text-primary shrink-0" />
+                  <span class="text-sm text-base-content/70">Sales analytics & insights</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layouts.app>

@@ -28,7 +28,10 @@ defmodule AlgoieWeb.AuthController do
     end
   end
 
-  def failure(conn, _activity, _reason) do
+  def failure(conn, _activity, reason) do
+    require Logger
+    Logger.error("Auth failure: #{inspect(reason)}")
+
     conn
     |> put_flash(:error, "Invalid email or password")
     |> redirect(to: "/sign-in")

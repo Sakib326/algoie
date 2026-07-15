@@ -38,6 +38,15 @@ config :algoie, :ash_domains, [
 ]
 
 if config_env() == :prod do
+  token_signing_secret =
+    System.get_env("TOKEN_SIGNING_SECRET") ||
+      raise """
+      environment variable TOKEN_SIGNING_SECRET is missing.
+      You can generate one by calling: mix phx.gen.secret
+      """
+
+  config :algoie, :token_signing_secret, token_signing_secret
+
   secret_key_base =
     System.get_env("SECRET_KEY_BASE") ||
       raise """

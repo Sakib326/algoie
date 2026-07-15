@@ -1,124 +1,243 @@
-<Layouts.app flash={@flash}>
-  <div class="max-w-lg mx-auto">
-    <%= if @step == :success do %>
-      <div class="text-center py-12">
-        <div class="mb-6">
-          <.icon name="hero-check-circle" class="size-16 text-success mx-auto" />
-        </div>
-        <h1 class="text-3xl font-bold mb-4">Store Created!</h1>
-        <p class="text-base-content/70 mb-8">
-          Your account and store have been set up successfully.
-        </p>
-        <.link href="/sign-in" class="btn btn-primary btn-lg">
-          Sign In to Your Dashboard
-        </.link>
-      </div>
-    <% else %>
-      <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold mb-2">Create Your Store</h1>
-        <p class="text-base-content/70">
-          Set up your online store in just a few steps.
-        </p>
-      </div>
-
-      <.form
-        for={@form}
-        id="registration-form"
-        phx-change="validate"
-        phx-submit="register"
-        class="card bg-base-200"
-      >
-        <div class="card-body space-y-4">
-          <h2 class="card-title text-lg">Business Details</h2>
-
-          <.input
-            field={@form[:business_name]}
-            type="text"
-            label="Business Name"
-            placeholder="My Awesome Store"
-            required
-          />
-
-          <.input
-            field={@form[:store_name]}
-            type="text"
-            label="Store Name"
-            placeholder="My Store"
-            required
-          />
-
-          <div>
-            <.input
-              field={@form[:store_slug]}
-              type="text"
-              label="Store URL"
-              placeholder="my-store"
-              required
-              phx-debounce="400"
-            />
-            <div class="mt-1 text-sm">
-              <%= cond do %>
-                <% @slug_available == true -> %>
-                  <span class="text-success flex items-center gap-1">
-                    <.icon name="hero-check-circle" class="size-4" />
-                    my-store.localhost:4000 is available
-                  </span>
-                <% @slug_available == false -> %>
-                  <span class="text-error flex items-center gap-1">
-                    <.icon name="hero-x-circle" class="size-4" /> This URL is already taken
-                  </span>
-                <% true -> %>
-                  <span class="text-base-content/50">
-                    Your store will be at my-store.localhost:4000
-                  </span>
-              <% end %>
+<Layouts.app flash={@flash} wide>
+  <div class="min-h-[calc(100vh-8rem)] flex items-center justify-center">
+    <div class="w-full max-w-5xl">
+      <%= if @step == :success do %>
+        <div class="card bg-base-200 shadow-xl overflow-hidden">
+          <div class="grid lg:grid-cols-2">
+            <div class="card-body p-8 sm:p-10 items-center justify-center text-center">
+              <div class="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6">
+                <.icon name="hero-check-circle" class="size-10 text-success" />
+              </div>
+              <h1 class="text-3xl font-bold mb-3">Store Created!</h1>
+              <p class="text-base-content/60 mb-8 max-w-sm">
+                Your account and store have been set up successfully. Time to start building your business.
+              </p>
+              <.link href="/sign-in" class="btn btn-primary btn-lg">
+                Sign In to Your Dashboard
+              </.link>
+            </div>
+            <div class="hidden lg:flex bg-gradient-to-br from-success/10 via-base-200 to-primary/10 relative overflow-hidden">
+              <div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,oklch(var(--su)/0.12),transparent_60%)]" />
+              <div class="relative flex flex-col items-center justify-center p-10 text-center">
+                <div class="space-y-4 w-full max-w-xs">
+                  <div class="flex items-center gap-3 bg-base-100/50 rounded-lg px-4 py-3">
+                    <.icon name="hero-check-circle" class="size-5 text-success shrink-0" />
+                    <span class="text-sm text-base-content/70">Account created</span>
+                  </div>
+                  <div class="flex items-center gap-3 bg-base-100/50 rounded-lg px-4 py-3">
+                    <.icon name="hero-check-circle" class="size-5 text-success shrink-0" />
+                    <span class="text-sm text-base-content/70">Store configured</span>
+                  </div>
+                  <div class="flex items-center gap-3 bg-base-100/50 rounded-lg px-4 py-3">
+                    <.icon name="hero-check-circle" class="size-5 text-success shrink-0" />
+                    <span class="text-sm text-base-content/70">Ready to sell</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      <% else %>
+        <div class="card bg-base-200 shadow-xl overflow-hidden">
+          <div class="grid lg:grid-cols-2">
+            <%!-- Form Side --%>
+            <div class="card-body p-8 sm:p-10">
+              <div class="mb-2">
+                <.link navigate="/" class="flex items-center gap-2 mb-6">
+                  <.icon name="hero-shopping-bag" class="size-8 text-primary" />
+                  <span class="text-lg font-bold">Algoie</span>
+                </.link>
+                <h1 class="text-2xl font-bold">Create your store</h1>
+                <p class="text-base-content/60 mt-1">Start selling in just a few minutes</p>
+              </div>
 
-          <divider class="divider" />
+              <.form
+                for={@form}
+                id="registration-form"
+                phx-change="validate"
+                phx-submit="register"
+                class="space-y-4"
+              >
+                <div>
+                  <p class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-3">
+                    Business Details
+                  </p>
+                  <div class="space-y-3">
+                    <.input
+                      field={@form[:business_name]}
+                      type="text"
+                      label="Business Name"
+                      placeholder="My Awesome Store"
+                      required
+                    />
 
-          <h2 class="card-title text-lg">Owner Account</h2>
+                    <.input
+                      field={@form[:store_name]}
+                      type="text"
+                      label="Store Name"
+                      placeholder="My Store"
+                      required
+                    />
 
-          <.input
-            field={@form[:email]}
-            type="email"
-            label="Email Address"
-            placeholder="you@example.com"
-            required
-          />
+                    <div>
+                      <.input
+                        field={@form[:store_slug]}
+                        type="text"
+                        label="Store URL"
+                        placeholder="my-store"
+                        required
+                        phx-debounce="400"
+                      />
+                      <div class="mt-1.5 text-sm">
+                        <%= cond do %>
+                          <% @slug_available == true -> %>
+                            <span class="text-success flex items-center gap-1">
+                              <.icon name="hero-check-circle" class="size-4" />
+                              {@form[:store_slug].value}.localhost:4000 is available
+                            </span>
+                          <% @slug_available == false -> %>
+                            <span class="text-error flex items-center gap-1">
+                              <.icon name="hero-x-circle" class="size-4" />
+                              This URL is already taken
+                            </span>
+                          <% true -> %>
+                            <span class="text-base-content/50">
+                              Your store will be at {@form[:store_slug].value || "my-store"}.localhost:4000
+                            </span>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-          <.input
-            field={@form[:password]}
-            type="password"
-            label="Password"
-            placeholder="At least 8 characters"
-            required
-          />
+                <div class="divider my-1"></div>
 
-          <.input
-            field={@form[:password_confirmation]}
-            type="password"
-            label="Confirm Password"
-            placeholder="Re-enter your password"
-            required
-          />
+                <div>
+                  <p class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-3">
+                    Owner Account
+                  </p>
+                  <div class="space-y-3">
+                    <.input
+                      field={@form[:email]}
+                      type="email"
+                      label="Email Address"
+                      placeholder="you@example.com"
+                      required
+                    />
 
-          <div class="card-actions justify-end pt-4">
-            <button
-              type="submit"
-              class="btn btn-primary btn-lg"
-              disabled={@slug_available == false}
-            >
-              Create Store
-            </button>
+                    <div>
+                      <.input
+                        field={@form[:password]}
+                        type="password"
+                        label="Password"
+                        placeholder="At least 8 characters"
+                        required
+                        phx-debounce="300"
+                      />
+                      <%= if @password_strength do %>
+                        <div class="mt-2">
+                          <div class="flex gap-1 mb-1.5">
+                            <div class={[
+                              "h-1 flex-1 rounded-full transition-colors duration-300",
+                              if(@password_strength >= 1, do: "bg-error", else: "bg-base-300")
+                            ]} />
+                            <div class={[
+                              "h-1 flex-1 rounded-full transition-colors duration-300",
+                              if(@password_strength >= 2, do: "bg-warning", else: "bg-base-300")
+                            ]} />
+                            <div class={[
+                              "h-1 flex-1 rounded-full transition-colors duration-300",
+                              if(@password_strength >= 3, do: "bg-success", else: "bg-base-300")
+                            ]} />
+                            <div class={[
+                              "h-1 flex-1 rounded-full transition-colors duration-300",
+                              if(@password_strength >= 4, do: "bg-success", else: "bg-base-300")
+                            ]} />
+                          </div>
+                          <p class={[
+                            "text-xs",
+                            cond do
+                              @password_strength <= 1 -> "text-error"
+                              @password_strength == 2 -> "text-warning"
+                              true -> "text-success"
+                            end
+                          ]}>
+                            <%= cond do %>
+                              <% @password_strength <= 1 -> %>
+                                Weak password
+                              <% @password_strength == 2 -> %>
+                                Fair password
+                              <% @password_strength == 3 -> %>
+                                Good password
+                              <% true -> %>
+                                Strong password
+                            <% end %>
+                          </p>
+                        </div>
+                      <% end %>
+                    </div>
+
+                    <.input
+                      field={@form[:password_confirmation]}
+                      type="password"
+                      label="Confirm Password"
+                      placeholder="Re-enter your password"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div class="pt-2">
+                  <button
+                    type="submit"
+                    class="btn btn-primary w-full"
+                    disabled={@slug_available == false}
+                  >
+                    Create Store
+                  </button>
+                </div>
+              </.form>
+
+              <p class="text-center mt-4 text-sm text-base-content/60">
+                Already have an account?
+                <.link navigate="/sign-in" class="link link-primary font-medium">Sign in</.link>
+              </p>
+            </div>
+
+            <%!-- Decorative Side --%>
+            <div class="hidden lg:flex bg-gradient-to-br from-primary/20 via-secondary/10 to-accent/20 relative overflow-hidden">
+              <div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,oklch(var(--p)/0.15),transparent_60%)]" />
+              <div class="relative flex flex-col items-center justify-center p-10 text-center">
+                <div class="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
+                  <.icon name="hero-building-storefront" class="size-10 text-primary" />
+                </div>
+                <h2 class="text-2xl font-bold mb-3">Launch Your Store</h2>
+                <p class="text-base-content/60 max-w-xs mb-8">
+                  Join thousands of merchants building their online business with Algoie.
+                </p>
+                <div class="space-y-3 w-full max-w-xs">
+                  <div class="flex items-center gap-3 bg-base-100/50 rounded-lg px-4 py-3">
+                    <.icon name="hero-globe-alt" class="size-5 text-primary shrink-0" />
+                    <span class="text-sm text-base-content/70">Subdomain storefront included</span>
+                  </div>
+                  <div class="flex items-center gap-3 bg-base-100/50 rounded-lg px-4 py-3">
+                    <.icon name="hero-cube" class="size-5 text-primary shrink-0" />
+                    <span class="text-sm text-base-content/70">Unlimited products & categories</span>
+                  </div>
+                  <div class="flex items-center gap-3 bg-base-100/50 rounded-lg px-4 py-3">
+                    <.icon name="hero-shield-check" class="size-5 text-primary shrink-0" />
+                    <span class="text-sm text-base-content/70">Secure & isolated data</span>
+                  </div>
+                  <div class="flex items-center gap-3 bg-base-100/50 rounded-lg px-4 py-3">
+                    <.icon name="hero-user-group" class="size-5 text-primary shrink-0" />
+                    <span class="text-sm text-base-content/70">Multi-store support</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </.form>
-
-      <p class="text-center mt-6 text-sm text-base-content/60">
-        Already have an account?
-        <.link navigate="/sign-in" class="link link-primary">Sign in</.link>
-      </p>
-    <% end %>
+      <% end %>
+    </div>
   </div>
 </Layouts.app>

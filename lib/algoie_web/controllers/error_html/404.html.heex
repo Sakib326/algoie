@@ -1,8 +1,98 @@
-<div class="min-h-screen flex items-center justify-center bg-base-100">
-  <div class="text-center">
-    <h1 class="text-6xl font-bold text-error mb-4">404</h1>
-    <h2 class="text-2xl font-semibold mb-4">Page Not Found</h2>
-    <p class="text-base-content/70 mb-8">The page you're looking for doesn't exist.</p>
-    <a href="/" class="btn btn-primary">Go Home</a>
-  </div>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Page Not Found — Algoie</title>
+    <link rel="stylesheet" href="/assets/css/app.css" />
+    <script>
+      (() => {
+        const systemTheme = () => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            document.documentElement.setAttribute("data-theme", systemTheme());
+          } else {
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        };
+        setTheme(localStorage.getItem("phx:theme") || "system");
+      })();
+    </script>
+  </head>
+  <body class="bg-base-100 text-base-content">
+    <div class="min-h-screen flex items-center justify-center px-4">
+      <div class="card bg-base-200 shadow-xl overflow-hidden max-w-4xl w-full">
+        <div class="grid lg:grid-cols-2">
+          <div class="card-body p-8 sm:p-10 items-center justify-center text-center">
+            <div class="w-24 h-24 rounded-full bg-error/10 flex items-center justify-center mb-6">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="size-12 text-error"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15.182 16.318A4.486 4.486 0 0 0 12.016 15a4.486 4.486 0 0 0-3.198 1.318M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Z"
+                />
+              </svg>
+            </div>
+            <h1 class="text-6xl font-bold text-error mb-2">404</h1>
+            <h2 class="text-2xl font-bold mb-3">Page Not Found</h2>
+            <p class="text-base-content/60 mb-8 max-w-sm">
+              The page you're looking for doesn't exist or has been moved. Let's get you back on track.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <a href="/" class="btn btn-primary">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="size-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+                  />
+                </svg>
+                Go Home
+              </a>
+              <button onclick="history.back()" class="btn btn-outline">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="size-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+                  />
+                </svg>
+                Go Back
+              </button>
+            </div>
+          </div>
+          <div class="hidden lg:flex bg-gradient-to-br from-error/10 via-base-200 to-warning/10 relative overflow-hidden">
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,oklch(var(--er)/0.08),transparent_60%)]" />
+            <div class="relative flex flex-col items-center justify-center p-10 text-center">
+              <div class="text-8xl font-bold text-base-content/5 select-none">404</div>
+              <p class="text-base-content/40 mt-4 text-sm max-w-[200px]">
+                Lost in the digital void? Happens to the best of us.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
