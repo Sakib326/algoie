@@ -2,6 +2,12 @@ defmodule AlgoieWeb.Router do
   use AlgoieWeb, :router
   use AshAuthentication.Phoenix.Router
 
+  # The apex host serves the platform (marketing, auth, dashboard).
+  # Any subdomain of it (e.g. "nike.<apex>") serves a storefront.
+  # Resolved at compile time, so in production :apex_host must be configured
+  # (via APP_DOMAIN) at build time. StoreSlugPlug reads the same value.
+  @apex_host Application.compile_env(:algoie, :apex_host, "localhost")
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -23,10 +29,10 @@ defmodule AlgoieWeb.Router do
   end
 
   # ═══════════════════════════════════════════════════════════
-  # PLATFORM ROUTES (algoie.com)
+  # PLATFORM ROUTES (apex host only — e.g. algoie.com / localhost)
   # ═══════════════════════════════════════════════════════════
 
-  scope "/", AlgoieWeb do
+  scope "/", AlgoieWeb, host: @apex_host do
     pipe_through :browser
 
     live "/", HomeLive, :index
@@ -45,15 +51,15 @@ defmodule AlgoieWeb.Router do
   end
 
   # ═══════════════════════════════════════════════════════════
-  # DASHBOARD ROUTES (algoie.com/dashboard — auth required)
+  # DASHBOARD ROUTES (apex host, /dashboard — auth required)
   # ═══════════════════════════════════════════════════════════
 
-  scope "/", AlgoieWeb do
+  scope "/", AlgoieWeb, host: @apex_host do
     pipe_through [:browser]
 
     ash_authentication_live_session :dashboard,
       otp_app: :algoie,
-      on_mount_prepend: [{AlgoieWeb.Live.OnDashboardMount, :default}] do
+      on_mount: [{AlgoieWeb.Live.OnDashboardMount, :default}] do
       live "/dashboard", DashboardLive, :index
       live "/dashboard/products", ProductLive.Index, :index
       live "/dashboard/products/new", ProductLive.Index, :new
@@ -73,12 +79,15 @@ defmodule AlgoieWeb.Router do
   end
 
   # ═══════════════════════════════════════════════════════════
-  # STOREFRONT ROUTES (store1.algoie.com — subdomain-based)
+  # STOREFRONT ROUTES (store1.<apex> — any subdomain)
+  # These match on any host; the :store pipeline (require_subdomain)
+  # returns 404 if reached without a store subdomain.
   # ═══════════════════════════════════════════════════════════
 
   scope "/", AlgoieWeb do
     pipe_through [:browser, :store]
 
+    live "/", StorefrontHomeLive, :index
     live "/store", StorefrontHomeLive, :index
     live "/products", StorefrontProductLive.Index, :index
     live "/products/:id", StorefrontProductLive.Show, :show

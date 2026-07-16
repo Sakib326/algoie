@@ -58,14 +58,14 @@ defmodule AlgoieWeb.AuthController do
 
   defp get_user_tenants(user_id) do
     # Get all tenants
-    case Algoie.Repo.all(from(t in "tenants", prefix: "public", select: t.id)) do
+    case Algoie.Repo.all(from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))) do
       tenant_ids ->
         Enum.filter(tenant_ids, fn tenant_id ->
           schema = "tenant_#{tenant_id}"
 
           case Ecto.Adapters.SQL.query(
                  Algoie.Repo,
-                 "SELECT 1 FROM \"#{schema}\".store_staff WHERE user_id = $1 LIMIT 1",
+                 "SELECT 1 FROM \"#{schema}\".store_staff WHERE user_id::text = $1 LIMIT 1",
                  [user_id]
                ) do
             {:ok, %{rows: [_ | _]}} -> true
@@ -80,7 +80,7 @@ defmodule AlgoieWeb.AuthController do
 
     case Ecto.Adapters.SQL.query(
            Algoie.Repo,
-           "SELECT ss.store_id, s.name FROM \"#{schema}\".store_staff ss JOIN \"#{schema}\".stores s ON s.id = ss.store_id WHERE ss.user_id = $1 LIMIT 1",
+           "SELECT ss.store_id::text, s.name FROM \"#{schema}\".store_staff ss JOIN \"#{schema}\".stores s ON s.id = ss.store_id WHERE ss.user_id::text = $1 LIMIT 1",
            [user_id]
          ) do
       {:ok, %{rows: [[store_id, store_name] | _]}} ->
@@ -108,7 +108,7 @@ defmodule AlgoieWeb.AuthController do
 
       case Ecto.Adapters.SQL.query(
              Algoie.Repo,
-             "SELECT ss.store_id, s.name, ss.role FROM \"#{schema}\".store_staff ss JOIN \"#{schema}\".stores s ON s.id = ss.store_id WHERE ss.user_id = $1",
+             "SELECT ss.store_id::text, s.name, ss.role FROM \"#{schema}\".store_staff ss JOIN \"#{schema}\".stores s ON s.id = ss.store_id WHERE ss.user_id::text = $1",
              [user_id]
            ) do
         {:ok, %{rows: rows}} ->

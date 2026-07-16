@@ -12,6 +12,6 @@ defmodule AlgoieWeb.ErrorHTMLTest do
   test "renders 500.html" do
     html = render_to_string(AlgoieWeb.ErrorHTML, "500", "html", [])
     assert html =~ "500"
-    assert html =~ "Internal Server Error"
+    assert html =~ "Something Went Wrong"
   end
 end

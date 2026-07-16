@@ -71,7 +71,7 @@ defmodule AlgoieWeb.Live.OnDashboardMount do
   end
 
   defp get_tenants_with_stores(user_id) do
-    case Algoie.Repo.all(from(t in "tenants", prefix: "public", select: t.id)) do
+    case Algoie.Repo.all(from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))) do
       [] ->
         []
 
@@ -82,10 +82,10 @@ defmodule AlgoieWeb.Live.OnDashboardMount do
           case Ecto.Adapters.SQL.query(
                  Algoie.Repo,
                  """
-                 SELECT ss.store_id, s.name, ss.role
+                 SELECT ss.store_id::text, s.name, ss.role
                  FROM "#{schema}".store_staff ss
                  JOIN "#{schema}".stores s ON s.id = ss.store_id
-                 WHERE ss.user_id = $1
+                 WHERE ss.user_id::text = $1
                  """,
                  [user_id]
                ) do

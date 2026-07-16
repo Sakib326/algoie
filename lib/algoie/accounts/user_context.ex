@@ -51,10 +51,10 @@ defmodule Algoie.Accounts.UserContext do
           case Ecto.Adapters.SQL.query(
                  Algoie.Repo,
                  """
-                 SELECT ss.store_id, s.name, ss.role
+                 SELECT ss.store_id::text, s.name, ss.role
                  FROM "#{schema}".store_staff ss
                  JOIN "#{schema}".stores s ON s.id = ss.store_id
-                 WHERE ss.user_id = $1
+                 WHERE ss.user_id::text = $1
                  """,
                  [user_id]
                ) do
@@ -84,7 +84,7 @@ defmodule Algoie.Accounts.UserContext do
 
           case Ecto.Adapters.SQL.query(
                  Algoie.Repo,
-                 "SELECT 1 FROM \"#{schema}\".store_staff WHERE user_id = $1 LIMIT 1",
+                 "SELECT 1 FROM \"#{schema}\".store_staff WHERE user_id::text = $1 LIMIT 1",
                  [user_id]
                ) do
             {:ok, %{rows: [_ | _]}} -> true
@@ -95,7 +95,7 @@ defmodule Algoie.Accounts.UserContext do
   end
 
   defp get_all_tenants do
-    case Algoie.Repo.all(from(t in "tenants", prefix: "public", select: t.id)) do
+    case Algoie.Repo.all(from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))) do
       ids when is_list(ids) -> ids
       _ -> []
     end

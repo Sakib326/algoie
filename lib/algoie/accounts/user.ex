@@ -60,14 +60,21 @@ defmodule Algoie.Accounts.User do
   end
 
   policies do
+    # Allow AshAuthentication's internal interactions (sign in, register,
+    # token validation, session loading) to bypass the resource policies.
+    # Without this, the :sign_in_with_password read action is forbidden and
+    # login is impossible.
+    bypass AshAuthentication.Checks.AshAuthenticationInteraction do
+      authorize_if(always())
+    end
+
     policy action_type(:create) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
     end
 
-    policy action(:read) do
+    policy action_type(:read) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
       authorize_if(Algoie.Policies.Checks.ActorIsRecordOwner)
-      authorize_if expr(is_nil(actor))
     end
 
     policy action_type(:update) do

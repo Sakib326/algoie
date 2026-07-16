@@ -23,6 +23,10 @@ config :algoie, AlgoieWeb.Endpoint,
 # In test we don't send emails
 config :algoie, Algoie.Mailer, adapter: Swoosh.Adapters.Test
 
+# Phoenix's test connection uses "www.example.com" as the host, so treat that as
+# the apex host in tests to exercise the platform routes.
+config :algoie, :apex_host, "www.example.com"
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 

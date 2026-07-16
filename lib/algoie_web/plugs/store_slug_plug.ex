@@ -33,21 +33,11 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
           {:ok, %{tenant_id: tenant_id, store_id: store_id}} ->
             schema_name = "tenant_#{tenant_id}"
 
-            conn =
-              conn
-              |> Ash.PlugHelpers.set_tenant(schema_name)
-              |> Ash.PlugHelpers.set_context(%{store_id: store_id})
-              |> put_session(:store_tenant, schema_name)
-              |> put_session(:store_id, store_id)
-
-            if conn.request_path == "/" do
-              conn
-              |> put_resp_header("location", "/store")
-              |> send_resp(302, "")
-              |> halt()
-            else
-              conn
-            end
+            conn
+            |> Ash.PlugHelpers.set_tenant(schema_name)
+            |> Ash.PlugHelpers.set_context(%{store_id: store_id})
+            |> put_session(:store_tenant, schema_name)
+            |> put_session(:store_id, store_id)
 
           {:error, :not_found} ->
             conn
@@ -60,7 +50,7 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
 
   defp extract_store_slug(conn) do
     host = conn.host
-    domain = System.get_env("APP_DOMAIN") || "localhost"
+    domain = Application.get_env(:algoie, :apex_host, "localhost")
 
     # Strip port if present (e.g. "store.localhost:4000" → "store.localhost")
     host = String.split(host, ":") |> List.first()

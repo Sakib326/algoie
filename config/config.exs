@@ -11,6 +11,10 @@ config :algoie,
   ecto_repos: [Algoie.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+# The apex host serves the platform (marketing, auth, dashboard). Any subdomain
+# of it serves a storefront. Used by the router (host scoping) and StoreSlugPlug.
+config :algoie, :apex_host, System.get_env("APP_DOMAIN", "localhost")
+
 # Configure the endpoint
 config :algoie, AlgoieWeb.Endpoint,
   url: [host: "localhost"],

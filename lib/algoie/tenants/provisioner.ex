@@ -73,16 +73,17 @@ defmodule Algoie.Tenants.Provisioner do
                   {:ok, %{tenant: tenant, user: user, store: store}}
                 else
                   {:error, changeset} ->
-                    drop_tenant_schema(schema_name)
+                    rollback_tenant(tenant, schema_name)
                     {:error, changeset}
                 end
 
               {:error, reason} ->
-                drop_tenant_schema(schema_name)
+                rollback_tenant(tenant, schema_name)
                 {:error, reason}
             end
 
           {:error, reason} ->
+            rollback_tenant(tenant, schema_name)
             {:error, reason}
         end
 
@@ -108,6 +109,22 @@ defmodule Algoie.Tenants.Provisioner do
   defp drop_tenant_schema(schema_name) do
     query = "DROP SCHEMA IF EXISTS \"#{schema_name}\" CASCADE"
     Ecto.Adapters.SQL.query!(Repo, query, [])
+  end
+
+  # Fully undo a partially-provisioned tenant so no orphaned rows remain in the
+  # public schema. Removes registry entries (created by Store's after_action),
+  # drops the tenant schema, and deletes the Tenant record.
+  defp rollback_tenant(tenant, schema_name) do
+    Ecto.Adapters.SQL.query(
+      Repo,
+      "DELETE FROM public.store_registry WHERE tenant_id = $1",
+      [tenant.id]
+    )
+
+    drop_tenant_schema(schema_name)
+
+    Ash.destroy(tenant, actor: :system)
+    :ok
   end
 
   defp generate_slug(name) do

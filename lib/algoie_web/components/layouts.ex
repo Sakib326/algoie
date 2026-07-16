@@ -193,7 +193,7 @@ defmodule AlgoieWeb.Layouts do
             <div class="flex items-center gap-3">
               <div class="avatar placeholder">
                 <div class="bg-primary text-primary-content rounded-full w-10">
-                  <span class="text-sm">{String.first(@current_user.email || "?") |> String.upcase()}</span>
+                  <span class="text-sm">{String.first(to_string(@current_user.email) || "?") |> String.upcase()}</span>
                 </div>
               </div>
               <div class="flex-1 min-w-0">
