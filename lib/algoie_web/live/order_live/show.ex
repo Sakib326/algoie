@@ -6,7 +6,7 @@ defmodule AlgoieWeb.OrderLive.Show do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    {:ok, load_order(socket, id)}
+    {:ok, socket |> assign(:active, :orders) |> load_order(id)}
   end
 
   @impl true
@@ -24,7 +24,7 @@ defmodule AlgoieWeb.OrderLive.Show do
         changeset =
           Ash.Changeset.for_update(socket.assigns.order, :update_status, %{status: status_atom})
 
-        case Ash.update(changeset, actor: socket.assigns.current_user) do
+        case Ash.update(changeset, AlgoieWeb.Scope.opts(socket)) do
           {:ok, order} ->
             {:noreply,
              socket
@@ -50,7 +50,7 @@ defmodule AlgoieWeb.OrderLive.Show do
   defp parse_status(_), do: nil
 
   defp load_order(socket, id) do
-    case Ash.get(Order, id, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
+    case Ash.get(Order, id, AlgoieWeb.Scope.opts(socket)) do
       {:ok, order} ->
         line_items =
           case Algoie.Orders.OrderLineItem
@@ -61,13 +61,21 @@ defmodule AlgoieWeb.OrderLive.Show do
             _ -> []
           end
 
+        customer =
+          case Ash.get(Algoie.Customers.Customer, order.customer_id, AlgoieWeb.Scope.opts(socket)) do
+            {:ok, c} -> c
+            _ -> nil
+          end
+
         socket
         |> assign(:order, order)
+        |> assign(:customer, customer)
         |> assign(:line_items, line_items)
 
       _ ->
         socket
         |> assign(:order, nil)
+        |> assign(:customer, nil)
         |> assign(:line_items, [])
     end
   end
@@ -76,4 +84,21 @@ defmodule AlgoieWeb.OrderLive.Show do
   defp allowed_next_statuses(:pre_order), do: [:confirmed, :cancelled]
   defp allowed_next_statuses(:confirmed), do: [:fulfilled, :cancelled]
   defp allowed_next_statuses(_), do: []
+
+  defp status_tone(:pending), do: "warning"
+  defp status_tone(:pre_order), do: "info"
+  defp status_tone(:confirmed), do: "primary"
+  defp status_tone(:fulfilled), do: "success"
+  defp status_tone(:cancelled), do: "error"
+  defp status_tone(_), do: "neutral"
+
+  defp humanize(status), do: status |> to_string() |> String.replace("_", " ")
+
+  defp short_id(id), do: id |> to_string() |> String.slice(0, 8)
+
+  defp format_money(%Decimal{} = amount) do
+    "$" <> (amount |> Decimal.round(2) |> Decimal.to_string(:normal))
+  end
+
+  defp format_money(_), do: "$0.00"
 end

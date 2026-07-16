@@ -5,55 +5,143 @@
   store_id={@store_id}
   store_name={@store_name}
   user_stores={@user_stores}
+  page_title={@page_title}
+  active={:overview}
 >
-  <.header>
-    Dashboard
-    <:subtitle>Welcome back, {@current_user.name || @current_user.email}</:subtitle>
-  </.header>
+  <.page_header title={"Welcome back" <> if(@current_user.name, do: ", #{@current_user.name}", else: "")}>
+    <:subtitle>Here's what's happening at {@store_name} today.</:subtitle>
+    <:actions>
+      <.ui_button navigate={~p"/dashboard/products/new"} variant="primary">
+        <.icon name="hero-plus" class="size-4" /> New product
+      </.ui_button>
+    </:actions>
+  </.page_header>
 
-  <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-    <.link
-      navigate={~p"/dashboard/products"}
-      class="card bg-base-200 hover:bg-base-300 transition cursor-pointer"
-    >
-      <div class="card-body items-center text-center">
-        <.icon name="hero-cube" class="size-10 text-primary" />
-        <h3 class="card-title text-lg">Products</h3>
-        <p class="text-base-content/60">Manage your catalog</p>
-      </div>
-    </.link>
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <.stat_card
+      label="Revenue"
+      value={format_money(@revenue)}
+      icon="hero-banknotes"
+      tone="success"
+      hint="Confirmed & fulfilled"
+    />
+    <.stat_card
+      label="Orders"
+      value={Integer.to_string(@order_count)}
+      icon="hero-shopping-cart"
+      tone="primary"
+      hint={"#{@pending_order_count} pending"}
+    />
+    <.stat_card
+      label="Products"
+      value={Integer.to_string(@product_count)}
+      icon="hero-cube"
+      tone="info"
+      hint={"#{@active_product_count} active"}
+    />
+    <.stat_card
+      label="Customers"
+      value={Integer.to_string(@customer_count)}
+      icon="hero-users"
+      tone="warning"
+    />
+  </div>
 
-    <.link
-      navigate={~p"/dashboard/categories"}
-      class="card bg-base-200 hover:bg-base-300 transition cursor-pointer"
-    >
-      <div class="card-body items-center text-center">
-        <.icon name="hero-folder" class="size-10 text-primary" />
-        <h3 class="card-title text-lg">Categories</h3>
-        <p class="text-base-content/60">Organize products</p>
+  <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <%!-- Recent orders --%>
+    <.panel class="lg:col-span-2">
+      <div class="flex items-center justify-between border-b border-base-200 px-5 py-4">
+        <h2 class="text-sm font-semibold text-base-content">Recent orders</h2>
+        <.link navigate={~p"/dashboard/orders"} class="text-sm font-medium text-primary hover:underline">
+          View all
+        </.link>
       </div>
-    </.link>
 
-    <.link
-      navigate={~p"/dashboard/brands"}
-      class="card bg-base-200 hover:bg-base-300 transition cursor-pointer"
-    >
-      <div class="card-body items-center text-center">
-        <.icon name="hero-tag" class="size-10 text-primary" />
-        <h3 class="card-title text-lg">Brands</h3>
-        <p class="text-base-content/60">Manage brands</p>
+      <div :if={@recent_orders == []} class="px-5">
+        <.empty_state
+          icon="hero-shopping-cart"
+          title="No orders yet"
+          description="Orders placed in your storefront will appear here."
+        />
       </div>
-    </.link>
 
-    <.link
-      navigate={~p"/dashboard/orders"}
-      class="card bg-base-200 hover:bg-base-300 transition cursor-pointer"
-    >
-      <div class="card-body items-center text-center">
-        <.icon name="hero-clipboard-document-list" class="size-10 text-primary" />
-        <h3 class="card-title text-lg">Orders</h3>
-        <p class="text-base-content/60">View orders</p>
+      <table :if={@recent_orders != []} class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
+            <th class="px-5 py-3 font-medium">Order</th>
+            <th class="px-5 py-3 font-medium">Customer</th>
+            <th class="px-5 py-3 font-medium">Status</th>
+            <th class="px-5 py-3 text-right font-medium">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            :for={order <- @recent_orders}
+            class="border-b border-base-200 last:border-0 transition-colors hover:bg-base-200/40"
+          >
+            <td class="px-5 py-3">
+              <.link navigate={~p"/dashboard/orders/#{order}"} class="font-mono text-xs text-primary hover:underline">
+                #{short_id(order.id)}
+              </.link>
+            </td>
+            <td class="px-5 py-3 text-base-content/80">{@customer_map[order.customer_id]}</td>
+            <td class="px-5 py-3">
+              <.pill tone={status_tone(order.status)}>{humanize(order.status)}</.pill>
+            </td>
+            <td class="px-5 py-3 text-right font-medium tabular-nums">
+              {format_money(order.total_amount)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </.panel>
+
+    <%!-- Quick actions --%>
+    <.panel>
+      <div class="border-b border-base-200 px-5 py-4">
+        <h2 class="text-sm font-semibold text-base-content">Quick actions</h2>
       </div>
-    </.link>
+      <div class="flex flex-col gap-1 p-3">
+        <.link
+          navigate={~p"/dashboard/products/new"}
+          class="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-base-200 transition-colors"
+        >
+          <span class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <.icon name="hero-cube" class="size-5" />
+          </span>
+          <span class="flex-1">
+            <span class="block text-sm font-medium">Add a product</span>
+            <span class="block text-xs text-base-content/50">Create a new catalog item</span>
+          </span>
+          <.icon name="hero-chevron-right" class="size-4 text-base-content/30 group-hover:text-base-content/60" />
+        </.link>
+        <.link
+          navigate={~p"/dashboard/categories/new"}
+          class="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-base-200 transition-colors"
+        >
+          <span class="flex size-9 items-center justify-center rounded-lg bg-info/10 text-info">
+            <.icon name="hero-folder" class="size-5" />
+          </span>
+          <span class="flex-1">
+            <span class="block text-sm font-medium">Add a category</span>
+            <span class="block text-xs text-base-content/50">Organize your catalog</span>
+          </span>
+          <.icon name="hero-chevron-right" class="size-4 text-base-content/30 group-hover:text-base-content/60" />
+        </.link>
+        <.link
+          navigate={~p"/dashboard/orders"}
+          class="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-base-200 transition-colors"
+        >
+          <span class="flex size-9 items-center justify-center rounded-lg bg-success/10 text-success">
+            <.icon name="hero-shopping-cart" class="size-5" />
+          </span>
+          <span class="flex-1">
+            <span class="block text-sm font-medium">Review orders</span>
+            <span class="block text-xs text-base-content/50">Fulfill and track orders</span>
+          </span>
+          <.icon name="hero-chevron-right" class="size-4 text-base-content/30 group-hover:text-base-content/60" />
+        </.link>
+      </div>
+    </.panel>
   </div>
 </Layouts.dashboard>

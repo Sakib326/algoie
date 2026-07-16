@@ -423,6 +423,181 @@ defmodule AlgoieWeb.CoreComponents do
   end
 
   @doc """
+  A refined page header for dashboard pages with an optional subtitle and actions.
+  """
+  attr :title, :string, required: true
+  slot :subtitle
+  slot :actions
+
+  def page_header(assigns) do
+    ~H"""
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div class="min-w-0">
+        <h1 class="text-2xl font-semibold tracking-tight text-base-content truncate">
+          {@title}
+        </h1>
+        <p :if={@subtitle != []} class="mt-1 text-sm text-base-content/50">
+          {render_slot(@subtitle)}
+        </p>
+      </div>
+      <div :if={@actions != []} class="flex items-center gap-2 shrink-0">
+        {render_slot(@actions)}
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  A polished, theme-aware button used across the dashboard.
+
+  Renders an `<a>` when given `navigate`, `patch`, or `href`, otherwise a `<button>`.
+  """
+  attr :variant, :string, default: "primary", values: ~w(primary secondary ghost danger)
+  attr :size, :string, default: "md", values: ~w(sm md)
+  attr :class, :any, default: nil
+  attr :rest, :global, include: ~w(href navigate patch method download name value disabled type form)
+  slot :inner_block, required: true
+
+  def ui_button(%{rest: rest} = assigns) do
+    base =
+      "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors " <>
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50 " <>
+        "disabled:pointer-events-none whitespace-nowrap"
+
+    variant =
+      %{
+        "primary" => "bg-primary text-primary-content shadow-sm hover:bg-primary/90",
+        "secondary" =>
+          "bg-base-100 text-base-content border border-base-300 shadow-sm hover:bg-base-200",
+        "ghost" => "text-base-content/70 hover:bg-base-200 hover:text-base-content",
+        "danger" => "bg-error/10 text-error hover:bg-error/20"
+      }
+      |> Map.fetch!(assigns.variant)
+
+    size = %{"sm" => "px-2.5 py-1.5 text-xs", "md" => "px-3.5 py-2 text-sm"} |> Map.fetch!(assigns.size)
+
+    assigns = assign(assigns, :computed_class, [base, variant, size, assigns.class])
+
+    if rest[:href] || rest[:navigate] || rest[:patch] do
+      ~H"""
+      <.link class={@computed_class} {@rest}>{render_slot(@inner_block)}</.link>
+      """
+    else
+      ~H"""
+      <button class={@computed_class} {@rest}>{render_slot(@inner_block)}</button>
+      """
+    end
+  end
+
+  @doc """
+  A metric/stat card for the dashboard overview.
+  """
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+  attr :icon, :string, required: true
+  attr :hint, :string, default: nil
+  attr :tone, :string, default: "primary", values: ~w(primary success warning info error)
+
+  def stat_card(assigns) do
+    tone =
+      %{
+        "primary" => "bg-primary/10 text-primary",
+        "success" => "bg-success/10 text-success",
+        "warning" => "bg-warning/10 text-warning",
+        "info" => "bg-info/10 text-info",
+        "error" => "bg-error/10 text-error"
+      }
+      |> Map.fetch!(assigns.tone)
+
+    assigns = assign(assigns, :tone_class, tone)
+
+    ~H"""
+    <div class="rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-xs font-medium uppercase tracking-wider text-base-content/50">
+            {@label}
+          </p>
+          <p class="mt-2 text-3xl font-semibold tracking-tight text-base-content">{@value}</p>
+          <p :if={@hint} class="mt-1 text-xs text-base-content/40">{@hint}</p>
+        </div>
+        <div class={["flex size-11 shrink-0 items-center justify-center rounded-xl", @tone_class]}>
+          <.icon name={@icon} class="size-6" />
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  A card/panel wrapper for grouping dashboard content.
+  """
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+
+  def panel(assigns) do
+    ~H"""
+    <div class={["rounded-xl border border-base-300 bg-base-100 shadow-sm", @class]}>
+      {render_slot(@inner_block)}
+    </div>
+    """
+  end
+
+  @doc """
+  A small colored status pill.
+  """
+  attr :tone, :string, default: "neutral",
+    values: ~w(neutral success warning info error primary secondary)
+
+  slot :inner_block, required: true
+
+  def pill(assigns) do
+    tone =
+      %{
+        "neutral" => "bg-base-300/70 text-base-content/70",
+        "success" => "bg-success/15 text-success",
+        "warning" => "bg-warning/15 text-warning",
+        "info" => "bg-info/15 text-info",
+        "error" => "bg-error/15 text-error",
+        "primary" => "bg-primary/15 text-primary",
+        "secondary" => "bg-secondary/15 text-secondary"
+      }
+      |> Map.fetch!(assigns.tone)
+
+    assigns = assign(assigns, :tone_class, tone)
+
+    ~H"""
+    <span class={[
+      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium capitalize",
+      @tone_class
+    ]}>
+      {render_slot(@inner_block)}
+    </span>
+    """
+  end
+
+  @doc """
+  An empty-state block shown when a list has no records.
+  """
+  attr :icon, :string, default: "hero-inbox"
+  attr :title, :string, required: true
+  attr :description, :string, default: nil
+  slot :actions
+
+  def empty_state(assigns) do
+    ~H"""
+    <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
+      <div class="flex size-14 items-center justify-center rounded-2xl bg-base-200 text-base-content/40">
+        <.icon name={@icon} class="size-7" />
+      </div>
+      <h3 class="mt-4 text-base font-semibold text-base-content">{@title}</h3>
+      <p :if={@description} class="mt-1 max-w-sm text-sm text-base-content/50">{@description}</p>
+      <div :if={@actions != []} class="mt-5">{render_slot(@actions)}</div>
+    </div>
+    """
+  end
+
+  @doc """
   Renders a [Heroicon](https://heroicons.com).
 
   Heroicons come in three styles – outline, solid, and mini.

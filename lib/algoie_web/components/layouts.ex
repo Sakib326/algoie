@@ -98,133 +98,145 @@ defmodule AlgoieWeb.Layouts do
   attr :store_id, :string, default: nil
   attr :store_name, :string, default: "Store"
   attr :user_stores, :list, default: []
+  attr :page_title, :string, default: "Dashboard"
+  attr :active, :atom, default: nil
   slot :inner_block, required: true
 
   def dashboard(assigns) do
     ~H"""
-    <div class="drawer lg:drawer-open">
-      <input id="dashboard-drawer" type="checkbox" class="drawer-toggle" />
-      <div class="drawer-side z-40">
-        <label for="dashboard-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-        <aside class="bg-base-200 w-64 min-h-screen flex flex-col">
-          <div class="px-4 py-4 border-b border-base-300">
-            <.link navigate="/dashboard" class="flex items-center gap-2">
-              <.icon name="hero-shopping-bag" class="size-8 text-primary" />
-              <span class="text-lg font-bold">Algoie</span>
-            </.link>
-          </div>
+    <div class="min-h-screen bg-base-200/40">
+      <input type="checkbox" id="nav-toggle" class="peer sr-only" />
 
-          <%!-- Store Switcher --%>
-          <%= if length(@user_stores) > 1 do %>
-            <div class="px-4 py-3 border-b border-base-300" id="store-switcher">
-              <.link
-                navigate="/store-select"
-                class="flex items-center gap-2 p-2 rounded-lg hover:bg-base-300 transition group"
-              >
-                <div class="avatar placeholder">
-                  <div class="bg-secondary text-secondary-content rounded-full w-8">
-                    <span class="text-xs">
-                      {String.first(@store_name || "?") |> String.upcase()}
-                    </span>
-                  </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-base-content/50">Switch store</p>
-                  <p class="text-sm font-medium truncate">{@store_name}</p>
-                </div>
-                <.icon
-                  name="hero-arrows-up-down"
-                  class="size-4 text-base-content/30 group-hover:text-base-content/50"
-                />
-              </.link>
-            </div>
-          <% else %>
-            <div class="px-4 py-3 border-b border-base-300">
-              <div class="flex items-center gap-2 p-2">
-                <div class="avatar placeholder">
-                  <div class="bg-secondary text-secondary-content rounded-full w-8">
-                    <span class="text-xs">
-                      {String.first(@store_name || "?") |> String.upcase()}
-                    </span>
-                  </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium truncate">{@store_name}</p>
-                </div>
-              </div>
-            </div>
-          <% end %>
+      <aside class="fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col border-r border-base-300 bg-base-100 transition-transform duration-200 peer-checked:translate-x-0 lg:translate-x-0">
+        <div class="flex h-16 items-center gap-2 px-5 border-b border-base-200">
+          <.link navigate="/dashboard" class="flex items-center gap-2">
+            <span class="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-content">
+              <.icon name="hero-shopping-bag" class="size-5" />
+            </span>
+            <span class="text-lg font-bold tracking-tight">Algoie</span>
+          </.link>
+        </div>
 
-          <ul class="menu p-4 gap-1 flex-1">
-            <li>
-              <.link navigate="/dashboard"><.icon name="hero-home" class="size-5" /> Dashboard</.link>
-            </li>
-            <li>
-              <.link navigate="/dashboard/products"><.icon name="hero-cube" class="size-5" /> Products</.link>
-            </li>
-            <li>
-              <.link navigate="/dashboard/categories"><.icon name="hero-folder" class="size-5" />
-              Categories</.link>
-            </li>
-            <li>
-              <.link navigate="/dashboard/brands"><.icon name="hero-tag" class="size-5" /> Brands</.link>
-            </li>
-            <li>
-              <.link navigate="/dashboard/orders"><.icon
-                name="hero-clipboard-document-list"
-                class="size-5"
-              /> Orders</.link>
-            </li>
-            <li>
-              <.link navigate="/dashboard/conversations"><.icon
-                name="hero-chat-bubble-left-right"
-                class="size-5"
-              /> Conversations</.link>
-            </li>
-            <li>
-              <.link navigate="/dashboard/campaigns"><.icon
-                name="hero-megaphone"
-                class="size-5"
-              /> Ad Campaigns</.link>
-            </li>
-          </ul>
-
-          <div class="border-t border-base-300 p-4">
-            <div class="flex items-center gap-3">
-              <div class="avatar placeholder">
-                <div class="bg-primary text-primary-content rounded-full w-10">
-                  <span class="text-sm">{String.first(to_string(@current_user.email) || "?") |> String.upcase()}</span>
-                </div>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium truncate">
-                  {@current_user.name || @current_user.email}
-                </p>
-              </div>
-              <.link href="/sign-out" method="delete" class="btn btn-ghost btn-sm btn-square">
-                <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
-              </.link>
-            </div>
-          </div>
-        </aside>
-      </div>
-      <div class="drawer-content flex flex-col">
-        <div class="navbar bg-base-100 lg:hidden border-b border-base-200">
-          <label for="dashboard-drawer" class="btn btn-ghost btn-square lg:hidden">
-            <.icon name="hero-bars-3" class="size-5" />
-          </label>
-          <div class="flex-1">
-            <span class="text-lg font-semibold">{assigns[:page_title] || "Dashboard"}</span>
+        <%!-- Store switcher --%>
+        <div class="px-3 py-3 border-b border-base-200">
+          <.link
+            :if={length(@user_stores) > 1}
+            navigate="/store-select"
+            class="group flex items-center gap-3 rounded-lg p-2 hover:bg-base-200 transition-colors"
+          >
+            <span class="flex size-9 items-center justify-center rounded-lg bg-secondary/15 text-secondary text-sm font-semibold">
+              {String.first(to_string(@store_name || "S")) |> String.upcase()}
+            </span>
+            <span class="flex-1 min-w-0">
+              <span class="block text-[11px] uppercase tracking-wider text-base-content/40">Store</span>
+              <span class="block text-sm font-medium truncate">{@store_name}</span>
+            </span>
+            <.icon name="hero-chevron-up-down" class="size-4 text-base-content/40" />
+          </.link>
+          <div :if={length(@user_stores) <= 1} class="flex items-center gap-3 p-2">
+            <span class="flex size-9 items-center justify-center rounded-lg bg-secondary/15 text-secondary text-sm font-semibold">
+              {String.first(to_string(@store_name || "S")) |> String.upcase()}
+            </span>
+            <span class="flex-1 min-w-0">
+              <span class="block text-[11px] uppercase tracking-wider text-base-content/40">Store</span>
+              <span class="block text-sm font-medium truncate">{@store_name}</span>
+            </span>
           </div>
         </div>
-        <main class="flex-1 p-6 lg:p-8">
-          <div class="max-w-7xl mx-auto">
-            <.flash_group flash={@flash} />
+
+        <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-4">
+          <div class="space-y-1">
+            <.nav_item navigate="/dashboard" icon="hero-home" label="Overview" active={@active == :overview} />
+          </div>
+          <div class="space-y-1">
+            <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">Catalog</p>
+            <.nav_item navigate="/dashboard/products" icon="hero-cube" label="Products" active={@active == :products} />
+            <.nav_item navigate="/dashboard/categories" icon="hero-folder" label="Categories" active={@active == :categories} />
+            <.nav_item navigate="/dashboard/brands" icon="hero-tag" label="Brands" active={@active == :brands} />
+          </div>
+          <div class="space-y-1">
+            <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">Sales</p>
+            <.nav_item navigate="/dashboard/orders" icon="hero-shopping-cart" label="Orders" active={@active == :orders} />
+          </div>
+          <div class="space-y-1">
+            <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">Engage</p>
+            <.nav_item navigate="/dashboard/conversations" icon="hero-chat-bubble-left-right" label="Conversations" active={@active == :conversations} />
+            <.nav_item navigate="/dashboard/campaigns" icon="hero-megaphone" label="Ad Campaigns" active={@active == :campaigns} />
+          </div>
+        </nav>
+
+        <div class="border-t border-base-200 p-3">
+          <div class="flex items-center gap-3 rounded-lg p-2">
+            <span class="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+              {String.first(to_string(@current_user.email) || "?") |> String.upcase()}
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate">{@current_user.name || @current_user.email}</p>
+              <p class="text-xs text-base-content/40 truncate">{@current_user.email}</p>
+            </div>
+            <.link
+              href="/sign-out"
+              method="delete"
+              class="flex size-8 items-center justify-center rounded-lg text-base-content/50 hover:bg-base-200 hover:text-error transition-colors"
+              title="Sign out"
+            >
+              <.icon name="hero-arrow-right-on-rectangle" class="size-5" />
+            </.link>
+          </div>
+        </div>
+      </aside>
+
+      <label
+        for="nav-toggle"
+        class="fixed inset-0 z-40 hidden bg-black/40 backdrop-blur-sm peer-checked:block lg:hidden"
+        aria-label="Close sidebar"
+      >
+      </label>
+
+      <div class="lg:pl-64">
+        <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-base-300 bg-base-100/80 px-4 backdrop-blur sm:px-6">
+          <label
+            for="nav-toggle"
+            class="flex size-9 cursor-pointer items-center justify-center rounded-lg text-base-content/70 hover:bg-base-200 lg:hidden"
+          >
+            <.icon name="hero-bars-3" class="size-5" />
+          </label>
+          <span class="text-sm font-medium text-base-content/60 truncate">{@page_title}</span>
+          <div class="ml-auto flex items-center gap-2">
+            <.theme_toggle />
+          </div>
+        </header>
+
+        <main class="p-4 sm:p-6 lg:p-8">
+          <div class="mx-auto max-w-7xl">
             {render_slot(@inner_block)}
           </div>
         </main>
       </div>
+
+      <.flash_group flash={@flash} />
     </div>
+    """
+  end
+
+  attr :navigate, :string, required: true
+  attr :icon, :string, required: true
+  attr :label, :string, required: true
+  attr :active, :boolean, default: false
+
+  defp nav_item(assigns) do
+    ~H"""
+    <.link
+      navigate={@navigate}
+      class={[
+        "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        @active && "bg-primary/10 text-primary",
+        !@active && "text-base-content/70 hover:bg-base-200 hover:text-base-content"
+      ]}
+    >
+      <.icon name={@icon} class="size-5 shrink-0" />
+      <span class="truncate">{@label}</span>
+    </.link>
     """
   end
 

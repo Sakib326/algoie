@@ -5,7 +5,7 @@ defmodule AlgoieWeb.BrandLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, load_brands(socket)}
+    {:ok, socket |> assign(:active, :brands) |> load_brands()}
   end
 
   @impl true
@@ -48,12 +48,12 @@ defmodule AlgoieWeb.BrandLive.Index do
 
   def handle_event("delete", %{"id" => id}, socket) do
     brand = get_brand(socket, id)
-    Ash.destroy!(brand, actor: socket.assigns.current_user)
+    Ash.destroy!(brand, AlgoieWeb.Scope.opts(socket))
     {:noreply, load_brands(socket)}
   end
 
   defp save_brand(socket, :edit, params) do
-    case Ash.update(socket.assigns.brand, params, actor: socket.assigns.current_user) do
+    case Ash.update(socket.assigns.brand, params, AlgoieWeb.Scope.opts(socket)) do
       {:ok, _} ->
         {:noreply, socket |> put_flash(:info, "Brand updated") |> load_brands()}
 
@@ -71,7 +71,7 @@ defmodule AlgoieWeb.BrandLive.Index do
   defp save_brand(socket, :new, params) do
     params = Map.put(params, "store_id", socket.assigns.store_id)
 
-    case Ash.create(Brand, params, actor: socket.assigns.current_user) do
+    case Ash.create(Brand, params, AlgoieWeb.Scope.opts(socket)) do
       {:ok, _} ->
         {:noreply, socket |> put_flash(:info, "Brand created") |> load_brands()}
 
@@ -87,14 +87,14 @@ defmodule AlgoieWeb.BrandLive.Index do
   end
 
   defp load_brands(socket) do
-    case Ash.read(Brand, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
+    case Ash.read(Brand, AlgoieWeb.Scope.opts(socket)) do
       {:ok, brands} -> assign(socket, :brands, brands)
       _ -> assign(socket, :brands, [])
     end
   end
 
   defp get_brand(socket, id) do
-    case Ash.get(Brand, id, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
+    case Ash.get(Brand, id, AlgoieWeb.Scope.opts(socket)) do
       {:ok, b} -> b
       _ -> nil
     end

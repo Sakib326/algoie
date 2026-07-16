@@ -5,7 +5,17 @@ defmodule AlgoieWeb.ProductLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, load_products(socket)}
+    brands = list_related(socket, Algoie.Products.Brand)
+    categories = list_related(socket, Algoie.Products.Category)
+
+    {:ok,
+     socket
+     |> assign(:active, :products)
+     |> assign(:brands, brands)
+     |> assign(:categories, categories)
+     |> assign(:brand_map, Map.new(brands, &{&1.id, &1.name}))
+     |> assign(:category_map, Map.new(categories, &{&1.id, &1.name}))
+     |> load_products()}
   end
 
   @impl true
@@ -55,12 +65,12 @@ defmodule AlgoieWeb.ProductLive.Index do
 
   def handle_event("delete", %{"id" => id}, socket) do
     product = get_product(socket, id)
-    Ash.destroy!(product, actor: socket.assigns.current_user)
+    Ash.destroy!(product, AlgoieWeb.Scope.opts(socket))
     {:noreply, load_products(socket)}
   end
 
   defp save_product(socket, :edit, product_params) do
-    case Ash.update(socket.assigns.product, product_params, actor: socket.assigns.current_user) do
+    case Ash.update(socket.assigns.product, product_params, AlgoieWeb.Scope.opts(socket)) do
       {:ok, _product} ->
         {:noreply,
          socket
@@ -78,7 +88,7 @@ defmodule AlgoieWeb.ProductLive.Index do
   defp save_product(socket, :new, product_params) do
     params = Map.put(product_params, "store_id", socket.assigns.store_id)
 
-    case Ash.create(Product, params, actor: socket.assigns.current_user) do
+    case Ash.create(Product, params, AlgoieWeb.Scope.opts(socket)) do
       {:ok, _product} ->
         {:noreply,
          socket
@@ -94,16 +104,28 @@ defmodule AlgoieWeb.ProductLive.Index do
   end
 
   defp load_products(socket) do
-    case Ash.read(Product, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
+    case Ash.read(Product, AlgoieWeb.Scope.opts(socket)) do
       {:ok, products} -> assign(socket, :products, products)
       _ -> assign(socket, :products, [])
     end
   end
 
+  defp list_related(socket, resource) do
+    case Ash.read(resource, AlgoieWeb.Scope.opts(socket)) do
+      {:ok, records} -> records
+      _ -> []
+    end
+  end
+
   defp get_product(socket, id) do
-    case Ash.get(Product, id, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
+    case Ash.get(Product, id, AlgoieWeb.Scope.opts(socket)) do
       {:ok, product} -> product
       _ -> nil
     end
   end
+
+  defp status_tone(:active), do: "success"
+  defp status_tone(:draft), do: "warning"
+  defp status_tone(:archived), do: "neutral"
+  defp status_tone(_), do: "neutral"
 end

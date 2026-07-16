@@ -5,7 +5,7 @@ defmodule AlgoieWeb.CategoryLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, load_categories(socket)}
+    {:ok, socket |> assign(:active, :categories) |> load_categories()}
   end
 
   @impl true
@@ -48,12 +48,12 @@ defmodule AlgoieWeb.CategoryLive.Index do
 
   def handle_event("delete", %{"id" => id}, socket) do
     category = get_category(socket, id)
-    Ash.destroy!(category, actor: socket.assigns.current_user)
+    Ash.destroy!(category, AlgoieWeb.Scope.opts(socket))
     {:noreply, load_categories(socket)}
   end
 
   defp save_category(socket, :edit, params) do
-    case Ash.update(socket.assigns.category, params, actor: socket.assigns.current_user) do
+    case Ash.update(socket.assigns.category, params, AlgoieWeb.Scope.opts(socket)) do
       {:ok, _} ->
         {:noreply, socket |> put_flash(:info, "Category updated") |> load_categories()}
 
@@ -71,7 +71,7 @@ defmodule AlgoieWeb.CategoryLive.Index do
   defp save_category(socket, :new, params) do
     params = Map.put(params, "store_id", socket.assigns.store_id)
 
-    case Ash.create(Category, params, actor: socket.assigns.current_user) do
+    case Ash.create(Category, params, AlgoieWeb.Scope.opts(socket)) do
       {:ok, _} ->
         {:noreply, socket |> put_flash(:info, "Category created") |> load_categories()}
 
@@ -87,17 +87,14 @@ defmodule AlgoieWeb.CategoryLive.Index do
   end
 
   defp load_categories(socket) do
-    case Ash.read(Category, tenant: socket.assigns.tenant, actor: socket.assigns[:current_user]) do
+    case Ash.read(Category, AlgoieWeb.Scope.opts(socket)) do
       {:ok, cats} -> assign(socket, :categories, cats)
       _ -> assign(socket, :categories, [])
     end
   end
 
   defp get_category(socket, id) do
-    case Ash.get(Category, id,
-           tenant: socket.assigns.tenant,
-           actor: socket.assigns[:current_user]
-         ) do
+    case Ash.get(Category, id, AlgoieWeb.Scope.opts(socket)) do
       {:ok, c} -> c
       _ -> nil
     end

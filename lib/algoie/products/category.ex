@@ -72,7 +72,9 @@ defmodule Algoie.Products.Category do
       end)
     end
 
-    destroy(:destroy)
+    destroy :destroy do
+      primary?(true)
+    end
   end
 
   defp walk_parent_chain(parent_id, target_id, tenant) do
@@ -90,6 +92,7 @@ defmodule Algoie.Products.Category do
   policies do
     policy action_type(:create) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
     end
 
     policy action_type([:read, :update]) do

@@ -5,69 +5,144 @@
   store_id={@store_id}
   store_name={@store_name}
   user_stores={@user_stores}
+  page_title={@page_title}
+  active={:products}
 >
-  <.header>
-    Products
-    <:subtitle>Manage your product catalog</:subtitle>
+  <.page_header title="Products">
+    <:subtitle>Manage your product catalog and inventory.</:subtitle>
     <:actions>
-      <.button navigate={~p"/dashboard/products/new"}>
-        New Product
-      </.button>
+      <.ui_button :if={@live_action == :index} navigate={~p"/dashboard/products/new"} variant="primary">
+        <.icon name="hero-plus" class="size-4" /> New product
+      </.ui_button>
     </:actions>
-  </.header>
+  </.page_header>
 
-  <.table id="products" rows={@products}>
-    <:col :let={product} label="Name">{product.name}</:col>
-    <:col :let={product} label="Status">
-      <span class={[
-        "badge badge-sm",
-        product.status == :active && "badge-success",
-        product.status == :draft && "badge-warning",
-        product.status == :archived && "badge-ghost"
-      ]}>
-        {product.status}
-      </span>
-    </:col>
-    <:action :let={product}>
-      <.button navigate={~p"/dashboard/products/#{product}/edit"} variant="primary">
-        Edit
-      </.button>
-    </:action>
-    <:action :let={product}>
-      <.button
-        phx-click={JS.push("delete", value: %{id: product.id})}
-        data-confirm="Are you sure?"
-      >
-        Delete
-      </.button>
-    </:action>
-  </.table>
-
-  <div :if={@products == []} class="text-center py-12">
-    <p class="text-base-content/60">No products yet. Create your first product.</p>
-  </div>
-
-  <div :if={@live_action in [:new, :edit]} class="mt-8 card bg-base-200">
-    <div class="card-body">
-      <h2 class="card-title">
-        {if @live_action == :new, do: "New Product", else: "Edit Product"}
+  <%!-- Create / edit form --%>
+  <.panel :if={@live_action in [:new, :edit]} class="mb-6">
+    <div class="border-b border-base-200 px-6 py-4">
+      <h2 class="text-base font-semibold">
+        {if @live_action == :new, do: "New product", else: "Edit product"}
       </h2>
-      <.form for={@form} id="product-form" phx-submit="save">
-        <.input field={@form[:name]} type="text" label="Name" />
-        <.input field={@form[:description]} type="textarea" label="Description" />
+      <p class="mt-0.5 text-sm text-base-content/50">
+        {if @live_action == :new,
+          do: "Add a new item to your catalog.",
+          else: "Update the details for this product."}
+      </p>
+    </div>
+    <.form for={@form} id="product-form" phx-submit="save" class="p-6">
+      <div class="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <.input field={@form[:name]} type="text" label="Product name" placeholder="e.g. Classic T-Shirt" />
+        </div>
         <.input
           field={@form[:status]}
           type="select"
           label="Status"
-          prompt="Choose a status"
           options={[{"Draft", "draft"}, {"Active", "active"}, {"Archived", "archived"}]}
         />
-
-        <div class="mt-4 flex justify-end gap-2">
-          <.button navigate={~p"/dashboard/products"}>Cancel</.button>
-          <button type="submit" class="btn btn-primary">Save</button>
+        <.input
+          field={@form[:category_id]}
+          type="select"
+          label="Category"
+          prompt="No category"
+          options={Enum.map(@categories, &{&1.name, &1.id})}
+        />
+        <.input
+          field={@form[:brand_id]}
+          type="select"
+          label="Brand"
+          prompt="No brand"
+          options={Enum.map(@brands, &{&1.name, &1.id})}
+        />
+        <div class="sm:col-span-2">
+          <.input
+            field={@form[:description]}
+            type="textarea"
+            label="Description"
+            rows="4"
+            placeholder="Describe your product…"
+          />
         </div>
-      </.form>
+      </div>
+      <div class="mt-6 flex items-center justify-end gap-3 border-t border-base-200 pt-4">
+        <.ui_button navigate={~p"/dashboard/products"} variant="ghost">Cancel</.ui_button>
+        <.ui_button type="submit" variant="primary">
+          {if @live_action == :new, do: "Create product", else: "Save changes"}
+        </.ui_button>
+      </div>
+    </.form>
+  </.panel>
+
+  <%!-- List --%>
+  <.panel>
+    <div :if={@products == []}>
+      <.empty_state
+        icon="hero-cube"
+        title="No products yet"
+        description="Get started by creating your first product."
+      >
+        <:actions>
+          <.ui_button navigate={~p"/dashboard/products/new"} variant="primary">
+            <.icon name="hero-plus" class="size-4" /> New product
+          </.ui_button>
+        </:actions>
+      </.empty_state>
     </div>
-  </div>
+
+    <table :if={@products != []} class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
+          <th class="px-6 py-3 font-medium">Product</th>
+          <th class="px-6 py-3 font-medium">Category</th>
+          <th class="px-6 py-3 font-medium">Brand</th>
+          <th class="px-6 py-3 font-medium">Status</th>
+          <th class="px-6 py-3 text-right font-medium">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          :for={product <- @products}
+          class="border-b border-base-200 last:border-0 transition-colors hover:bg-base-200/40"
+        >
+          <td class="px-6 py-3">
+            <div class="flex items-center gap-3">
+              <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/40">
+                <.icon name="hero-cube" class="size-5" />
+              </span>
+              <div class="min-w-0">
+                <p class="font-medium text-base-content truncate">{product.name}</p>
+                <p :if={product.description} class="text-xs text-base-content/50 truncate max-w-xs">
+                  {product.description}
+                </p>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-3 text-base-content/70">
+            {@category_map[product.category_id] || "—"}
+          </td>
+          <td class="px-6 py-3 text-base-content/70">
+            {@brand_map[product.brand_id] || "—"}
+          </td>
+          <td class="px-6 py-3">
+            <.pill tone={status_tone(product.status)}>{product.status}</.pill>
+          </td>
+          <td class="px-6 py-3">
+            <div class="flex items-center justify-end gap-1">
+              <.ui_button navigate={~p"/dashboard/products/#{product}/edit"} variant="ghost" size="sm">
+                <.icon name="hero-pencil-square" class="size-4" /> Edit
+              </.ui_button>
+              <.ui_button
+                variant="danger"
+                size="sm"
+                phx-click={JS.push("delete", value: %{id: product.id})}
+                data-confirm="Delete this product? This cannot be undone."
+              >
+                <.icon name="hero-trash" class="size-4" />
+              </.ui_button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </.panel>
 </Layouts.dashboard>

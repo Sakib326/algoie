@@ -5,50 +5,89 @@
   store_id={@store_id}
   store_name={@store_name}
   user_stores={@user_stores}
+  page_title={@page_title}
+  active={:categories}
 >
-  <.header>
-    Categories
-    <:subtitle>Manage your product categories</:subtitle>
+  <.page_header title="Categories">
+    <:subtitle>Organize your products into browsable groups.</:subtitle>
     <:actions>
-      <.button navigate={~p"/dashboard/categories/new"}>
-        New Category
-      </.button>
+      <.ui_button :if={@live_action == :index} navigate={~p"/dashboard/categories/new"} variant="primary">
+        <.icon name="hero-plus" class="size-4" /> New category
+      </.ui_button>
     </:actions>
-  </.header>
+  </.page_header>
 
-  <.table id="categories" rows={@categories}>
-    <:col :let={category} label="Name">{category.name}</:col>
-    <:action :let={category}>
-      <.button navigate={~p"/dashboard/categories/#{category}/edit"} variant="primary">
-        Edit
-      </.button>
-    </:action>
-    <:action :let={category}>
-      <.button
-        phx-click={JS.push("delete", value: %{id: category.id})}
-        data-confirm="Are you sure?"
-      >
-        Delete
-      </.button>
-    </:action>
-  </.table>
-
-  <div :if={@categories == []} class="text-center py-12">
-    <p class="text-base-content/60">No categories yet.</p>
-  </div>
-
-  <div :if={@live_action in [:new, :edit]} class="mt-8 card bg-base-200">
-    <div class="card-body">
-      <h2 class="card-title">
-        {if @live_action == :new, do: "New Category", else: "Edit Category"}
+  <.panel :if={@live_action in [:new, :edit]} class="mb-6">
+    <div class="border-b border-base-200 px-6 py-4">
+      <h2 class="text-base font-semibold">
+        {if @live_action == :new, do: "New category", else: "Edit category"}
       </h2>
-      <.form for={@form} id="category-form" phx-submit="save">
-        <.input field={@form[:name]} type="text" label="Name" />
-        <div class="mt-4 flex justify-end gap-2">
-          <.button navigate={~p"/dashboard/categories"}>Cancel</.button>
-          <button type="submit" class="btn btn-primary">Save</button>
-        </div>
-      </.form>
     </div>
-  </div>
+    <.form for={@form} id="category-form" phx-submit="save" class="p-6">
+      <div class="max-w-md">
+        <.input field={@form[:name]} type="text" label="Category name" placeholder="e.g. Apparel" />
+      </div>
+      <div class="mt-6 flex items-center justify-end gap-3 border-t border-base-200 pt-4">
+        <.ui_button navigate={~p"/dashboard/categories"} variant="ghost">Cancel</.ui_button>
+        <.ui_button type="submit" variant="primary">
+          {if @live_action == :new, do: "Create category", else: "Save changes"}
+        </.ui_button>
+      </div>
+    </.form>
+  </.panel>
+
+  <.panel>
+    <div :if={@categories == []}>
+      <.empty_state
+        icon="hero-folder"
+        title="No categories yet"
+        description="Create categories to organize your catalog."
+      >
+        <:actions>
+          <.ui_button navigate={~p"/dashboard/categories/new"} variant="primary">
+            <.icon name="hero-plus" class="size-4" /> New category
+          </.ui_button>
+        </:actions>
+      </.empty_state>
+    </div>
+
+    <table :if={@categories != []} class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
+          <th class="px-6 py-3 font-medium">Name</th>
+          <th class="px-6 py-3 text-right font-medium">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          :for={category <- @categories}
+          class="border-b border-base-200 last:border-0 transition-colors hover:bg-base-200/40"
+        >
+          <td class="px-6 py-3">
+            <div class="flex items-center gap-3">
+              <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info">
+                <.icon name="hero-folder" class="size-5" />
+              </span>
+              <span class="font-medium text-base-content">{category.name}</span>
+            </div>
+          </td>
+          <td class="px-6 py-3">
+            <div class="flex items-center justify-end gap-1">
+              <.ui_button navigate={~p"/dashboard/categories/#{category}/edit"} variant="ghost" size="sm">
+                <.icon name="hero-pencil-square" class="size-4" /> Edit
+              </.ui_button>
+              <.ui_button
+                variant="danger"
+                size="sm"
+                phx-click={JS.push("delete", value: %{id: category.id})}
+                data-confirm="Delete this category?"
+              >
+                <.icon name="hero-trash" class="size-4" />
+              </.ui_button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </.panel>
 </Layouts.dashboard>

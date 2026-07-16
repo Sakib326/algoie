@@ -3,6 +3,6 @@ defmodule AlgoieWeb.ConversationLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :page_title, "Conversations")}
+    {:ok, socket |> assign(:page_title, "Conversations") |> assign(:active, :conversations)}
   end
 end

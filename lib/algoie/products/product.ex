@@ -53,12 +53,15 @@ defmodule Algoie.Products.Product do
       accept([:name, :description, :brand_id, :category_id, :status, :images])
     end
 
-    destroy(:destroy)
+    destroy :destroy do
+      primary?(true)
+    end
   end
 
   policies do
     policy action_type(:create) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
     end
 
     policy action_type([:read, :update]) do

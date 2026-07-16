@@ -3,6 +3,6 @@ defmodule AlgoieWeb.CampaignLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :page_title, "Ad Campaigns")}
+    {:ok, socket |> assign(:page_title, "Ad Campaigns") |> assign(:active, :campaigns)}
   end
 end
