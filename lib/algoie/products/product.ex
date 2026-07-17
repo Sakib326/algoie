@@ -46,11 +46,14 @@ defmodule Algoie.Products.Product do
     create :create do
       primary?(true)
       accept([:name, :description, :store_id, :brand_id, :category_id, :status, :images])
+      change({Algoie.Media.Changes.RejectBlankValues, attribute: :images})
     end
 
     update :update do
       primary?(true)
+      require_atomic?(false)
       accept([:name, :description, :brand_id, :category_id, :status, :images])
+      change({Algoie.Media.Changes.RejectBlankValues, attribute: :images})
     end
 
     destroy :destroy do

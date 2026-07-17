@@ -18,11 +18,30 @@
       "generated?": false,
       "precision": null,
       "primary_key?": false,
-      "references": null,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": false,
+          "strategy": "context"
+        },
+        "name": "media_folders_store_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "stores"
+      },
       "scale": null,
       "size": null,
-      "source": "email",
-      "type": "citext"
+      "source": "store_id",
+      "type": "uuid"
     },
     {
       "allow_nil?": false,
@@ -33,7 +52,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "hashed_password",
+      "source": "name",
       "type": "text"
     },
     {
@@ -42,11 +61,30 @@
       "generated?": false,
       "precision": null,
       "primary_key?": false,
-      "references": null,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": false,
+          "strategy": "context"
+        },
+        "name": "media_folders_parent_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "media_folders"
+      },
       "scale": null,
       "size": null,
-      "source": "name",
-      "type": "text"
+      "source": "parent_id",
+      "type": "uuid"
     },
     {
       "allow_nil?": false,
@@ -78,25 +116,9 @@
   "create_table_options": null,
   "custom_indexes": [],
   "custom_statements": [],
-  "drop_table_opted_out": true,
   "has_create_action": true,
-  "hash": "EB15F6334F72C37138045ED0CB20126AA3898D5C6CFC4469A9D775FDE5738680",
-  "identities": [
-    {
-      "all_tenants?": false,
-      "base_filter": null,
-      "index_name": "users_unique_email_index",
-      "keys": [
-        {
-          "type": "atom",
-          "value": "email"
-        }
-      ],
-      "name": "unique_email",
-      "nils_distinct?": true,
-      "where": null
-    }
-  ],
+  "hash": "CB6AB5C5C31385B7AB7466457C600319C24C5B291D2E1FEB92711B4986852595",
+  "identities": [],
   "multitenancy": {
     "attribute": null,
     "global": false,
@@ -104,5 +126,5 @@
   },
   "repo": "Elixir.Algoie.Repo",
   "schema": null,
-  "table": "users"
+  "table": "media_folders"
 }

@@ -70,6 +70,7 @@ defmodule AlgoieWeb.Router do
       live "/dashboard/brands", BrandLive.Index, :index
       live "/dashboard/brands/new", BrandLive.Index, :new
       live "/dashboard/brands/:id/edit", BrandLive.Index, :edit
+      live "/dashboard/media", MediaLive.Index, :index
       live "/dashboard/orders", OrderLive.Index, :index
       live "/dashboard/orders/:id", OrderLive.Show, :show
       live "/dashboard/conversations", ConversationLive.Index, :index

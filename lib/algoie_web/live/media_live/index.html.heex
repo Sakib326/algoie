@@ -1,0 +1,223 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:media}
+>
+  <.page_header title="Media Library">
+    <:subtitle>Organize and manage images used across products, brands, and categories.</:subtitle>
+    <:actions>
+      <.ui_button phx-click="toggle-uploader" variant="primary">
+        <.icon name="hero-arrow-up-tray" class="size-4" /> Upload
+      </.ui_button>
+    </:actions>
+  </.page_header>
+
+  <.panel :if={@show_uploader} class="mb-6">
+    <div class="p-6">
+      <form id="media-upload-form" phx-change="validate" phx-drop-target={@uploads.media.ref}>
+        <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-base-300 bg-base-200/40 px-6 py-10 text-center transition-colors hover:border-primary/50 hover:bg-primary/5">
+          <.icon name="hero-arrow-up-tray" class="size-8 text-base-content/40" />
+          <span class="text-sm font-medium text-base-content">Drop images here or click to browse</span>
+          <span class="text-xs text-base-content/40">
+            PNG, JPG, GIF, WEBP, SVG up to 10MB · up to 24 files
+            <%= if @current_folder not in [:all, :unfiled] do %>
+              · uploading into <span class="font-medium">{Enum.find(@folders, &(&1.id == @current_folder)) |> then(&(&1 && &1.name))}</span>
+            <% end %>
+          </span>
+          <.live_file_input upload={@uploads.media} class="hidden" />
+        </label>
+      </form>
+
+      <p
+        :for={err <- upload_errors(@uploads.media)}
+        class="mt-2 flex items-center gap-1.5 text-sm text-error"
+      >
+        <.icon name="hero-exclamation-circle" class="size-4" />{Phoenix.Naming.humanize(err)}
+      </p>
+
+      <div :if={@uploads.media.entries != []} class="mt-4 space-y-2">
+        <div
+          :for={entry <- @uploads.media.entries}
+          class="flex items-center gap-3 rounded-lg border border-base-200 p-2"
+        >
+          <.live_img_preview entry={entry} class="size-10 shrink-0 rounded object-cover" />
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium">{entry.client_name}</p>
+            <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-base-200">
+              <div
+                class="h-full rounded-full bg-primary transition-all"
+                style={"width: #{entry.progress}%"}
+              />
+            </div>
+            <p :for={err <- upload_errors(@uploads.media, entry)} class="mt-1 text-xs text-error">
+              {Phoenix.Naming.humanize(err)}
+            </p>
+          </div>
+          <button
+            type="button"
+            phx-click="cancel-entry"
+            phx-value-ref={entry.ref}
+            class="flex size-7 shrink-0 items-center justify-center rounded-md text-base-content/40 hover:bg-base-200 hover:text-error"
+          >
+            <.icon name="hero-x-mark" class="size-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </.panel>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
+    <.panel class="h-fit lg:sticky lg:top-20">
+      <div class="p-3">
+        <.folder_nav
+          folders={@folders}
+          counts={@counts}
+          current={@current_folder}
+          creating={@creating_folder}
+          editing_id={@editing_folder_id}
+        />
+      </div>
+    </.panel>
+
+    <div class="min-w-0 space-y-6">
+      <.panel>
+        <div class="border-b border-base-200 p-4">
+          <div class="relative max-w-sm">
+            <.icon
+              name="hero-magnifying-glass"
+              class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-base-content/30"
+            />
+            <input
+              type="text"
+              value={@query}
+              phx-keyup="search"
+              phx-debounce="300"
+              placeholder="Search media…"
+              class="input w-full pl-9"
+            />
+          </div>
+        </div>
+
+        <div :if={@assets == []}>
+          <.empty_state
+            icon="hero-photo"
+            title="No media yet"
+            description="Upload images to build your store's reusable media library."
+          >
+            <:actions>
+              <.ui_button phx-click="toggle-uploader" variant="primary">
+                <.icon name="hero-arrow-up-tray" class="size-4" /> Upload images
+              </.ui_button>
+            </:actions>
+          </.empty_state>
+        </div>
+
+        <div
+          :if={@assets != []}
+          class="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5"
+        >
+          <button
+            :for={asset <- @assets}
+            type="button"
+            phx-click="open-asset"
+            phx-value-id={asset.id}
+            class={[
+              "group relative overflow-hidden rounded-xl border-2 bg-base-200 text-left transition-colors",
+              @selected_asset && @selected_asset.id == asset.id && "border-primary",
+              !(@selected_asset && @selected_asset.id == asset.id) && "border-base-300 hover:border-primary/40"
+            ]}
+          >
+            <span class="block aspect-square">
+              <img src={asset.url} class="h-full w-full object-cover" loading="lazy" />
+            </span>
+            <span class="absolute inset-x-0 bottom-0 translate-y-full bg-base-100/95 p-2 transition-transform group-hover:translate-y-0">
+              <span class="block truncate text-xs font-medium text-base-content">{asset.filename}</span>
+              <span :if={asset.size} class="block text-[11px] text-base-content/40">
+                {format_size(asset.size)}
+              </span>
+            </span>
+          </button>
+        </div>
+      </.panel>
+    </div>
+  </div>
+
+  <%!-- Details drawer --%>
+  <div
+    :if={@selected_asset}
+    class="fixed inset-0 z-[90] flex justify-end"
+    phx-window-keydown="close-details"
+    phx-key="Escape"
+  >
+    <div class="absolute inset-0 bg-black/40" phx-click="close-details" />
+    <div class="relative flex h-full w-full max-w-sm flex-col overflow-y-auto border-l border-base-300 bg-base-100 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-base-200 px-5 py-4">
+        <h3 class="text-sm font-semibold">File details</h3>
+        <button
+          type="button"
+          phx-click="close-details"
+          class="flex size-8 items-center justify-center rounded-lg text-base-content/50 hover:bg-base-200"
+        >
+          <.icon name="hero-x-mark" class="size-5" />
+        </button>
+      </div>
+
+      <div class="space-y-5 p-5">
+        <img src={@selected_asset.url} class="max-h-56 w-full rounded-lg border border-base-300 object-contain bg-base-200" />
+
+        <div class="space-y-1 text-xs text-base-content/50">
+          <p class="truncate text-sm font-medium text-base-content">{@selected_asset.filename}</p>
+          <p :if={@selected_asset.size}>{format_size(@selected_asset.size)}</p>
+          <p :if={@selected_asset.inserted_at}>Uploaded {format_date(@selected_asset.inserted_at)}</p>
+        </div>
+
+        <form phx-submit="save-alt-text" phx-value-id={@selected_asset.id} class="space-y-1.5">
+          <label class="text-xs font-medium text-base-content/60">Alt text</label>
+          <input
+            type="text"
+            name="alt_text"
+            value={@selected_asset.alt_text}
+            placeholder="Describe this image…"
+            class="input w-full"
+          />
+          <.ui_button type="submit" variant="secondary" size="sm">Save alt text</.ui_button>
+        </form>
+
+        <form phx-change="move-asset" phx-value-id={@selected_asset.id} class="space-y-1.5">
+          <label class="text-xs font-medium text-base-content/60">Folder</label>
+          <select name="folder_id" class="w-full select">
+            <option :for={{label, value} <- folder_options(@folders)} value={value} selected={value == (@selected_asset.folder_id || "")}>
+              {label}
+            </option>
+          </select>
+        </form>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-base-content/60">File URL</label>
+          <div class="flex items-center gap-2">
+            <input type="text" readonly value={@selected_asset.url} class="input w-full text-xs" />
+            <.ui_button variant="secondary" size="sm" href={@selected_asset.url} target="_blank">
+              <.icon name="hero-arrow-top-right-on-square" class="size-4" />
+            </.ui_button>
+          </div>
+        </div>
+
+        <.ui_button
+          variant="danger"
+          phx-click="delete-asset"
+          phx-value-id={@selected_asset.id}
+          data-confirm="Delete this file permanently? Anything still referencing it will show a broken image."
+          class="w-full"
+        >
+          <.icon name="hero-trash" class="size-4" /> Delete permanently
+        </.ui_button>
+      </div>
+    </div>
+  </div>
+</Layouts.dashboard>
+

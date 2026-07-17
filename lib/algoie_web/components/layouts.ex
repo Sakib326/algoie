@@ -146,22 +146,69 @@ defmodule AlgoieWeb.Layouts do
 
         <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-4">
           <div class="space-y-1">
-            <.nav_item navigate="/dashboard" icon="hero-home" label="Overview" active={@active == :overview} />
+            <.nav_item
+              navigate="/dashboard"
+              icon="hero-home"
+              label="Overview"
+              active={@active == :overview}
+            />
           </div>
           <div class="space-y-1">
-            <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">Catalog</p>
-            <.nav_item navigate="/dashboard/products" icon="hero-cube" label="Products" active={@active == :products} />
-            <.nav_item navigate="/dashboard/categories" icon="hero-folder" label="Categories" active={@active == :categories} />
-            <.nav_item navigate="/dashboard/brands" icon="hero-tag" label="Brands" active={@active == :brands} />
+            <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">
+              Catalog
+            </p>
+            <.nav_item
+              navigate="/dashboard/products"
+              icon="hero-cube"
+              label="Products"
+              active={@active == :products}
+            />
+            <.nav_item
+              navigate="/dashboard/categories"
+              icon="hero-folder"
+              label="Categories"
+              active={@active == :categories}
+            />
+            <.nav_item
+              navigate="/dashboard/brands"
+              icon="hero-tag"
+              label="Brands"
+              active={@active == :brands}
+            />
+            <.nav_item
+              navigate="/dashboard/media"
+              icon="hero-photo"
+              label="Media Library"
+              active={@active == :media}
+            />
           </div>
           <div class="space-y-1">
-            <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">Sales</p>
-            <.nav_item navigate="/dashboard/orders" icon="hero-shopping-cart" label="Orders" active={@active == :orders} />
+            <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">
+              Sales
+            </p>
+            <.nav_item
+              navigate="/dashboard/orders"
+              icon="hero-shopping-cart"
+              label="Orders"
+              active={@active == :orders}
+            />
           </div>
           <div class="space-y-1">
-            <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">Engage</p>
-            <.nav_item navigate="/dashboard/conversations" icon="hero-chat-bubble-left-right" label="Conversations" active={@active == :conversations} />
-            <.nav_item navigate="/dashboard/campaigns" icon="hero-megaphone" label="Ad Campaigns" active={@active == :campaigns} />
+            <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">
+              Engage
+            </p>
+            <.nav_item
+              navigate="/dashboard/conversations"
+              icon="hero-chat-bubble-left-right"
+              label="Conversations"
+              active={@active == :conversations}
+            />
+            <.nav_item
+              navigate="/dashboard/campaigns"
+              icon="hero-megaphone"
+              label="Ad Campaigns"
+              active={@active == :campaigns}
+            />
           </div>
         </nav>
 
@@ -190,8 +237,7 @@ defmodule AlgoieWeb.Layouts do
         for="nav-toggle"
         class="fixed inset-0 z-40 hidden bg-black/40 backdrop-blur-sm peer-checked:block lg:hidden"
         aria-label="Close sidebar"
-      >
-      </label>
+      ></label>
 
       <div class="lg:pl-64">
         <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-base-300 bg-base-100/80 px-4 backdrop-blur sm:px-6">

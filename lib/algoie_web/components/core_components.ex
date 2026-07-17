@@ -455,7 +455,7 @@ defmodule AlgoieWeb.CoreComponents do
   attr :variant, :string, default: "primary", values: ~w(primary secondary ghost danger)
   attr :size, :string, default: "md", values: ~w(sm md)
   attr :class, :any, default: nil
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled type form)
+  attr :rest, :global, include: ~w(href navigate patch method download name value disabled type form target)
   slot :inner_block, required: true
 
   def ui_button(%{rest: rest} = assigns) do

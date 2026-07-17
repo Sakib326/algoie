@@ -11,7 +11,11 @@
   <.page_header title="Products">
     <:subtitle>Manage your product catalog and inventory.</:subtitle>
     <:actions>
-      <.ui_button :if={@live_action == :index} navigate={~p"/dashboard/products/new"} variant="primary">
+      <.ui_button
+        :if={@live_action == :index}
+        navigate={~p"/dashboard/products/new"}
+        variant="primary"
+      >
         <.icon name="hero-plus" class="size-4" /> New product
       </.ui_button>
     </:actions>
@@ -32,7 +36,12 @@
     <.form for={@form} id="product-form" phx-submit="save" class="p-6">
       <div class="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
         <div class="sm:col-span-2">
-          <.input field={@form[:name]} type="text" label="Product name" placeholder="e.g. Classic T-Shirt" />
+          <.input
+            field={@form[:name]}
+            type="text"
+            label="Product name"
+            placeholder="e.g. Classic T-Shirt"
+          />
         </div>
         <.input
           field={@form[:status]}
@@ -61,6 +70,20 @@
             label="Description"
             rows="4"
             placeholder="Describe your product…"
+          />
+        </div>
+        <div class="sm:col-span-2">
+          <.live_component
+            module={AlgoieWeb.Components.MediaManagerComponent}
+            id={"product-images-#{if @product, do: @product.id, else: "new"}"}
+            field={@form[:images]}
+            multiple
+            max_selected={8}
+            label="Product images"
+            helper="The first image is used as the cover photo. Uploads are saved to your store's media library."
+            store_id={@store_id}
+            tenant={@tenant}
+            current_user={@current_user}
           />
         </div>
       </div>
@@ -111,7 +134,10 @@
               </span>
               <div class="min-w-0">
                 <p class="font-medium text-base-content truncate">{product.name}</p>
-                <p :if={product.description} class="text-xs text-base-content/50 truncate max-w-xs">
+                <p
+                  :if={product.description}
+                  class="text-xs text-base-content/50 truncate max-w-xs"
+                >
                   {product.description}
                 </p>
               </div>
@@ -128,7 +154,11 @@
           </td>
           <td class="px-6 py-3">
             <div class="flex items-center justify-end gap-1">
-              <.ui_button navigate={~p"/dashboard/products/#{product}/edit"} variant="ghost" size="sm">
+              <.ui_button
+                navigate={~p"/dashboard/products/#{product}/edit"}
+                variant="ghost"
+                size="sm"
+              >
                 <.icon name="hero-pencil-square" class="size-4" /> Edit
               </.ui_button>
               <.ui_button

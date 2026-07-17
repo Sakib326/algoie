@@ -34,7 +34,8 @@ config :algoie, :ash_domains, [
   Algoie.Stores,
   Algoie.Products,
   Algoie.Customers,
-  Algoie.Orders
+  Algoie.Orders,
+  Algoie.Media
 ]
 
 if config_env() == :prod do
