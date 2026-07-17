@@ -62,8 +62,9 @@ defmodule AlgoieWeb.Router do
       on_mount: [{AlgoieWeb.Live.OnDashboardMount, :default}] do
       live "/dashboard", DashboardLive, :index
       live "/dashboard/products", ProductLive.Index, :index
-      live "/dashboard/products/new", ProductLive.Index, :new
-      live "/dashboard/products/:id/edit", ProductLive.Index, :edit
+      live "/dashboard/products/new", ProductLive.Wizard, :new
+      live "/dashboard/products/wizard", ProductLive.Wizard, :new
+      live "/dashboard/products/:id/edit", ProductLive.Wizard, :edit
       live "/dashboard/categories", CategoryLive.Index, :index
       live "/dashboard/categories/new", CategoryLive.Index, :new
       live "/dashboard/categories/:id/edit", CategoryLive.Index, :edit
@@ -91,7 +92,7 @@ defmodule AlgoieWeb.Router do
     live "/", StorefrontHomeLive, :index
     live "/store", StorefrontHomeLive, :index
     live "/products", StorefrontProductLive.Index, :index
-    live "/products/:id", StorefrontProductLive.Show, :show
+    live "/products/:slug", StorefrontProductLive.Show, :show
   end
 
   # ═══════════════════════════════════════════════════════════

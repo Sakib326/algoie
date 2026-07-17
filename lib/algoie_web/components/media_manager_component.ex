@@ -30,6 +30,32 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
   Resources with an `{:array, :string}` field populated this way should
   strip blank entries on create/update (needed to support clearing the list
   to `[]`) — see `Algoie.Media.Changes.RejectBlankValues`.
+
+  ## Auto-submitting the wrapping form
+
+  If the surrounding LiveView keeps ephemeral/staged state (e.g. a wizard
+  that only persists on an explicit "Publish" step), pass `form` with a CSS
+  selector for the wrapping `<form>` (which must have a matching `id`).
+  When given, selecting/removing/reordering images immediately dispatches a
+  `submit` on that form, so the parent's staged state is updated right away
+  instead of waiting for a separate manual "Save" click. This matters
+  because `update/2` re-applies whatever `selected` the parent last passed
+  in on *every* parent re-render — without an immediate submit, an
+  unrelated parent-level event could silently reset picks the user hasn't
+  explicitly saved yet.
+
+      <form id="product-images-form" phx-submit="save_product_images">
+        <.live_component
+          module={AlgoieWeb.Components.MediaManagerComponent}
+          id="product-images"
+          name="product_images"
+          form="#product-images-form"
+          multiple
+          store_id={@store_id}
+          tenant={@tenant}
+          current_user={@current_user}
+        />
+      </form>
   """
 
   use AlgoieWeb, :live_component
@@ -68,6 +94,7 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
       |> assign_new(:helper, fn -> nil end)
       |> assign_new(:name, fn -> nil end)
       |> assign_new(:field, fn -> nil end)
+      |> assign_new(:form, fn -> nil end)
       |> assign_new(:selected, fn -> initial_selected(assigns) end)
       |> assign_new(:folders, fn -> Media.list_folders(socket_opts(assigns)) end)
       |> assign_new(:counts, fn -> Media.folder_counts(socket_opts(assigns)) end)
@@ -361,6 +388,17 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
     if multiple, do: base <> "[]", else: base
   end
 
+  # Pushes `event` to this component and, when a wrapping `form` selector was
+  # given (see the `:form` assign), also submits that form immediately so the
+  # parent LiveView's staged state never drifts from what's shown here. Without
+  # this, any unrelated parent re-render would reset `@selected` back to the
+  # parent's last-saved snapshot (via the `assign(socket, assigns)` in
+  # `update/2`), silently discarding picks the user hasn't explicitly saved.
+  defp submit_js(myself, form, event, opts \\ []) do
+    js = JS.push(event, Keyword.put(opts, :target, myself))
+    if form, do: JS.dispatch(js, "submit", to: form), else: js
+  end
+
   defp upload_error_message(:too_large), do: "File is too large (max 10MB)"
   defp upload_error_message(:too_many_files), do: "Too many files selected at once"
   defp upload_error_message(:not_accepted), do: "That file type isn't supported"
@@ -390,10 +428,9 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
               <button
                 :if={index > 0}
                 type="button"
-                phx-click="move-selected"
-                phx-value-url={url}
-                phx-value-dir="left"
-                phx-target={@myself}
+                phx-click={
+                  submit_js(@myself, @form, "move-selected", value: %{url: url, dir: "left"})
+                }
                 class="flex size-6 items-center justify-center rounded-md bg-base-100/90 text-base-content/70 shadow hover:text-base-content"
               >
                 <.icon name="hero-chevron-left" class="size-3.5" />
@@ -401,10 +438,9 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
               <button
                 :if={index < length(@selected) - 1}
                 type="button"
-                phx-click="move-selected"
-                phx-value-url={url}
-                phx-value-dir="right"
-                phx-target={@myself}
+                phx-click={
+                  submit_js(@myself, @form, "move-selected", value: %{url: url, dir: "right"})
+                }
                 class="flex size-6 items-center justify-center rounded-md bg-base-100/90 text-base-content/70 shadow hover:text-base-content"
               >
                 <.icon name="hero-chevron-right" class="size-3.5" />
@@ -412,9 +448,7 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
             </div>
             <button
               type="button"
-              phx-click="remove-selected"
-              phx-value-url={url}
-              phx-target={@myself}
+              phx-click={submit_js(@myself, @form, "remove-selected", value: %{url: url})}
               class="ml-auto flex size-6 items-center justify-center rounded-md bg-base-100/90 text-error shadow hover:bg-error hover:text-error-content"
               title="Remove"
             >
@@ -666,8 +700,7 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
               <.ui_button
                 type="button"
                 variant="primary"
-                phx-click="confirm-selection"
-                phx-target={@myself}
+                phx-click={submit_js(@myself, @form, "confirm-selection")}
               >
                 Use selected
               </.ui_button>

@@ -13,13 +13,13 @@
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
       <%= for product <- @products do %>
         <.link
-          navigate={~p"/products/#{product}"}
+          navigate={~p"/products/#{product.slug || product.id}"}
           class="card bg-base-200 hover:bg-base-300 transition-all group hover:shadow-lg"
         >
           <figure class="aspect-square bg-base-300 rounded-t-xl flex items-center justify-center">
-            <%= if product.images != [] do %>
+            <%= if product.cover_url do %>
               <img
-                src={List.first(product.images)}
+                src={product.cover_url}
                 alt={product.name}
                 class="w-full h-full object-cover"
               />

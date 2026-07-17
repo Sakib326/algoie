@@ -13,7 +13,7 @@
     <:actions>
       <.ui_button
         :if={@live_action == :index}
-        navigate={~p"/dashboard/products/new"}
+        navigate={~p"/dashboard/products/wizard"}
         variant="primary"
       >
         <.icon name="hero-plus" class="size-4" /> New product
@@ -21,79 +21,72 @@
     </:actions>
   </.page_header>
 
-  <%!-- Create / edit form --%>
-  <.panel :if={@live_action in [:new, :edit]} class="mb-6">
-    <div class="border-b border-base-200 px-6 py-4">
-      <h2 class="text-base font-semibold">
-        {if @live_action == :new, do: "New product", else: "Edit product"}
-      </h2>
-      <p class="mt-0.5 text-sm text-base-content/50">
-        {if @live_action == :new,
-          do: "Add a new item to your catalog.",
-          else: "Update the details for this product."}
-      </p>
+  <%!-- Search & Filters --%>
+  <.panel :if={@live_action == :index} class="mb-6">
+    <div class="p-4">
+      <div class="flex flex-col sm:flex-row gap-3">
+        <%!-- Search --%>
+        <form phx-submit="search" class="flex-1">
+          <div class="join w-full">
+            <input
+              type="text"
+              name="search"
+              value={@search}
+              placeholder="Search by name, SKU, or barcode..."
+              class="input input-bordered join-item flex-1"
+            />
+            <button type="submit" class="btn btn-primary join-item">
+              <.icon name="hero-magnifying-glass" class="size-4" />
+            </button>
+          </div>
+        </form>
+
+        <%!-- Filters --%>
+        <form phx-change="filter" class="flex flex-wrap gap-2">
+          <select name="category" class="select select-bordered select-sm">
+            <option value="">All Categories</option>
+            <option
+              :for={cat <- @categories}
+              value={cat.id}
+              selected={@filter_category == cat.id}
+            >
+              {cat.name}
+            </option>
+          </select>
+          <select name="brand" class="select select-bordered select-sm">
+            <option value="">All Brands</option>
+            <option
+              :for={brand <- @brands}
+              value={brand.id}
+              selected={@filter_brand == brand.id}
+            >
+              {brand.name}
+            </option>
+          </select>
+          <select name="status" class="select select-bordered select-sm">
+            <option value="">All Status</option>
+            <option value="draft" selected={@filter_status == "draft"}>Draft</option>
+            <option value="active" selected={@filter_status == "active"}>Active</option>
+            <option value="archived" selected={@filter_status == "archived"}>Archived</option>
+          </select>
+          <select name="stock" class="select select-bordered select-sm">
+            <option value="">All Stock</option>
+            <option value="in_stock" selected={@filter_stock == "in_stock"}>In Stock</option>
+            <option value="low_stock" selected={@filter_stock == "low_stock"}>Low Stock</option>
+            <option value="out_of_stock" selected={@filter_stock == "out_of_stock"}>
+              Out of Stock
+            </option>
+          </select>
+          <button
+            type="button"
+            phx-click="clear_filters"
+            class="btn btn-ghost btn-sm"
+          >
+            Clear
+          </button>
+        </form>
+      </div>
     </div>
-    <.form for={@form} id="product-form" phx-submit="save" class="p-6">
-      <div class="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-        <div class="sm:col-span-2">
-          <.input
-            field={@form[:name]}
-            type="text"
-            label="Product name"
-            placeholder="e.g. Classic T-Shirt"
-          />
-        </div>
-        <.input
-          field={@form[:status]}
-          type="select"
-          label="Status"
-          options={[{"Draft", "draft"}, {"Active", "active"}, {"Archived", "archived"}]}
-        />
-        <.input
-          field={@form[:category_id]}
-          type="select"
-          label="Category"
-          prompt="No category"
-          options={Enum.map(@categories, &{&1.name, &1.id})}
-        />
-        <.input
-          field={@form[:brand_id]}
-          type="select"
-          label="Brand"
-          prompt="No brand"
-          options={Enum.map(@brands, &{&1.name, &1.id})}
-        />
-        <div class="sm:col-span-2">
-          <.input
-            field={@form[:description]}
-            type="textarea"
-            label="Description"
-            rows="4"
-            placeholder="Describe your product…"
-          />
-        </div>
-        <div class="sm:col-span-2">
-          <.live_component
-            module={AlgoieWeb.Components.MediaManagerComponent}
-            id={"product-images-#{if @product, do: @product.id, else: "new"}"}
-            field={@form[:images]}
-            multiple
-            max_selected={8}
-            label="Product images"
-            helper="The first image is used as the cover photo. Uploads are saved to your store's media library."
-            store_id={@store_id}
-            tenant={@tenant}
-            current_user={@current_user}
-          />
-        </div>
-      </div>
-      <div class="mt-6 flex items-center justify-end gap-3 border-t border-base-200 pt-4">
-        <.ui_button navigate={~p"/dashboard/products"} variant="ghost">Cancel</.ui_button>
-        <.ui_button type="submit" variant="primary">
-          {if @live_action == :new, do: "Create product", else: "Save changes"}
-        </.ui_button>
-      </div>
-    </.form>
   </.panel>
 
   <%!-- List --%>
@@ -105,74 +98,91 @@
         description="Get started by creating your first product."
       >
         <:actions>
-          <.ui_button navigate={~p"/dashboard/products/new"} variant="primary">
+          <.ui_button navigate={~p"/dashboard/products/wizard"} variant="primary">
             <.icon name="hero-plus" class="size-4" /> New product
           </.ui_button>
         </:actions>
       </.empty_state>
     </div>
 
-    <table :if={@products != []} class="w-full text-sm">
-      <thead>
-        <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
-          <th class="px-6 py-3 font-medium">Product</th>
-          <th class="px-6 py-3 font-medium">Category</th>
-          <th class="px-6 py-3 font-medium">Brand</th>
-          <th class="px-6 py-3 font-medium">Status</th>
-          <th class="px-6 py-3 text-right font-medium">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          :for={product <- @products}
-          class="border-b border-base-200 last:border-0 transition-colors hover:bg-base-200/40"
-        >
-          <td class="px-6 py-3">
-            <div class="flex items-center gap-3">
-              <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/40">
-                <.icon name="hero-cube" class="size-5" />
-              </span>
-              <div class="min-w-0">
-                <p class="font-medium text-base-content truncate">{product.name}</p>
-                <p
-                  :if={product.description}
-                  class="text-xs text-base-content/50 truncate max-w-xs"
-                >
-                  {product.description}
-                </p>
+    <div :if={@products != []} class="overflow-x-auto">
+      <table class="w-full min-w-[720px] text-sm">
+        <thead>
+          <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
+            <th class="px-6 py-3 font-medium">Product</th>
+            <th class="px-6 py-3 font-medium">Category</th>
+            <th class="px-6 py-3 font-medium">Brand</th>
+            <th class="px-6 py-3 font-medium">Status</th>
+            <th class="px-6 py-3 font-medium">Type</th>
+            <th class="px-6 py-3 text-right font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            :for={product <- @products}
+            class="border-b border-base-200 last:border-0 transition-colors hover:bg-base-200/40"
+          >
+            <td class="px-6 py-3">
+              <div class="flex items-center gap-3 max-w-xs">
+                <%= if product.cover_url do %>
+                  <img
+                    src={product.cover_url}
+                    alt={product.name}
+                    class="size-9 shrink-0 rounded-lg object-cover"
+                    loading="lazy"
+                  />
+                <% else %>
+                  <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/40">
+                    <.icon name="hero-cube" class="size-5" />
+                  </span>
+                <% end %>
+                <div class="min-w-0">
+                  <p class="font-medium text-base-content truncate">{product.name}</p>
+                  <p
+                    :if={product.description}
+                    class="text-xs text-base-content/50 truncate max-w-xs"
+                  >
+                    {product.description}
+                  </p>
+                </div>
               </div>
-            </div>
-          </td>
-          <td class="px-6 py-3 text-base-content/70">
-            {@category_map[product.category_id] || "—"}
-          </td>
-          <td class="px-6 py-3 text-base-content/70">
-            {@brand_map[product.brand_id] || "—"}
-          </td>
-          <td class="px-6 py-3">
-            <.pill tone={status_tone(product.status)}>{product.status}</.pill>
-          </td>
-          <td class="px-6 py-3">
-            <div class="flex items-center justify-end gap-1">
-              <.ui_button
-                navigate={~p"/dashboard/products/#{product}/edit"}
-                variant="ghost"
-                size="sm"
-              >
-                <.icon name="hero-pencil-square" class="size-4" /> Edit
-              </.ui_button>
-              <.ui_button
-                variant="danger"
-                size="sm"
-                phx-click={JS.push("delete", value: %{id: product.id})}
-                data-confirm="Delete this product? This cannot be undone."
-              >
-                <.icon name="hero-trash" class="size-4" />
-              </.ui_button>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            </td>
+            <td class="px-6 py-3 text-base-content/70 max-w-[10rem] truncate">
+              {@category_map[product.category_id] || "—"}
+            </td>
+            <td class="px-6 py-3 text-base-content/70 max-w-[10rem] truncate">
+              {@brand_map[product.brand_id] || "—"}
+            </td>
+            <td class="px-6 py-3">
+              <.pill tone={status_tone(product.status)}>{product.status}</.pill>
+            </td>
+            <td class="px-6 py-3 text-base-content/70">
+              <.pill tone={if product.product_type == :variable, do: "info", else: "neutral"}>
+                {product.product_type}
+              </.pill>
+            </td>
+            <td class="px-6 py-3">
+              <div class="flex items-center justify-end gap-1">
+                <.ui_button
+                  navigate={~p"/dashboard/products/#{product}/edit"}
+                  variant="ghost"
+                  size="sm"
+                >
+                  <.icon name="hero-pencil-square" class="size-4" /> Edit
+                </.ui_button>
+                <.ui_button
+                  variant="danger"
+                  size="sm"
+                  phx-click={JS.push("delete", value: %{id: product.id})}
+                  data-confirm="Delete this product? This cannot be undone."
+                >
+                  <.icon name="hero-trash" class="size-4" />
+                </.ui_button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </.panel>
 </Layouts.dashboard>

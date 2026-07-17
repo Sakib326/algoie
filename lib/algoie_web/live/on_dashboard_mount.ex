@@ -71,7 +71,9 @@ defmodule AlgoieWeb.Live.OnDashboardMount do
   end
 
   defp get_tenants_with_stores(user_id) do
-    case Algoie.Repo.all(from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))) do
+    case Algoie.Repo.all(
+           from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))
+         ) do
       [] ->
         []
 

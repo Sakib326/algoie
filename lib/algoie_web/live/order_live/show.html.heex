@@ -11,7 +11,10 @@
   <div :if={@order}>
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <.link navigate={~p"/dashboard/orders"} class="inline-flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content">
+        <.link
+          navigate={~p"/dashboard/orders"}
+          class="inline-flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content"
+        >
           <.icon name="hero-arrow-left" class="size-4" /> Orders
         </.link>
         <div class="mt-1 flex items-center gap-3">
@@ -32,7 +35,11 @@
             <h2 class="text-sm font-semibold">Line items</h2>
           </div>
           <div :if={@line_items == []} class="px-6">
-            <.empty_state icon="hero-cube" title="No line items" description="This order has no items recorded." />
+            <.empty_state
+              icon="hero-cube"
+              title="No line items"
+              description="This order has no items recorded."
+            />
           </div>
           <table :if={@line_items != []} class="w-full text-sm">
             <thead>
@@ -45,7 +52,9 @@
             </thead>
             <tbody>
               <tr :for={item <- @line_items} class="border-b border-base-200 last:border-0">
-                <td class="px-6 py-3 font-mono text-xs text-base-content/60">{short_id(item.variant_id)}</td>
+                <td class="px-6 py-3 font-mono text-xs text-base-content/60">
+                  {short_id(item.variant_id)}
+                </td>
                 <td class="px-6 py-3 text-right tabular-nums">{item.quantity}</td>
                 <td class="px-6 py-3 text-right tabular-nums">{format_money(item.unit_price)}</td>
                 <td class="px-6 py-3 text-right font-medium tabular-nums">
@@ -55,7 +64,12 @@
             </tbody>
             <tfoot>
               <tr class="border-t border-base-200">
-                <td colspan="3" class="px-6 py-3 text-right text-sm font-medium text-base-content/60">Total</td>
+                <td
+                  colspan="3"
+                  class="px-6 py-3 text-right text-sm font-medium text-base-content/60"
+                >
+                  Total
+                </td>
                 <td class="px-6 py-3 text-right text-base font-semibold tabular-nums">
                   {format_money(@order.total_amount)}
                 </td>
@@ -76,11 +90,15 @@
             </div>
             <div class="flex items-center justify-between">
               <dt class="text-base-content/50">Status</dt>
-              <dd><.pill tone={status_tone(@order.status)}>{humanize(@order.status)}</.pill></dd>
+              <dd>
+                <.pill tone={status_tone(@order.status)}>{humanize(@order.status)}</.pill>
+              </dd>
             </div>
             <div class="flex items-center justify-between border-t border-base-200 pt-3">
               <dt class="text-base-content/50">Total</dt>
-              <dd class="text-base font-semibold tabular-nums">{format_money(@order.total_amount)}</dd>
+              <dd class="text-base font-semibold tabular-nums">
+                {format_money(@order.total_amount)}
+              </dd>
             </div>
           </dl>
         </.panel>
@@ -106,7 +124,11 @@
   </div>
 
   <div :if={!@order}>
-    <.empty_state icon="hero-exclamation-triangle" title="Order not found" description="This order may have been removed.">
+    <.empty_state
+      icon="hero-exclamation-triangle"
+      title="Order not found"
+      description="This order may have been removed."
+    >
       <:actions>
         <.ui_button navigate={~p"/dashboard/orders"} variant="primary">Back to orders</.ui_button>
       </:actions>

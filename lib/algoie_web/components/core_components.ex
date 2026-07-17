@@ -455,7 +455,10 @@ defmodule AlgoieWeb.CoreComponents do
   attr :variant, :string, default: "primary", values: ~w(primary secondary ghost danger)
   attr :size, :string, default: "md", values: ~w(sm md)
   attr :class, :any, default: nil
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled type form target)
+
+  attr :rest, :global,
+    include: ~w(href navigate patch method download name value disabled type form target)
+
   slot :inner_block, required: true
 
   def ui_button(%{rest: rest} = assigns) do
@@ -474,7 +477,9 @@ defmodule AlgoieWeb.CoreComponents do
       }
       |> Map.fetch!(assigns.variant)
 
-    size = %{"sm" => "px-2.5 py-1.5 text-xs", "md" => "px-3.5 py-2 text-sm"} |> Map.fetch!(assigns.size)
+    size =
+      %{"sm" => "px-2.5 py-1.5 text-xs", "md" => "px-3.5 py-2 text-sm"}
+      |> Map.fetch!(assigns.size)
 
     assigns = assign(assigns, :computed_class, [base, variant, size, assigns.class])
 
@@ -546,7 +551,8 @@ defmodule AlgoieWeb.CoreComponents do
   @doc """
   A small colored status pill.
   """
-  attr :tone, :string, default: "neutral",
+  attr :tone, :string,
+    default: "neutral",
     values: ~w(neutral success warning info error primary secondary)
 
   slot :inner_block, required: true

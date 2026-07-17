@@ -8,5 +8,9 @@ defmodule Algoie.Products do
     resource(Algoie.Products.Brand)
     resource(Algoie.Products.Collection)
     resource(Algoie.Products.CollectionProduct)
+    resource(Algoie.Products.Tag)
+    resource(Algoie.Products.ProductTag)
+    resource(Algoie.Products.ProductImage)
+    resource(Algoie.Products.ProductCategory)
   end
 end

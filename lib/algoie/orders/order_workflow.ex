@@ -75,7 +75,7 @@ defmodule Algoie.Orders.OrderWorkflow do
              |> Ash.Query.filter(id == ^vid and store_id == ^store_id)
              |> Ash.Query.for_read(:read)
              |> Ash.read_one(tenant: tenant, authorize?: false) do
-          {:ok, %{stock: stock}} when stock < qty ->
+          {:ok, %{stock: stock, reserved_quantity: reserved}} when stock - reserved < qty ->
             {:halt, {:error, :insufficient_stock}}
 
           {:ok, _} ->
@@ -156,13 +156,13 @@ defmodule Algoie.Orders.OrderWorkflow do
             {:halt, {:error, :variant_not_found}}
 
           variant ->
-            new_stock = variant.stock - qty
+            available = variant.stock - variant.reserved_quantity
 
-            if new_stock < 0 do
+            if available < qty do
               {:halt, {:error, :insufficient_stock}}
             else
               variant
-              |> Ecto.Changeset.change(%{stock: new_stock})
+              |> Ecto.Changeset.change(%{stock: variant.stock - qty})
               |> Repo.update!(prefix: prefix)
 
               {:cont, {:ok, :ok}}

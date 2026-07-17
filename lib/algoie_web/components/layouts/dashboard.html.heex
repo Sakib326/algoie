@@ -28,7 +28,8 @@
             navigate={~p"/dashboard/products"}
             class={
               if to_string(@socket.assigns[:live_action]) =~ "product" or
-                   @socket.view_module == AlgoieWeb.ProductLive.Index,
+                   @socket.view_module == AlgoieWeb.ProductLive.Index or
+                   @socket.view_module == AlgoieWeb.ProductLive.Wizard,
                  do: "active"
             }
           >

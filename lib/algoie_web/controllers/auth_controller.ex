@@ -58,7 +58,9 @@ defmodule AlgoieWeb.AuthController do
 
   defp get_user_tenants(user_id) do
     # Get all tenants
-    case Algoie.Repo.all(from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))) do
+    case Algoie.Repo.all(
+           from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))
+         ) do
       tenant_ids ->
         Enum.filter(tenant_ids, fn tenant_id ->
           schema = "tenant_#{tenant_id}"

@@ -52,7 +52,10 @@
     <.panel class="lg:col-span-2">
       <div class="flex items-center justify-between border-b border-base-200 px-5 py-4">
         <h2 class="text-sm font-semibold text-base-content">Recent orders</h2>
-        <.link navigate={~p"/dashboard/orders"} class="text-sm font-medium text-primary hover:underline">
+        <.link
+          navigate={~p"/dashboard/orders"}
+          class="text-sm font-medium text-primary hover:underline"
+        >
           View all
         </.link>
       </div>
@@ -80,7 +83,10 @@
             class="border-b border-base-200 last:border-0 transition-colors hover:bg-base-200/40"
           >
             <td class="px-5 py-3">
-              <.link navigate={~p"/dashboard/orders/#{order}"} class="font-mono text-xs text-primary hover:underline">
+              <.link
+                navigate={~p"/dashboard/orders/#{order}"}
+                class="font-mono text-xs text-primary hover:underline"
+              >
                 #{short_id(order.id)}
               </.link>
             </td>
@@ -113,7 +119,10 @@
             <span class="block text-sm font-medium">Add a product</span>
             <span class="block text-xs text-base-content/50">Create a new catalog item</span>
           </span>
-          <.icon name="hero-chevron-right" class="size-4 text-base-content/30 group-hover:text-base-content/60" />
+          <.icon
+            name="hero-chevron-right"
+            class="size-4 text-base-content/30 group-hover:text-base-content/60"
+          />
         </.link>
         <.link
           navigate={~p"/dashboard/categories/new"}
@@ -126,7 +135,10 @@
             <span class="block text-sm font-medium">Add a category</span>
             <span class="block text-xs text-base-content/50">Organize your catalog</span>
           </span>
-          <.icon name="hero-chevron-right" class="size-4 text-base-content/30 group-hover:text-base-content/60" />
+          <.icon
+            name="hero-chevron-right"
+            class="size-4 text-base-content/30 group-hover:text-base-content/60"
+          />
         </.link>
         <.link
           navigate={~p"/dashboard/orders"}
@@ -139,7 +151,10 @@
             <span class="block text-sm font-medium">Review orders</span>
             <span class="block text-xs text-base-content/50">Fulfill and track orders</span>
           </span>
-          <.icon name="hero-chevron-right" class="size-4 text-base-content/30 group-hover:text-base-content/60" />
+          <.icon
+            name="hero-chevron-right"
+            class="size-4 text-base-content/30 group-hover:text-base-content/60"
+          />
         </.link>
       </div>
     </.panel>

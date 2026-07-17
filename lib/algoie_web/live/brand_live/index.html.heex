@@ -11,7 +11,11 @@
   <.page_header title="Brands">
     <:subtitle>Manage the brands that appear on your products.</:subtitle>
     <:actions>
-      <.ui_button :if={@live_action == :index} navigate={~p"/dashboard/brands/new"} variant="primary">
+      <.ui_button
+        :if={@live_action == :index}
+        navigate={~p"/dashboard/brands/new"}
+        variant="primary"
+      >
         <.icon name="hero-plus" class="size-4" /> New brand
       </.ui_button>
     </:actions>

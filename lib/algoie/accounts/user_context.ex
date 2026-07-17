@@ -95,7 +95,9 @@ defmodule Algoie.Accounts.UserContext do
   end
 
   defp get_all_tenants do
-    case Algoie.Repo.all(from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))) do
+    case Algoie.Repo.all(
+           from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))
+         ) do
       ids when is_list(ids) -> ids
       _ -> []
     end

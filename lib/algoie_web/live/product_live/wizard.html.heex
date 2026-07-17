@@ -1,0 +1,817 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:products}
+>
+  <.page_header title={if @mode == :edit, do: "Edit Product", else: "Create Product"}>
+    <:subtitle>Step {@step + 1} of {@total_steps} — {step_label(@step)}</:subtitle>
+  </.page_header>
+
+  <%!-- Error display --%>
+  <div :if={@errors != []} class="alert alert-error mb-6">
+    <ul class="list-disc list-inside">
+      <li :for={error <- @errors}>{error}</li>
+    </ul>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <%!-- Step sidebar --%>
+    <div class="lg:col-span-1">
+      <.panel>
+        <nav class="space-y-1">
+          <button
+            :for={{step_name, idx} <- Enum.with_index(@step_names)}
+            type="button"
+            phx-click={if idx <= @step, do: "go_to_step"}
+            phx-value-step={idx}
+            disabled={idx > @step}
+            class={[
+              "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+              idx == @step && "bg-primary/10 text-primary",
+              idx < @step && "text-success hover:bg-base-200 cursor-pointer",
+              idx > @step && "text-base-content/30 cursor-not-allowed opacity-50"
+            ]}
+          >
+            <span class={[
+              "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+              idx == @step && "bg-primary text-primary-content",
+              idx < @step && "bg-success text-success-content",
+              idx > @step && "bg-base-200 text-base-content/40"
+            ]}>
+              <%= if idx < @step do %>
+                <.icon name="hero-check" class="size-4" />
+              <% else %>
+                {idx + 1}
+              <% end %>
+            </span>
+            <span>{step_label(idx)}</span>
+          </button>
+        </nav>
+      </.panel>
+    </div>
+
+    <%!-- Step content --%>
+    <div class="lg:col-span-3">
+      <%!-- Step 0: Basic Info --%>
+      <.panel :if={@step == 0}>
+        <div class="border-b border-base-200 px-6 py-4">
+          <h2 class="text-base font-semibold">Basic Information</h2>
+          <p class="mt-0.5 text-sm text-base-content/50">Start with the essentials.</p>
+        </div>
+        <div class="p-6 space-y-5">
+          <div>
+            <label class="label"><span class="label-text font-medium">Product name *</span></label>
+            <form phx-submit="noop">
+              <input
+                type="text"
+                name="name"
+                value={@wizard_data["name"]}
+                phx-change="update_field"
+                placeholder="e.g. Classic T-Shirt"
+                class="input input-bordered w-full"
+              />
+            </form>
+          </div>
+
+          <div>
+            <label class="label"><span class="label-text font-medium">Slug</span></label>
+            <form phx-submit="noop">
+              <input
+                type="text"
+                name="slug"
+                value={@wizard_data["slug"]}
+                phx-change="update_field"
+                placeholder="auto-generated-from-name"
+                class="input input-bordered w-full"
+              />
+            </form>
+            <p class="text-xs text-base-content/40 mt-1">
+              Used in URLs. Auto-generated from the product name.
+            </p>
+          </div>
+
+          <div>
+            <label class="label"><span class="label-text font-medium">Description</span></label>
+            <form phx-submit="noop">
+              <textarea
+                name="description"
+                phx-change="update_field"
+                placeholder="Describe your product..."
+                rows="4"
+                class="textarea textarea-bordered w-full"
+              >{@wizard_data["description"]}</textarea>
+            </form>
+          </div>
+
+          <div>
+            <label class="label"><span class="label-text font-medium">Product type *</span></label>
+            <form phx-submit="noop" class="flex gap-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="product_type"
+                  value="simple"
+                  checked={@wizard_data["product_type"] == "simple"}
+                  phx-change="update_field"
+                  class="radio radio-primary"
+                />
+                <span class="text-sm">
+                  <span class="font-medium">Simple</span>
+                  <span class="text-base-content/50 block text-xs">Single variant, no options</span>
+                </span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="product_type"
+                  value="variable"
+                  checked={@wizard_data["product_type"] == "variable"}
+                  phx-change="update_field"
+                  class="radio radio-primary"
+                />
+                <span class="text-sm">
+                  <span class="font-medium">Variable</span>
+                  <span class="text-base-content/50 block text-xs">Multiple variants with options</span>
+                </span>
+              </label>
+            </form>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 border-t border-base-200 px-6 py-4">
+          <.ui_button navigate={~p"/dashboard/products"} variant="ghost">Cancel</.ui_button>
+          <.ui_button phx-click="next_step" variant="primary">Next: Category & Brand</.ui_button>
+        </div>
+      </.panel>
+
+      <%!-- Step 1: Category & Brand --%>
+      <.panel :if={@step == 1}>
+        <div class="border-b border-base-200 px-6 py-4">
+          <h2 class="text-base font-semibold">Category & Brand</h2>
+          <p class="mt-0.5 text-sm text-base-content/50">Organize your product.</p>
+        </div>
+        <div class="p-6 space-y-5">
+          <div>
+            <label class="label"><span class="label-text font-medium">Category</span></label>
+            <form phx-submit="noop">
+              <select
+                name="category_id"
+                phx-change="update_field"
+                class="select select-bordered w-full"
+              >
+                <option value="">No category</option>
+                <option
+                  :for={cat <- @categories}
+                  value={cat.id}
+                  selected={@wizard_data["category_id"] == cat.id}
+                >
+                  {cat.name}
+                </option>
+              </select>
+            </form>
+          </div>
+
+          <div :if={@categories != []}>
+            <label class="label"><span class="label-text font-medium">Additional categories</span></label>
+            <div class="flex flex-wrap gap-3 p-3 border border-base-300 rounded-lg">
+              <label
+                :for={cat <- @categories}
+                class="flex items-center gap-2 cursor-pointer text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={cat.id in @wizard_data["category_ids"]}
+                  phx-click="toggle_category"
+                  phx-value-category={cat.id}
+                  class="checkbox checkbox-sm checkbox-primary"
+                />
+                {cat.name}
+              </label>
+            </div>
+            <p class="text-xs text-base-content/40 mt-1">
+              Optional. List this product under other categories too.
+            </p>
+          </div>
+
+          <div>
+            <label class="label"><span class="label-text font-medium">Brand</span></label>
+            <form phx-submit="noop">
+              <select
+                name="brand_id"
+                phx-change="update_field"
+                class="select select-bordered w-full"
+              >
+                <option value="">No brand</option>
+                <option
+                  :for={brand <- @brands}
+                  value={brand.id}
+                  selected={@wizard_data["brand_id"] == brand.id}
+                >
+                  {brand.name}
+                </option>
+              </select>
+            </form>
+          </div>
+
+          <div class="flex gap-6">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={@wizard_data["featured"]}
+                phx-click="toggle_field"
+                phx-value-field="featured"
+                class="checkbox checkbox-primary"
+              />
+              <span class="text-sm font-medium">Featured product</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={@wizard_data["is_new"]}
+                phx-click="toggle_field"
+                phx-value-field="is_new"
+                class="checkbox checkbox-primary"
+              />
+              <span class="text-sm font-medium">Mark as new</span>
+            </label>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 border-t border-base-200 px-6 py-4">
+          <.ui_button phx-click="prev_step" variant="ghost">Back</.ui_button>
+          <.ui_button phx-click="next_step" variant="primary">
+            Next: {if @wizard_data["product_type"] == "variable",
+              do: "Attributes",
+              else: "Pricing"}
+          </.ui_button>
+        </div>
+      </.panel>
+
+      <%!-- Step 2: Attributes (only for variable products) --%>
+      <.panel :if={@step == 2}>
+        <div class="border-b border-base-200 px-6 py-4">
+          <h2 class="text-base font-semibold">Product Attributes</h2>
+          <p class="mt-0.5 text-sm text-base-content/50">
+            Define options like Color, Size, Material. Variants will be auto-generated from combinations.
+          </p>
+        </div>
+        <div class="p-6 space-y-6">
+          <%!-- Existing attributes --%>
+          <div :if={@wizard_data["attribute_definitions"] != %{}} class="space-y-3">
+            <div
+              :for={{attr_name, values} <- @wizard_data["attribute_definitions"]}
+              class="flex items-center justify-between p-3 bg-base-200 rounded-lg"
+            >
+              <div>
+                <span class="font-medium text-sm">{attr_name}</span>
+                <div class="flex flex-wrap gap-1 mt-1">
+                  <span :for={val <- values} class="badge badge-sm badge-outline">{val}</span>
+                </div>
+              </div>
+              <button
+                :if={@mode == :new}
+                type="button"
+                phx-click="remove_attribute"
+                phx-value-attr={attr_name}
+                class="btn btn-ghost btn-xs text-error"
+              >
+                <.icon name="hero-x-mark" class="size-4" />
+              </button>
+            </div>
+          </div>
+
+          <div
+            :if={@wizard_data["attribute_definitions"] == %{}}
+            class="text-center py-8 text-base-content/40"
+          >
+            <.icon name="hero-squares-2x2" class="size-10 mx-auto mb-2" />
+            <p class="text-sm">No attributes defined yet.</p>
+          </div>
+
+          <%!-- Add attribute form --%>
+          <div :if={@mode == :new} class="border border-dashed border-base-300 rounded-lg p-4">
+            <h3 class="text-sm font-medium mb-3">Add attribute</h3>
+            <form phx-submit="add_attribute" class="flex gap-3 items-end">
+              <div class="flex-1">
+                <label class="label py-1"><span class="label-text text-xs">Attribute name</span></label>
+                <input
+                  type="text"
+                  name="attr_name"
+                  placeholder="e.g. Color"
+                  list="attribute-name-suggestions"
+                  autocomplete="off"
+                  class="input input-bordered input-sm w-full"
+                />
+                <datalist id="attribute-name-suggestions">
+                  <option :for={name <- @attribute_name_suggestions} value={name} />
+                </datalist>
+              </div>
+              <div class="flex-[2]">
+                <label class="label py-1"><span class="label-text text-xs">Values (comma-separated)</span></label>
+                <input
+                  type="text"
+                  name="attr_values"
+                  placeholder="e.g. Red, Blue, Green"
+                  class="input input-bordered input-sm w-full"
+                />
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">
+                <.icon name="hero-plus" class="size-4" /> Add
+              </button>
+            </form>
+          </div>
+
+          <p :if={@mode == :edit} class="text-xs text-base-content/40">
+            Attributes can't be changed after creation. Manage variant pricing, stock, and SKUs
+            in the Pricing step.
+          </p>
+
+          <%!-- Generate variants button --%>
+          <div
+            :if={@mode == :new && @wizard_data["attribute_definitions"] != %{}}
+            class="text-center"
+          >
+            <.ui_button phx-click="generate_variants" variant="secondary">
+              <.icon name="hero-arrow-path" class="size-4" /> Regenerate Variants
+            </.ui_button>
+            <p class="text-xs text-base-content/40 mt-2">
+              {length(@generated_variants)} variant(s) will be generated
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 border-t border-base-200 px-6 py-4">
+          <.ui_button phx-click="prev_step" variant="ghost">Back</.ui_button>
+          <.ui_button phx-click="next_step" variant="primary">Next: Pricing</.ui_button>
+        </div>
+      </.panel>
+
+      <%!-- Step 3: Pricing --%>
+      <.panel :if={@step == 3}>
+        <div class="border-b border-base-200 px-6 py-4">
+          <h2 class="text-base font-semibold">Pricing</h2>
+          <p class="mt-0.5 text-sm text-base-content/50">
+            {if @wizard_data["product_type"] == "simple",
+              do: "Set the price for your product.",
+              else: "Set default prices for all variants. You can customize per-variant below."}
+          </p>
+        </div>
+        <div class="p-6 space-y-5">
+          <div :if={@wizard_data["product_type"] == "simple"}>
+            <label class="label"><span class="label-text font-medium">SKU</span></label>
+            <form phx-submit="noop">
+              <input
+                type="text"
+                name="sku"
+                value={@wizard_data["sku"]}
+                phx-change="update_field"
+                placeholder={@wizard_data["slug"]}
+                class="input input-bordered w-full"
+              />
+            </form>
+            <p class="text-xs text-base-content/40 mt-1">
+              Optional. Defaults to the product slug if left blank.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="label"><span class="label-text font-medium">Selling price *</span></label>
+              <form phx-submit="noop">
+                <input
+                  type="text"
+                  name="price"
+                  value={@wizard_data["price"]}
+                  phx-change="update_field"
+                  placeholder="0.00"
+                  class="input input-bordered w-full"
+                />
+              </form>
+            </div>
+            <div>
+              <label class="label"><span class="label-text font-medium">Cost price</span></label>
+              <form phx-submit="noop">
+                <input
+                  type="text"
+                  name="cost_price"
+                  value={@wizard_data["cost_price"]}
+                  phx-change="update_field"
+                  placeholder="0.00"
+                  class="input input-bordered w-full"
+                />
+              </form>
+            </div>
+            <div>
+              <label class="label"><span class="label-text font-medium">Compare-at price</span></label>
+              <form phx-submit="noop">
+                <input
+                  type="text"
+                  name="compare_at_price"
+                  value={@wizard_data["compare_at_price"]}
+                  phx-change="update_field"
+                  placeholder="0.00"
+                  class="input input-bordered w-full"
+                />
+              </form>
+              <p class="text-xs text-base-content/40 mt-1">
+                Optional. Shows as strikethrough price.
+              </p>
+            </div>
+          </div>
+
+          <%!-- Variant pricing table (for variable products) --%>
+          <div
+            :if={@wizard_data["product_type"] == "variable" && @generated_variants != []}
+            class="mt-6"
+          >
+            <h3 class="text-sm font-medium mb-3">Individual variant prices</h3>
+            <div class="overflow-x-auto">
+              <table class="table table-sm w-full text-sm">
+                <thead>
+                  <tr class="text-xs uppercase text-base-content/50">
+                    <th>SKU</th>
+                    <th>Options</th>
+                    <th>Price</th>
+                    <th>Cost</th>
+                    <th>Compare</th>
+                    <th>Stock</th>
+                    <th>Barcode</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr :for={{variant, idx} <- Enum.with_index(@generated_variants)}>
+                    <td>
+                      <form phx-submit="noop">
+                        <input
+                          type="text"
+                          value={variant["sku"]}
+                          phx-change="update_variant"
+                          name={"variant[#{idx}][sku]"}
+                          class="input input-xs input-bordered w-32"
+                        />
+                      </form>
+                    </td>
+                    <td class="text-xs text-base-content/60">
+                      {variant["option_values"]
+                      |> Enum.map(fn {k, v} -> "#{k}: #{v}" end)
+                      |> Enum.join(", ")}
+                    </td>
+                    <td>
+                      <form phx-submit="noop">
+                        <input
+                          type="text"
+                          value={variant["price"]}
+                          phx-change="update_variant"
+                          name={"variant[#{idx}][price]"}
+                          class="input input-xs input-bordered w-20"
+                        />
+                      </form>
+                    </td>
+                    <td>
+                      <form phx-submit="noop">
+                        <input
+                          type="text"
+                          value={variant["cost_price"]}
+                          phx-change="update_variant"
+                          name={"variant[#{idx}][cost_price]"}
+                          class="input input-xs input-bordered w-20"
+                        />
+                      </form>
+                    </td>
+                    <td>
+                      <form phx-submit="noop">
+                        <input
+                          type="text"
+                          value={variant["compare_at_price"]}
+                          phx-change="update_variant"
+                          name={"variant[#{idx}][compare_at_price]"}
+                          class="input input-xs input-bordered w-20"
+                        />
+                      </form>
+                    </td>
+                    <td>
+                      <form phx-submit="noop">
+                        <input
+                          type="text"
+                          value={variant["stock"]}
+                          phx-change="update_variant"
+                          name={"variant[#{idx}][stock]"}
+                          class="input input-xs input-bordered w-16"
+                        />
+                      </form>
+                    </td>
+                    <td>
+                      <form phx-submit="noop">
+                        <input
+                          type="text"
+                          value={variant["barcode"]}
+                          phx-change="update_variant"
+                          name={"variant[#{idx}][barcode]"}
+                          class="input input-xs input-bordered w-24"
+                        />
+                      </form>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 border-t border-base-200 px-6 py-4">
+          <.ui_button phx-click="prev_step" variant="ghost">Back</.ui_button>
+          <.ui_button phx-click="next_step" variant="primary">Next: Images</.ui_button>
+        </div>
+      </.panel>
+
+      <%!-- Step 4: Images --%>
+      <.panel :if={@step == 4}>
+        <div class="border-b border-base-200 px-6 py-4">
+          <h2 class="text-base font-semibold">Product Images</h2>
+          <p class="mt-0.5 text-sm text-base-content/50">
+            Pick images from your media library or upload new ones. The first image is the cover photo.
+          </p>
+        </div>
+        <div class="p-6 space-y-6">
+          <form id="product-images-form" phx-submit="save_product_images">
+            <.live_component
+              module={AlgoieWeb.Components.MediaManagerComponent}
+              id="product-images"
+              name="product_images"
+              multiple
+              selected={@wizard_data["product_image_urls"]}
+              label="Product images"
+              helper="The first image is used as the cover photo."
+              store_id={@store_id}
+              tenant={@tenant}
+              current_user={@current_user}
+            />
+            <div class="mt-3">
+              <.ui_button type="submit" variant="secondary" size="sm">Save Images</.ui_button>
+            </div>
+          </form>
+
+          <div
+            :if={@wizard_data["product_type"] == "variable" && @generated_variants != []}
+            class="space-y-6 border-t border-base-200 pt-6"
+          >
+            <h3 class="text-sm font-medium">Variant images</h3>
+            <div :for={{variant, idx} <- Enum.with_index(@generated_variants)} class="space-y-2">
+              <p class="text-xs font-medium text-base-content/60">
+                {variant["option_values"]
+                |> Enum.map(fn {k, v} -> "#{k}: #{v}" end)
+                |> Enum.join(", ")}
+              </p>
+              <form
+                id={"variant-images-form-#{idx}"}
+                phx-submit="save_variant_images"
+                phx-value-index={idx}
+              >
+                <.live_component
+                  module={AlgoieWeb.Components.MediaManagerComponent}
+                  id={"variant-images-#{idx}"}
+                  name="variant_images"
+                  multiple
+                  selected={variant["image_urls"] || []}
+                  store_id={@store_id}
+                  tenant={@tenant}
+                  current_user={@current_user}
+                />
+                <div class="mt-3">
+                  <.ui_button type="submit" variant="secondary" size="sm">Save Images</.ui_button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 border-t border-base-200 px-6 py-4">
+          <.ui_button phx-click="prev_step" variant="ghost">Back</.ui_button>
+          <.ui_button phx-click="next_step" variant="primary">Next: SEO</.ui_button>
+        </div>
+      </.panel>
+
+      <%!-- Step 5: SEO --%>
+      <.panel :if={@step == 5}>
+        <div class="border-b border-base-200 px-6 py-4">
+          <h2 class="text-base font-semibold">SEO & Tags</h2>
+          <p class="mt-0.5 text-sm text-base-content/50">
+            Optimize for search engines and organize with tags.
+          </p>
+        </div>
+        <div class="p-6 space-y-5">
+          <div>
+            <label class="label"><span class="label-text font-medium">Meta title</span></label>
+            <form phx-submit="noop">
+              <input
+                type="text"
+                name="meta_title"
+                value={@wizard_data["meta_title"]}
+                phx-change="update_field"
+                placeholder="Page title for search engines"
+                class="input input-bordered w-full"
+              />
+            </form>
+            <p class="text-xs text-base-content/40 mt-1">
+              {String.length(@wizard_data["meta_title"])}/60 characters
+            </p>
+          </div>
+
+          <div>
+            <label class="label"><span class="label-text font-medium">Meta description</span></label>
+            <form phx-submit="noop">
+              <textarea
+                name="meta_description"
+                phx-change="update_field"
+                placeholder="Brief description for search results"
+                rows="3"
+                class="textarea textarea-bordered w-full"
+              >{@wizard_data["meta_description"]}</textarea>
+            </form>
+            <p class="text-xs text-base-content/40 mt-1">
+              {String.length(@wizard_data["meta_description"])}/160 characters
+            </p>
+          </div>
+        </div>
+
+        <div class="px-6 pb-6">
+          <div>
+            <label class="label"><span class="label-text font-medium">Tags</span></label>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <span
+                :for={tag <- @wizard_data["tags"]}
+                class="badge badge-primary gap-1"
+              >
+                {tag}
+                <button
+                  type="button"
+                  phx-click="remove_tag"
+                  phx-value-tag={tag}
+                  class="hover:text-primary-content"
+                >
+                  <.icon name="hero-x-mark" class="size-3" />
+                </button>
+              </span>
+            </div>
+            <form phx-submit="add_tag" class="flex gap-2">
+              <input
+                type="text"
+                name="tag"
+                value={@wizard_data["tag_input"]}
+                placeholder="Add a tag and press Enter"
+                list="tag-suggestions"
+                autocomplete="off"
+                class="input input-bordered input-sm flex-1"
+              />
+              <datalist id="tag-suggestions">
+                <option :for={tag <- @tag_suggestions} value={tag} />
+              </datalist>
+              <button type="submit" class="btn btn-sm btn-primary">
+                <.icon name="hero-plus" class="size-4" /> Add
+              </button>
+            </form>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 border-t border-base-200 px-6 py-4">
+          <.ui_button phx-click="prev_step" variant="ghost">Back</.ui_button>
+          <.ui_button phx-click="next_step" variant="primary">Next: Review</.ui_button>
+        </div>
+      </.panel>
+
+      <%!-- Step 6: Review --%>
+      <.panel :if={@step == 6}>
+        <div class="border-b border-base-200 px-6 py-4">
+          <h2 class="text-base font-semibold">Review & Publish</h2>
+          <p class="mt-0.5 text-sm text-base-content/50">
+            Review your product before publishing.
+          </p>
+        </div>
+        <div class="p-6 space-y-6">
+          <%!-- Basic info summary --%>
+          <div>
+            <h3 class="text-sm font-semibold text-base-content/50 uppercase tracking-wider mb-2">
+              Basic Info
+            </h3>
+            <div class="bg-base-200 rounded-lg p-4 space-y-1">
+              <p><span class="font-medium">Name:</span> {@wizard_data["name"]}</p>
+              <p><span class="font-medium">Slug:</span> {@wizard_data["slug"]}</p>
+              <p><span class="font-medium">Type:</span> {@wizard_data["product_type"]}</p>
+              <p :if={@wizard_data["description"]}>
+                <span class="font-medium">Description:</span>
+                <span class="text-base-content/60">{String.slice(
+                  @wizard_data["description"],
+                  0,
+                  100
+                )}{if String.length(@wizard_data["description"]) > 100, do: "..."}</span>
+              </p>
+            </div>
+          </div>
+
+          <%!-- Category & Brand --%>
+          <div>
+            <h3 class="text-sm font-semibold text-base-content/50 uppercase tracking-wider mb-2">
+              Organization
+            </h3>
+            <div class="bg-base-200 rounded-lg p-4 space-y-1">
+              <p>
+                <span class="font-medium">Category:</span> {@category_map[
+                  @wizard_data["category_id"]
+                ] || "None"}
+              </p>
+              <p :if={@wizard_data["category_ids"] != []}>
+                <span class="font-medium">Additional categories:</span>
+                {@wizard_data["category_ids"]
+                |> Enum.map(&@category_map[&1])
+                |> Enum.reject(&is_nil/1)
+                |> Enum.join(", ")}
+              </p>
+              <p>
+                <span class="font-medium">Brand:</span> {@brand_map[@wizard_data["brand_id"]] ||
+                  "None"}
+              </p>
+              <p>
+                <span class="font-medium">Featured:</span> {if @wizard_data["featured"],
+                  do: "Yes",
+                  else: "No"}
+              </p>
+              <p>
+                <span class="font-medium">New:</span> {if @wizard_data["is_new"],
+                  do: "Yes",
+                  else: "No"}
+              </p>
+            </div>
+          </div>
+
+          <%!-- Pricing --%>
+          <div>
+            <h3 class="text-sm font-semibold text-base-content/50 uppercase tracking-wider mb-2">
+              Pricing
+            </h3>
+            <div class="bg-base-200 rounded-lg p-4 space-y-1">
+              <p :if={@wizard_data["product_type"] == "simple"}>
+                <span class="font-medium">SKU:</span> {if @wizard_data["sku"] != "",
+                  do: @wizard_data["sku"],
+                  else: @wizard_data["slug"]}
+              </p>
+              <p><span class="font-medium">Price:</span> ${@wizard_data["price"]}</p>
+              <p :if={@wizard_data["cost_price"] != ""}>
+                <span class="font-medium">Cost:</span> ${@wizard_data["cost_price"]}
+              </p>
+              <p :if={@wizard_data["compare_at_price"] != ""}>
+                <span class="font-medium">Compare-at:</span> ${@wizard_data["compare_at_price"]}
+              </p>
+              <p>
+                <span class="font-medium">Variants:</span>
+                {if @wizard_data["product_type"] == "simple",
+                  do: 1,
+                  else: length(@generated_variants)}
+              </p>
+            </div>
+          </div>
+
+          <%!-- SEO --%>
+          <div>
+            <h3 class="text-sm font-semibold text-base-content/50 uppercase tracking-wider mb-2">
+              SEO
+            </h3>
+            <div class="bg-base-200 rounded-lg p-4 space-y-1">
+              <p>
+                <span class="font-medium">Meta title:</span> {@wizard_data["meta_title"] ||
+                  "Not set"}
+              </p>
+              <p>
+                <span class="font-medium">Meta description:</span> {@wizard_data[
+                  "meta_description"
+                ] || "Not set"}
+              </p>
+              <p :if={@wizard_data["tags"] != []}>
+                <span class="font-medium">Tags:</span>
+                <span class="inline-flex flex-wrap gap-1 mt-1">
+                  <span :for={tag <- @wizard_data["tags"]} class="badge badge-sm badge-outline">{tag}</span>
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 border-t border-base-200 px-6 py-4">
+          <.ui_button phx-click="prev_step" variant="ghost">Back</.ui_button>
+          <.ui_button
+            :if={@mode == :edit}
+            phx-click="publish"
+            phx-value-status="archived"
+            variant="ghost"
+          >
+            Archive
+          </.ui_button>
+          <.ui_button phx-click="publish" phx-value-status="draft" variant="secondary">
+            Save as Draft
+          </.ui_button>
+          <.ui_button phx-click="publish" phx-value-status="active" variant="primary">
+            <.icon name="hero-check" class="size-4" />
+            {if @mode == :edit, do: "Save & Publish", else: "Publish"}
+          </.ui_button>
+        </div>
+      </.panel>
+    </div>
+  </div>
+</Layouts.dashboard>

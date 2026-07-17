@@ -9,7 +9,9 @@
   active={:media}
 >
   <.page_header title="Media Library">
-    <:subtitle>Organize and manage images used across products, brands, and categories.</:subtitle>
+    <:subtitle>
+      Organize and manage images used across products, brands, and categories.
+    </:subtitle>
     <:actions>
       <.ui_button phx-click="toggle-uploader" variant="primary">
         <.icon name="hero-arrow-up-tray" class="size-4" /> Upload
@@ -26,7 +28,9 @@
           <span class="text-xs text-base-content/40">
             PNG, JPG, GIF, WEBP, SVG up to 10MB · up to 24 files
             <%= if @current_folder not in [:all, :unfiled] do %>
-              · uploading into <span class="font-medium">{Enum.find(@folders, &(&1.id == @current_folder)) |> then(&(&1 && &1.name))}</span>
+              · uploading into
+              <span class="font-medium">{Enum.find(@folders, &(&1.id == @current_folder))
+              |> then(&(&1 && &1.name))}</span>
             <% end %>
           </span>
           <.live_file_input upload={@uploads.media} class="hidden" />
@@ -129,7 +133,8 @@
             class={[
               "group relative overflow-hidden rounded-xl border-2 bg-base-200 text-left transition-colors",
               @selected_asset && @selected_asset.id == asset.id && "border-primary",
-              !(@selected_asset && @selected_asset.id == asset.id) && "border-base-300 hover:border-primary/40"
+              !(@selected_asset && @selected_asset.id == asset.id) &&
+                "border-base-300 hover:border-primary/40"
             ]}
           >
             <span class="block aspect-square">
@@ -168,12 +173,17 @@
       </div>
 
       <div class="space-y-5 p-5">
-        <img src={@selected_asset.url} class="max-h-56 w-full rounded-lg border border-base-300 object-contain bg-base-200" />
+        <img
+          src={@selected_asset.url}
+          class="max-h-56 w-full rounded-lg border border-base-300 object-contain bg-base-200"
+        />
 
         <div class="space-y-1 text-xs text-base-content/50">
           <p class="truncate text-sm font-medium text-base-content">{@selected_asset.filename}</p>
           <p :if={@selected_asset.size}>{format_size(@selected_asset.size)}</p>
-          <p :if={@selected_asset.inserted_at}>Uploaded {format_date(@selected_asset.inserted_at)}</p>
+          <p :if={@selected_asset.inserted_at}>
+            Uploaded {format_date(@selected_asset.inserted_at)}
+          </p>
         </div>
 
         <form phx-submit="save-alt-text" phx-value-id={@selected_asset.id} class="space-y-1.5">
@@ -191,7 +201,11 @@
         <form phx-change="move-asset" phx-value-id={@selected_asset.id} class="space-y-1.5">
           <label class="text-xs font-medium text-base-content/60">Folder</label>
           <select name="folder_id" class="w-full select">
-            <option :for={{label, value} <- folder_options(@folders)} value={value} selected={value == (@selected_asset.folder_id || "")}>
+            <option
+              :for={{label, value} <- folder_options(@folders)}
+              value={value}
+              selected={value == (@selected_asset.folder_id || "")}
+            >
               {label}
             </option>
           </select>
@@ -220,4 +234,3 @@
     </div>
   </div>
 </Layouts.dashboard>
-

@@ -28,7 +28,10 @@ defmodule Algoie.Accounts.User do
       enabled?(true)
       token_resource(Algoie.Accounts.Token)
       signing_algorithm("HS256")
-      signing_secret(Application.compile_env(:algoie, :token_signing_secret, "dev-secret-change-in-prod"))
+
+      signing_secret(
+        Application.compile_env(:algoie, :token_signing_secret, "dev-secret-change-in-prod")
+      )
     end
   end
 
