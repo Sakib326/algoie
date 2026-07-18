@@ -43,7 +43,14 @@ defmodule Algoie.Media.MediaAsset do
   end
 
   actions do
-    defaults([:read, :destroy])
+    read :read do
+      primary?(true)
+      pagination offset?: true, default_limit: 24, countable: true
+    end
+
+    destroy :destroy do
+      primary?(true)
+    end
 
     create :create do
       primary?(true)

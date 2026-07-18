@@ -5,12 +5,29 @@ defmodule AlgoieWeb.BrandLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, socket |> assign(:active, :brands) |> load_brands()}
+    {:ok, 
+     socket 
+     |> assign(:active, :brands)
+     |> assign(:page, 1)
+     |> assign(:brands_page, nil)
+     |> assign(:brands, [])}
   end
 
   @impl true
   def handle_params(params, _url, socket) do
-    {:noreply, apply_action(socket, socket.assigns.live_action, params)}
+    page =
+      case Integer.parse(params["page"] || "1") do
+        {p, _} when p > 0 -> p
+        _ -> 1
+      end
+
+    socket =
+      socket
+      |> assign(:page, page)
+      |> apply_action(socket.assigns.live_action, params)
+      |> load_brands()
+
+    {:noreply, socket}
   end
 
   defp apply_action(socket, :edit, %{"id" => id}) do
@@ -87,9 +104,19 @@ defmodule AlgoieWeb.BrandLive.Index do
   end
 
   defp load_brands(socket) do
-    case Ash.read(Brand, AlgoieWeb.Scope.opts(socket)) do
-      {:ok, brands} -> assign(socket, :brands, brands)
-      _ -> assign(socket, :brands, [])
+    limit = 12
+    offset = (socket.assigns.page - 1) * limit
+    opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, offset: offset, count: true)
+
+    case Ash.read(Brand, opts) do
+      {:ok, page_result} -> 
+        socket
+        |> assign(:brands, page_result.results)
+        |> assign(:brands_page, page_result)
+      _ -> 
+        socket
+        |> assign(:brands, [])
+        |> assign(:brands_page, nil)
     end
   end
 

@@ -9,15 +9,38 @@ defmodule AlgoieWeb.StorefrontProductLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    {:ok,
+     socket
+     |> assign(:page_title, "Products")
+     |> assign(:page, 1)
+     |> assign(:products_page, nil)
+     |> assign(:products, [])}
+  end
+
+  @impl true
+  def handle_params(params, _url, socket) do
+    page =
+      case Integer.parse(params["page"] || "1") do
+        {p, _} when p > 0 -> p
+        _ -> 1
+      end
+
+    {:noreply, socket |> assign(:page, page) |> load_products()}
+  end
+
+  defp load_products(socket) do
     tenant = socket.assigns.tenant
     store_id = socket.assigns.store_id
+    limit = 12
+    offset = (socket.assigns.page - 1) * limit
 
-    products =
+    page_result =
       Product
       |> Ash.Query.filter(status == :active and store_id == ^store_id)
       |> Ash.Query.sort(inserted_at: :desc)
-      |> Ash.read!(tenant: tenant, authorize?: false)
+      |> Ash.read!(tenant: tenant, authorize?: false, page: [offset: offset, count: true])
 
+    products = page_result.results
     product_ids = Enum.map(products, & &1.id)
 
     variants =
@@ -75,9 +98,8 @@ defmodule AlgoieWeb.StorefrontProductLive.Index do
         })
       end)
 
-    {:ok,
-     socket
-     |> assign(:page_title, "Products")
-     |> assign(:products, enriched)}
+    socket
+    |> assign(:products_page, page_result)
+    |> assign(:products, enriched)
   end
 end

@@ -45,6 +45,7 @@ defmodule Algoie.Orders.Order do
   actions do
     read :read do
       primary?(true)
+      pagination offset?: true, default_limit: 12, countable: true
     end
 
     create :create do

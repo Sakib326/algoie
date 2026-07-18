@@ -148,6 +148,12 @@
             </span>
           </button>
         </div>
+        
+        <.pagination
+          page={@assets_page}
+          link_fn={fn p -> ~p"/dashboard/media?page=#{p}&query=#{@query}" end}
+          class="p-4 border-t border-base-200"
+        />
       </.panel>
     </div>
   </div>

@@ -183,6 +183,11 @@
           </tr>
         </tbody>
       </table>
+      <.pagination
+        page={@products_page}
+        link_fn={fn p -> ~p"/dashboard/products?page=#{p}&search=#{@search}&category=#{@filter_category}&brand=#{@filter_brand}&status=#{@filter_status}&stock=#{@filter_stock}" end}
+        class="p-4 border-t border-base-200"
+      />
     </div>
   </.panel>
 </Layouts.dashboard>

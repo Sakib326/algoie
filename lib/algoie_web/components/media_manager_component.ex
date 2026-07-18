@@ -70,6 +70,8 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
      |> assign(:show_modal, false)
      |> assign(:tab, "library")
      |> assign(:query, "")
+     |> assign(:page, 1)
+     |> assign(:assets_page, nil)
      |> assign(:staged, [])
      |> assign(:current_folder, :all)
      |> assign(:creating_folder, false)
@@ -98,7 +100,14 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
       |> assign_new(:selected, fn -> initial_selected(assigns) end)
       |> assign_new(:folders, fn -> Media.list_folders(socket_opts(assigns)) end)
       |> assign_new(:counts, fn -> Media.folder_counts(socket_opts(assigns)) end)
-      |> assign_new(:assets, fn -> load_assets(socket_opts(assigns), nil, :all) end)
+      |> assign_new(:assets_page, fn -> load_assets_page(socket_opts(assigns), nil, :all, 1) end)
+      |> assign_new(:assets, fn ->
+        case load_assets_page(socket_opts(assigns), nil, :all, 1) do
+          %Ash.Page.Offset{} = page -> page.results
+          list when is_list(list) -> list
+          _ -> []
+        end
+      end)
 
     {:ok, socket}
   end
@@ -113,8 +122,9 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
      |> assign(:staged, socket.assigns.selected)
      |> assign(:query, "")
      |> assign(:current_folder, :all)
+     |> assign(:page, 1)
      |> reload_folders()
-     |> assign(:assets, load_assets(socket_opts(socket.assigns), nil, :all))}
+     |> reload_assets()}
   end
 
   def handle_event("close-modal", _params, socket) do
@@ -131,10 +141,8 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
     {:noreply,
      socket
      |> assign(:query, query)
-     |> assign(
-       :assets,
-       load_assets(socket_opts(socket.assigns), query, socket.assigns.current_folder)
-     )}
+     |> assign(:page, 1)
+     |> reload_assets()}
   end
 
   def handle_event("toggle-asset", %{"url" => url}, socket) do
@@ -147,18 +155,11 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
   # ── Folder navigation ──────────────────────────────────────────────
 
   def handle_event("select-folder", %{"id" => id}, socket) do
-    socket = assign(socket, :current_folder, parse_folder(id))
-
     {:noreply,
-     assign(
-       socket,
-       :assets,
-       load_assets(
-         socket_opts(socket.assigns),
-         socket.assigns.query,
-         socket.assigns.current_folder
-       )
-     )}
+     socket
+     |> assign(:current_folder, parse_folder(id))
+     |> assign(:page, 1)
+     |> reload_assets()}
   end
 
   def handle_event("new-folder-start", _params, socket) do
@@ -216,16 +217,17 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
           socket
       end
 
-    {:noreply,
-     assign(
-       socket,
-       :assets,
-       load_assets(
-         socket_opts(socket.assigns),
-         socket.assigns.query,
-         socket.assigns.current_folder
-       )
-     )}
+    {:noreply, reload_assets(socket)}
+  end
+
+  def handle_event("set-page", %{"page" => page}, socket) do
+    page =
+      case Integer.parse(page) do
+        {p, _} when p > 0 -> p
+        _ -> 1
+      end
+
+    {:noreply, socket |> assign(:page, page) |> reload_assets()}
   end
 
   def handle_event("confirm-selection", _params, socket) do
@@ -326,7 +328,29 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
     ]
   end
 
-  defp load_assets(opts, query, folder), do: Media.list_assets(opts, query, folder)
+  defp load_assets_page(opts, query, folder, page) do
+    limit = 24
+    offset = (page - 1) * limit
+    opts = Keyword.put(opts, :page, offset: offset, count: true)
+    Media.list_assets(opts, query, folder)
+  end
+
+  defp reload_assets(socket) do
+    case load_assets_page(socket_opts(socket.assigns), socket.assigns.query, socket.assigns.current_folder, socket.assigns.page) do
+      %Ash.Page.Offset{} = page_result ->
+        socket
+        |> assign(:assets, page_result.results)
+        |> assign(:assets_page, page_result)
+      results when is_list(results) ->
+        socket
+        |> assign(:assets, results)
+        |> assign(:assets_page, nil)
+      _ ->
+        socket
+        |> assign(:assets, [])
+        |> assign(:assets_page, nil)
+    end
+  end
 
   defp reload_folders(socket) do
     socket
@@ -685,6 +709,13 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
                     </button>
                   </div>
                 </div>
+                
+                <.pagination
+                  page={@assets_page}
+                  phx_click="set-page"
+                  phx_target={@myself}
+                  class="mt-4"
+                />
               </div>
             </div>
           </div>

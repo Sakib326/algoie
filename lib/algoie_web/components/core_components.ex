@@ -654,4 +654,120 @@ defmodule AlgoieWeb.CoreComponents do
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
+
+  @doc """
+  Renders a pagination control for Ash.Page.Offset results.
+
+  ## Examples
+
+      <.pagination
+        page={@products_page}
+        link_fn={fn page_num -> ~p"/admin/products?page=\#{page_num}&search=\#{@search}" end}
+      />
+  """
+  attr :page, :any, required: true, doc: "The Ash.Page.Offset struct"
+  attr :link_fn, :any, default: nil, doc: "A function that takes a page number and returns a URL"
+  attr :phx_click, :string, default: nil
+  attr :phx_target, :any, default: nil
+  attr :class, :any, default: nil
+
+  def pagination(assigns) do
+    if is_nil(assigns.page) || assigns.page.count == 0 || assigns.page.count <= assigns.page.limit do
+      ~H"""
+      <div class={["hidden", @class]}></div>
+      """
+    else
+      limit = assigns.page.limit
+      count = assigns.page.count
+      offset = assigns.page.offset || 0
+
+      current_page = div(offset, limit) + 1
+      total_pages = ceil(count / limit)
+      total_pages = max(1, total_pages)
+
+      # Show a window of pages: e.g. up to 5 pages around the current page
+      window = 2
+      start_page = max(1, current_page - window)
+      end_page = min(total_pages, current_page + window)
+
+      assigns = assign(assigns, current_page: current_page, total_pages: total_pages, start_page: start_page, end_page: end_page)
+
+      ~H"""
+      <div class={["flex items-center justify-between", @class]}>
+        <div class="text-sm text-base-content/60">
+          Showing <span class="font-medium">{@page.offset + 1}</span>
+          to <span class="font-medium">{min(@page.offset + @page.limit, @page.count)}</span>
+          of <span class="font-medium">{@page.count}</span> results
+        </div>
+
+        <div class="join">
+          <%= if @link_fn do %>
+            <.link
+              patch={if @current_page > 1, do: @link_fn.(@current_page - 1), else: nil}
+              class={["join-item btn btn-sm", @current_page == 1 && "btn-disabled"]}
+            >
+              «
+            </.link>
+            
+            <button :if={@start_page > 1} class="join-item btn btn-sm btn-disabled">...</button>
+
+            <%= for p <- @start_page..@end_page do %>
+              <.link
+                patch={@link_fn.(p)}
+                class={["join-item btn btn-sm", @current_page == p && "btn-active"]}
+              >
+                {p}
+              </.link>
+            <% end %>
+
+            <button :if={@end_page < @total_pages} class="join-item btn btn-sm btn-disabled">...</button>
+
+            <.link
+              patch={if @current_page < @total_pages, do: @link_fn.(@current_page + 1), else: nil}
+              class={["join-item btn btn-sm", @current_page == @total_pages && "btn-disabled"]}
+            >
+              »
+            </.link>
+          <% else %>
+            <button
+              type="button"
+              phx-click={if @current_page > 1, do: @phx_click, else: nil}
+              phx-value-page={@current_page - 1}
+              phx-target={@phx_target}
+              class={["join-item btn btn-sm", @current_page == 1 && "btn-disabled"]}
+            >
+              «
+            </button>
+            
+            <button :if={@start_page > 1} class="join-item btn btn-sm btn-disabled">...</button>
+
+            <%= for p <- @start_page..@end_page do %>
+              <button
+                type="button"
+                phx-click={@phx_click}
+                phx-value-page={p}
+                phx-target={@phx_target}
+                class={["join-item btn btn-sm", @current_page == p && "btn-active"]}
+              >
+                {p}
+              </button>
+            <% end %>
+
+            <button :if={@end_page < @total_pages} class="join-item btn btn-sm btn-disabled">...</button>
+
+            <button
+              type="button"
+              phx-click={if @current_page < @total_pages, do: @phx_click, else: nil}
+              phx-value-page={@current_page + 1}
+              phx-target={@phx_target}
+              class={["join-item btn btn-sm", @current_page == @total_pages && "btn-disabled"]}
+            >
+              »
+            </button>
+          <% end %>
+        </div>
+      </div>
+      """
+    end
+  end
 end

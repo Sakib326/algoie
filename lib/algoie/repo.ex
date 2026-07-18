@@ -20,4 +20,10 @@ defmodule Algoie.Repo do
       {:error, reason} -> {:error, reason}
     end
   end
+
+  def all_tenants do
+    import Ecto.Query
+    query = from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))
+    Enum.map(all(query), fn id -> "tenant_#{id}" end)
+  end
 end

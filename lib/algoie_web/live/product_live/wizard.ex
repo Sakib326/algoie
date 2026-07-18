@@ -856,7 +856,8 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   defp extract_errors(error), do: [error]
 
   defp list_related(socket, resource) do
-    case Ash.read(resource, AlgoieWeb.Scope.opts(socket)) do
+    opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, false)
+    case Ash.read(resource, opts) do
       {:ok, records} -> records
       _ -> []
     end

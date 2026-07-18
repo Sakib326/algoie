@@ -22,12 +22,26 @@ defmodule AlgoieWeb.ProductLive.Index do
      |> assign(:filter_brand, "")
      |> assign(:filter_status, "")
      |> assign(:filter_stock, "")
-     |> load_products()}
+     |> assign(:page, 1)
+     |> assign(:products_page, nil)
+     |> assign(:products, [])}
   end
 
   @impl true
   def handle_params(params, _url, socket) do
-    {:noreply, apply_action(socket, socket.assigns.live_action, params)}
+    page =
+      case Integer.parse(params["page"] || "1") do
+        {p, _} when p > 0 -> p
+        _ -> 1
+      end
+
+    socket =
+      socket
+      |> assign(:page, page)
+      |> apply_action(socket.assigns.live_action, params)
+      |> load_products()
+
+    {:noreply, socket}
   end
 
   defp apply_action(socket, :index, _params) do
@@ -44,7 +58,7 @@ defmodule AlgoieWeb.ProductLive.Index do
   end
 
   def handle_event("search", %{"search" => search}, socket) do
-    {:noreply, socket |> assign(:search, search) |> load_products()}
+    {:noreply, socket |> assign(:search, search) |> assign(:page, 1) |> load_products()}
   end
 
   def handle_event("filter", params, socket) do
@@ -54,6 +68,7 @@ defmodule AlgoieWeb.ProductLive.Index do
      |> assign(:filter_brand, Map.get(params, "brand", ""))
      |> assign(:filter_status, Map.get(params, "status", ""))
      |> assign(:filter_stock, Map.get(params, "stock", ""))
+     |> assign(:page, 1)
      |> load_products()}
   end
 
@@ -65,6 +80,7 @@ defmodule AlgoieWeb.ProductLive.Index do
      |> assign(:filter_brand, "")
      |> assign(:filter_status, "")
      |> assign(:filter_stock, "")
+     |> assign(:page, 1)
      |> load_products()}
   end
 
@@ -145,13 +161,24 @@ defmodule AlgoieWeb.ProductLive.Index do
       end
 
     query = Ash.Query.sort(query, inserted_at: :desc)
+    
+    limit = 12
+    offset = (socket.assigns.page - 1) * limit
+    
+    opts = Keyword.put(opts, :page, offset: offset, count: true)
 
     case Ash.read(query, opts) do
-      {:ok, products} ->
-        assign(socket, :products, attach_cover_urls(products, opts))
+      {:ok, page_result} ->
+        products = attach_cover_urls(page_result.results, opts)
+        
+        socket
+        |> assign(:products, products)
+        |> assign(:products_page, page_result)
 
       _ ->
-        assign(socket, :products, [])
+        socket
+        |> assign(:products, [])
+        |> assign(:products_page, nil)
     end
   end
 
@@ -159,6 +186,7 @@ defmodule AlgoieWeb.ProductLive.Index do
 
   defp attach_cover_urls(products, opts) do
     product_ids = Enum.map(products, & &1.id)
+    opts = Keyword.put(opts, :page, false)
 
     product_images =
       ProductImage
@@ -190,7 +218,8 @@ defmodule AlgoieWeb.ProductLive.Index do
   end
 
   defp list_related(socket, resource) do
-    case Ash.read(resource, AlgoieWeb.Scope.opts(socket)) do
+    opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, false)
+    case Ash.read(resource, opts) do
       {:ok, records} -> records
       _ -> []
     end

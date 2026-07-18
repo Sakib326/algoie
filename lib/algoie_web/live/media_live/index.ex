@@ -24,7 +24,9 @@ defmodule AlgoieWeb.MediaLive.Index do
      |> assign(:selected_asset, nil)
      |> assign(:folders, Media.list_folders(opts(socket)))
      |> assign(:counts, Media.folder_counts(opts(socket)))
-     |> then(&assign(&1, :assets, load_assets(&1)))
+     |> assign(:page, 1)
+     |> assign(:assets_page, nil)
+     |> assign(:assets, [])
      |> allow_upload(:media,
        accept: Storage.accepted_extensions(),
        max_entries: 24,
@@ -35,6 +37,22 @@ defmodule AlgoieWeb.MediaLive.Index do
   end
 
   @impl true
+  def handle_params(params, _url, socket) do
+    page =
+      case Integer.parse(params["page"] || "1") do
+        {p, _} when p > 0 -> p
+        _ -> 1
+      end
+
+    socket =
+      socket
+      |> assign(:page, page)
+      |> load_assets()
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_event("toggle-uploader", _params, socket) do
     {:noreply, assign(socket, :show_uploader, !socket.assigns.show_uploader)}
   end
@@ -42,8 +60,8 @@ defmodule AlgoieWeb.MediaLive.Index do
   def handle_event("validate", _params, socket), do: {:noreply, socket}
 
   def handle_event("search", %{"value" => query}, socket) do
-    socket = assign(socket, :query, query)
-    {:noreply, assign(socket, :assets, load_assets(socket))}
+    socket = assign(socket, :query, query) |> assign(:page, 1)
+    {:noreply, load_assets(socket)}
   end
 
   def handle_event("cancel-entry", %{"ref" => ref}, socket) do
@@ -58,7 +76,7 @@ defmodule AlgoieWeb.MediaLive.Index do
       |> assign(:current_folder, parse_folder(id))
       |> assign(:selected_asset, nil)
 
-    {:noreply, assign(socket, :assets, load_assets(socket))}
+    {:noreply, load_assets(socket)}
   end
 
   def handle_event("new-folder-start", _params, socket) do
@@ -112,7 +130,7 @@ defmodule AlgoieWeb.MediaLive.Index do
           socket
       end
 
-    {:noreply, assign(socket, :assets, load_assets(socket))}
+    {:noreply, load_assets(socket)}
   end
 
   # ── Asset details panel ──────────────────────────────────────────
@@ -221,7 +239,26 @@ defmodule AlgoieWeb.MediaLive.Index do
   defp opts(socket), do: AlgoieWeb.Scope.opts(socket)
 
   defp load_assets(socket) do
-    Media.list_assets(opts(socket), socket.assigns.query, socket.assigns.current_folder)
+    limit = 24
+    offset = (socket.assigns.page - 1) * limit
+    opts = Keyword.put(opts(socket), :page, offset: offset, count: true)
+
+    case Media.list_assets(opts, socket.assigns.query, socket.assigns.current_folder) do
+      %Ash.Page.Offset{} = page_result ->
+        socket
+        |> assign(:assets, page_result.results)
+        |> assign(:assets_page, page_result)
+
+      results when is_list(results) ->
+        socket
+        |> assign(:assets, results)
+        |> assign(:assets_page, nil)
+
+      _ ->
+        socket
+        |> assign(:assets, [])
+        |> assign(:assets_page, nil)
+    end
   end
 
   defp reload_folders(socket) do

@@ -31,7 +31,7 @@
         @filter == value && "bg-primary/20 text-primary",
         @filter != value && "bg-base-200 text-base-content/50"
       ]}>
-        {count_for(@all_orders, value)}
+        {count_for(@counts, value)}
       </span>
     </button>
   </div>
@@ -87,5 +87,11 @@
         </tr>
       </tbody>
     </table>
+    
+    <.pagination
+      page={@orders_page}
+      link_fn={fn p -> ~p"/dashboard/orders?page=#{p}&status=#{@filter}" end}
+      class="p-4 border-t border-base-200"
+    />
   </.panel>
 </Layouts.dashboard>

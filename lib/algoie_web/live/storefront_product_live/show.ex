@@ -16,7 +16,7 @@ defmodule AlgoieWeb.StorefrontProductLive.Show do
       Product
       |> Ash.Query.filter(slug == ^slug and store_id == ^store_id and status == :active)
       |> Ash.Query.limit(1)
-      |> Ash.read!(tenant: tenant, authorize?: false)
+      |> Ash.read!(tenant: tenant, authorize?: false, page: false)
       |> List.first()
 
     {variants, product_images, variant_images} =

@@ -27,12 +27,11 @@ defmodule Algoie.Media do
   def list_assets(opts, query \\ nil, folder \\ :all) do
     Algoie.Media.MediaAsset
     |> Ash.Query.sort(inserted_at: :desc)
-    |> Ash.Query.limit(200)
     |> maybe_filter(query)
     |> maybe_scope_folder(folder)
     |> Ash.read(opts)
     |> case do
-      {:ok, assets} -> assets
+      {:ok, result} -> result
       {:error, _} -> []
     end
   end
@@ -123,7 +122,12 @@ defmodule Algoie.Media do
   """
   def delete_folder(%Algoie.Media.MediaFolder{} = folder, opts) do
     opts
+    |> Keyword.put(:page, false)
     |> list_assets(nil, folder.id)
+    |> case do
+      %Ash.Page.Offset{} = page -> page.results
+      results when is_list(results) -> results
+    end
     |> Enum.each(&move_asset(&1, nil, opts))
 
     opts
@@ -139,11 +143,23 @@ defmodule Algoie.Media do
   for building the folder sidebar without N+1 queries.
   """
   def folder_counts(opts) do
+    opts = Keyword.put(opts, :page, false)
+    
     Algoie.Media.MediaAsset
     |> Ash.Query.select([:folder_id])
     |> Ash.read(opts)
     |> case do
-      {:ok, assets} ->
+      {:ok, %Ash.Page.Offset{} = page} ->
+        assets = page.results
+        by_folder = Enum.frequencies_by(assets, & &1.folder_id)
+
+        %{
+          all: length(assets),
+          unfiled: Map.get(by_folder, nil, 0),
+          folders: Map.delete(by_folder, nil)
+        }
+
+      {:ok, assets} when is_list(assets) ->
         by_folder = Enum.frequencies_by(assets, & &1.folder_id)
 
         %{

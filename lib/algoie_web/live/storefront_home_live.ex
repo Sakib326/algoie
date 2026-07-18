@@ -30,7 +30,7 @@ defmodule AlgoieWeb.StorefrontHomeLive do
       |> Ash.Query.filter(status == :active and store_id == ^store_id)
       |> Ash.Query.limit(8)
       |> Ash.Query.sort(inserted_at: :desc)
-      |> Ash.read!(tenant: tenant, authorize?: false)
+      |> Ash.read!(tenant: tenant, authorize?: false, page: false)
 
     product_ids = Enum.map(products, & &1.id)
 
@@ -61,26 +61,23 @@ defmodule AlgoieWeb.StorefrontHomeLive do
         Map.merge(p, %{min_price: price_info.min_price, in_stock: price_info.has_stock})
       end)
 
-    # Top-level categories
     categories =
       Category
       |> Ash.Query.filter(store_id == ^store_id and is_nil(parent_id))
       |> Ash.Query.sort(:name)
-      |> Ash.read!(tenant: tenant, authorize?: false)
+      |> Ash.read!(tenant: tenant, authorize?: false, page: false)
 
-    # Brands
     brands =
       Brand
       |> Ash.Query.filter(store_id == ^store_id)
       |> Ash.Query.sort(:name)
-      |> Ash.read!(tenant: tenant, authorize?: false)
+      |> Ash.read!(tenant: tenant, authorize?: false, page: false)
 
-    # Collections with product counts
     collections =
       Collection
       |> Ash.Query.filter(store_id == ^store_id)
       |> Ash.Query.sort(:name)
-      |> Ash.read!(tenant: tenant, authorize?: false)
+      |> Ash.read!(tenant: tenant, authorize?: false, page: false)
 
     collection_ids = Enum.map(collections, & &1.id)
 

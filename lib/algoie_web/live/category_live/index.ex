@@ -5,12 +5,29 @@ defmodule AlgoieWeb.CategoryLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, socket |> assign(:active, :categories) |> load_categories()}
+    {:ok, 
+     socket 
+     |> assign(:active, :categories) 
+     |> assign(:page, 1)
+     |> assign(:categories_page, nil)
+     |> assign(:categories, [])}
   end
 
   @impl true
   def handle_params(params, _url, socket) do
-    {:noreply, apply_action(socket, socket.assigns.live_action, params)}
+    page =
+      case Integer.parse(params["page"] || "1") do
+        {p, _} when p > 0 -> p
+        _ -> 1
+      end
+
+    socket =
+      socket
+      |> assign(:page, page)
+      |> apply_action(socket.assigns.live_action, params)
+      |> load_categories()
+
+    {:noreply, socket}
   end
 
   defp apply_action(socket, :edit, %{"id" => id}) do
@@ -87,9 +104,19 @@ defmodule AlgoieWeb.CategoryLive.Index do
   end
 
   defp load_categories(socket) do
-    case Ash.read(Category, AlgoieWeb.Scope.opts(socket)) do
-      {:ok, cats} -> assign(socket, :categories, cats)
-      _ -> assign(socket, :categories, [])
+    limit = 12
+    offset = (socket.assigns.page - 1) * limit
+    opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, offset: offset, count: true)
+
+    case Ash.read(Category, opts) do
+      {:ok, page_result} -> 
+        socket
+        |> assign(:categories, page_result.results)
+        |> assign(:categories_page, page_result)
+      _ -> 
+        socket
+        |> assign(:categories, [])
+        |> assign(:categories_page, nil)
     end
   end
 

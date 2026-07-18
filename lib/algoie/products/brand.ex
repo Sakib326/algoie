@@ -27,7 +27,10 @@ defmodule Algoie.Products.Brand do
   end
 
   actions do
-    defaults([:read])
+    read :read do
+      primary?(true)
+      pagination offset?: true, default_limit: 12, countable: true
+    end
 
     create :create do
       primary?(true)
