@@ -65,8 +65,14 @@ defmodule AlgoieWeb.CategoryLive.Index do
 
   def handle_event("delete", %{"id" => id}, socket) do
     category = get_category(socket, id)
-    Ash.destroy!(category, AlgoieWeb.Scope.opts(socket))
-    {:noreply, load_categories(socket)}
+
+    case Ash.destroy(category, AlgoieWeb.Scope.opts(socket)) do
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Cannot delete category because it is in use.")}
+
+      _ ->
+        {:noreply, load_categories(socket)}
+    end
   end
 
   defp save_category(socket, :edit, params) do

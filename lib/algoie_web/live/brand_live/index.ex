@@ -65,8 +65,14 @@ defmodule AlgoieWeb.BrandLive.Index do
 
   def handle_event("delete", %{"id" => id}, socket) do
     brand = get_brand(socket, id)
-    Ash.destroy!(brand, AlgoieWeb.Scope.opts(socket))
-    {:noreply, load_brands(socket)}
+
+    case Ash.destroy(brand, AlgoieWeb.Scope.opts(socket)) do
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Cannot delete brand because it is in use.")}
+
+      _ ->
+        {:noreply, load_brands(socket)}
+    end
   end
 
   defp save_brand(socket, :edit, params) do

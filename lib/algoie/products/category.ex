@@ -32,7 +32,7 @@ defmodule Algoie.Products.Category do
   actions do
     read :read do
       primary?(true)
-      pagination offset?: true, default_limit: 12, countable: true
+      pagination offset?: true, default_limit: 12, countable: true, required?: false
     end
 
     create :create do

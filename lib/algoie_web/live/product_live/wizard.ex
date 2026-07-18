@@ -275,7 +275,14 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   end
 
   def handle_event("update_field", %{"_target" => [field]} = params, socket) do
-    value = Map.get(params, field, "")
+    # When phx-change is on an individual input, the payload may use the "value" key
+    # instead of the field name key.
+    value =
+      case Map.fetch(params, field) do
+        {:ok, val} -> val
+        :error -> Map.get(params, "value", "")
+      end
+
     wizard_data = Map.put(socket.assigns.wizard_data, field, value)
 
     wizard_data =
@@ -353,7 +360,21 @@ defmodule AlgoieWeb.ProductLive.Wizard do
 
   def handle_event("go_to_step", %{"step" => step_str}, socket) do
     step = String.to_integer(step_str)
-    {:noreply, socket |> assign(:step, step) |> assign(:errors, [])}
+
+    socket =
+      socket
+      |> assign(:step, step)
+      |> assign(:errors, [])
+
+    socket =
+      if step == 3 && socket.assigns.generated_variants == [] &&
+           socket.assigns.wizard_data["product_type"] == "variable" do
+        generate_variants(socket)
+      else
+        socket
+      end
+
+    {:noreply, socket}
   end
 
   def handle_event(
@@ -398,7 +419,12 @@ defmodule AlgoieWeb.ProductLive.Wizard do
 
   def handle_event("update_variant", %{"_target" => ["variant", idx_str, field]} = params, socket) do
     idx = String.to_integer(idx_str)
-    value = get_in(params, ["variant", idx_str, field])
+
+    value =
+      case get_in(params, ["variant", idx_str, field]) do
+        nil -> Map.get(params, "value", "")
+        val -> val
+      end
 
     variants =
       List.update_at(socket.assigns.generated_variants, idx, &Map.put(&1, field, value))

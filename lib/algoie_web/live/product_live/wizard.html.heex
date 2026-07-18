@@ -27,14 +27,14 @@
           <button
             :for={{step_name, idx} <- Enum.with_index(@step_names)}
             type="button"
-            phx-click={if idx <= @step, do: "go_to_step"}
+            phx-click={if @mode == :edit || idx <= @step, do: "go_to_step"}
             phx-value-step={idx}
-            disabled={idx > @step}
+            disabled={@mode == :new && idx > @step}
             class={[
               "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
               idx == @step && "bg-primary/10 text-primary",
-              idx < @step && "text-success hover:bg-base-200 cursor-pointer",
-              idx > @step && "text-base-content/30 cursor-not-allowed opacity-50"
+              (@mode == :edit || idx < @step) && idx != @step && "text-success hover:bg-base-200 cursor-pointer",
+              @mode == :new && idx > @step && "text-base-content/30 cursor-not-allowed opacity-50"
             ]}
           >
             <span class={[

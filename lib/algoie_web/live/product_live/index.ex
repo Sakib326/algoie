@@ -53,8 +53,14 @@ defmodule AlgoieWeb.ProductLive.Index do
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     product = get_product(socket, id)
-    Ash.destroy!(product, AlgoieWeb.Scope.opts(socket))
-    {:noreply, load_products(socket)}
+
+    case Ash.destroy(product, AlgoieWeb.Scope.opts(socket)) do
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Cannot delete product because it is in use.")}
+
+      _ ->
+        {:noreply, load_products(socket)}
+    end
   end
 
   def handle_event("search", %{"search" => search}, socket) do
