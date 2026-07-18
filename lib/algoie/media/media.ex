@@ -144,7 +144,7 @@ defmodule Algoie.Media do
   """
   def folder_counts(opts) do
     opts = Keyword.put(opts, :page, false)
-    
+
     Algoie.Media.MediaAsset
     |> Ash.Query.select([:folder_id])
     |> Ash.read(opts)

@@ -1,7 +1,14 @@
 import Ash.Query
 
 user = Algoie.Accounts.User |> Ash.read!(authorize?: false) |> hd()
-store_staff = Algoie.Accounts.StoreStaff |> Ash.Query.new() |> Ash.Query.filter(user_id == ^user.id) |> Ash.read!(authorize?: false) |> hd()
+
+store_staff =
+  Algoie.Accounts.StoreStaff
+  |> Ash.Query.new()
+  |> Ash.Query.filter(user_id == ^user.id)
+  |> Ash.read!(authorize?: false)
+  |> hd()
+
 tenant = "tenant_#{store_staff.store_id}"
 
 opts = [

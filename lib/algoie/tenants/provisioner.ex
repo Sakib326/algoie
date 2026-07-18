@@ -40,7 +40,7 @@ defmodule Algoie.Tenants.Provisioner do
                        Ash.create(
                          Store,
                          %{
-                           name: "#{attrs.name} Store",
+                           name: attrs.name,
                            slug: generate_slug(attrs.name)
                          },
                          actor: :system,

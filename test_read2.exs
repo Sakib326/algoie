@@ -3,12 +3,13 @@ import Ash.Query
 user = Algoie.Accounts.User |> Ash.read!(authorize?: false) |> hd()
 
 # Get the tenant id directly
-store_staff = Algoie.Accounts.StoreStaff 
-              |> Ash.Query.new() 
-              |> Ash.Query.filter(user_id == ^user.id) 
-              # use the first tenant
-              |> Ash.read!(tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d", authorize?: false)
-              |> hd()
+store_staff =
+  Algoie.Accounts.StoreStaff
+  |> Ash.Query.new()
+  |> Ash.Query.filter(user_id == ^user.id)
+  # use the first tenant
+  |> Ash.read!(tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d", authorize?: false)
+  |> hd()
 
 tenant = "tenant_#{store_staff.store_id}"
 

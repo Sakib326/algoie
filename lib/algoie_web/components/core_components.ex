@@ -690,14 +690,21 @@ defmodule AlgoieWeb.CoreComponents do
       start_page = max(1, current_page - window)
       end_page = min(total_pages, current_page + window)
 
-      assigns = assign(assigns, current_page: current_page, total_pages: total_pages, start_page: start_page, end_page: end_page)
+      assigns =
+        assign(assigns,
+          current_page: current_page,
+          total_pages: total_pages,
+          start_page: start_page,
+          end_page: end_page
+        )
 
       ~H"""
       <div class={["flex items-center justify-between", @class]}>
         <div class="text-sm text-base-content/60">
           Showing <span class="font-medium">{@page.offset + 1}</span>
           to <span class="font-medium">{min(@page.offset + @page.limit, @page.count)}</span>
-          of <span class="font-medium">{@page.count}</span> results
+          of <span class="font-medium">{@page.count}</span>
+          results
         </div>
 
         <div class="join">
@@ -708,7 +715,7 @@ defmodule AlgoieWeb.CoreComponents do
             >
               «
             </.link>
-            
+
             <button :if={@start_page > 1} class="join-item btn btn-sm btn-disabled">...</button>
 
             <%= for p <- @start_page..@end_page do %>
@@ -738,7 +745,7 @@ defmodule AlgoieWeb.CoreComponents do
             >
               «
             </button>
-            
+
             <button :if={@start_page > 1} class="join-item btn btn-sm btn-disabled">...</button>
 
             <%= for p <- @start_page..@end_page do %>

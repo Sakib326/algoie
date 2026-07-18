@@ -38,6 +38,7 @@ defmodule AlgoieWeb.DashboardLive do
 
   defp safe_read(socket, resource, extra \\ []) do
     opts = AlgoieWeb.Scope.opts(socket, extra) |> Keyword.put(:page, false)
+
     case Ash.read(resource, opts) do
       {:ok, records} -> records
       _ -> []

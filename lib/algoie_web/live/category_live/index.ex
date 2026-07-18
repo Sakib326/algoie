@@ -5,9 +5,9 @@ defmodule AlgoieWeb.CategoryLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, 
-     socket 
-     |> assign(:active, :categories) 
+    {:ok,
+     socket
+     |> assign(:active, :categories)
      |> assign(:page, 1)
      |> assign(:categories_page, nil)
      |> assign(:categories, [])}
@@ -115,11 +115,12 @@ defmodule AlgoieWeb.CategoryLive.Index do
     opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, offset: offset, count: true)
 
     case Ash.read(Category, opts) do
-      {:ok, page_result} -> 
+      {:ok, page_result} ->
         socket
         |> assign(:categories, page_result.results)
         |> assign(:categories_page, page_result)
-      _ -> 
+
+      _ ->
         socket
         |> assign(:categories, [])
         |> assign(:categories_page, nil)

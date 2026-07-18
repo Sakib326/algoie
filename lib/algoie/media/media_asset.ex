@@ -45,7 +45,7 @@ defmodule Algoie.Media.MediaAsset do
   actions do
     read :read do
       primary?(true)
-      pagination offset?: true, default_limit: 24, countable: true, required?: false
+      pagination(offset?: true, default_limit: 24, countable: true, required?: false)
     end
 
     destroy :destroy do

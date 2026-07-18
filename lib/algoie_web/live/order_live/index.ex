@@ -45,24 +45,25 @@ defmodule AlgoieWeb.OrderLive.Index do
   defp load_orders(socket) do
     limit = 12
     offset = (socket.assigns.page - 1) * limit
-    
+
     query = Order |> Ash.Query.sort(inserted_at: :desc)
-    
-    query = 
+
+    query =
       if socket.assigns.filter != "all" do
         Ash.Query.filter(query, status == ^String.to_existing_atom(socket.assigns.filter))
       else
         query
       end
-      
+
     opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, offset: offset, count: true)
 
     case Ash.read(query, opts) do
-      {:ok, page_result} -> 
+      {:ok, page_result} ->
         socket
         |> assign(:orders, page_result.results)
         |> assign(:orders_page, page_result)
-      _ -> 
+
+      _ ->
         socket
         |> assign(:orders, [])
         |> assign(:orders_page, nil)
@@ -71,6 +72,7 @@ defmodule AlgoieWeb.OrderLive.Index do
 
   defp load_customer_map(socket) do
     opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, false)
+
     case Ash.read(Algoie.Customers.Customer, opts) do
       {:ok, customers} -> Map.new(customers, &{&1.id, &1.name})
       _ -> %{}
@@ -79,11 +81,13 @@ defmodule AlgoieWeb.OrderLive.Index do
 
   defp load_counts(socket) do
     opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, false)
+
     case Ash.read(Order |> Ash.Query.select([:status]), opts) do
       {:ok, orders} ->
-        counts = Enum.frequencies_by(orders, &(to_string(&1.status)))
+        counts = Enum.frequencies_by(orders, &to_string(&1.status))
         counts = Map.put(counts, "all", length(orders))
         assign(socket, :counts, counts)
+
       _ ->
         assign(socket, :counts, %{"all" => 0})
     end

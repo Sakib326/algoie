@@ -167,16 +167,16 @@ defmodule AlgoieWeb.ProductLive.Index do
       end
 
     query = Ash.Query.sort(query, inserted_at: :desc)
-    
+
     limit = 12
     offset = (socket.assigns.page - 1) * limit
-    
+
     opts = Keyword.put(opts, :page, offset: offset, count: true)
 
     case Ash.read(query, opts) do
       {:ok, page_result} ->
         products = attach_cover_urls(page_result.results, opts)
-        
+
         socket
         |> assign(:products, products)
         |> assign(:products_page, page_result)
@@ -225,6 +225,7 @@ defmodule AlgoieWeb.ProductLive.Index do
 
   defp list_related(socket, resource) do
     opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, false)
+
     case Ash.read(resource, opts) do
       {:ok, records} -> records
       _ -> []

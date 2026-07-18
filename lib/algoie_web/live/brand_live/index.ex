@@ -5,8 +5,8 @@ defmodule AlgoieWeb.BrandLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, 
-     socket 
+    {:ok,
+     socket
      |> assign(:active, :brands)
      |> assign(:page, 1)
      |> assign(:brands_page, nil)
@@ -115,11 +115,12 @@ defmodule AlgoieWeb.BrandLive.Index do
     opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, offset: offset, count: true)
 
     case Ash.read(Brand, opts) do
-      {:ok, page_result} -> 
+      {:ok, page_result} ->
         socket
         |> assign(:brands, page_result.results)
         |> assign(:brands_page, page_result)
-      _ -> 
+
+      _ ->
         socket
         |> assign(:brands, [])
         |> assign(:brands_page, nil)

@@ -114,12 +114,13 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       "is_new" => false,
       "attribute_definitions" => %{},
       "sku" => "",
-      "price" => "0.00",
+      "price" => "",
       "cost_price" => "",
       "compare_at_price" => "",
       "stock" => "0",
       "low_stock_threshold" => "10",
       "track_inventory?" => true,
+      "variant_price_differs" => false,
       "meta_title" => "",
       "meta_description" => "",
       "tags" => [],
@@ -207,6 +208,7 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       "low_stock_threshold" =>
         to_string((first_variant && first_variant.low_stock_threshold) || 10),
       "track_inventory?" => if(first_variant, do: first_variant.track_inventory?, else: true),
+      "variant_price_differs" => true,
       "meta_title" => product.meta_title || "",
       "meta_description" => product.meta_description || "",
       "tags" => tags,
@@ -455,6 +457,23 @@ defmodule AlgoieWeb.ProductLive.Wizard do
      |> put_flash(:info, "Variant images saved")}
   end
 
+  def handle_event("toggle_variant_price_differs", _params, socket) do
+    current = socket.assigns.wizard_data["variant_price_differs"]
+    wizard_data = Map.put(socket.assigns.wizard_data, "variant_price_differs", !current)
+    {:noreply, assign(socket, :wizard_data, wizard_data)}
+  end
+
+  def handle_event("toggle_variant_track_inventory", %{"index" => idx_str}, socket) do
+    idx = String.to_integer(idx_str)
+
+    variants =
+      List.update_at(socket.assigns.generated_variants, idx, fn v ->
+        Map.put(v, "track_inventory?", !Map.get(v, "track_inventory?", true))
+      end)
+
+    {:noreply, assign(socket, :generated_variants, variants)}
+  end
+
   def handle_event("add_tag", %{"tag" => tag_name}, socket) do
     tag_name = String.trim(tag_name)
 
@@ -565,10 +584,10 @@ defmodule AlgoieWeb.ProductLive.Wizard do
             "store_id" => socket.assigns.store_id,
             "sku" => simple_sku(data),
             "price" => data["price"],
-            "cost_price" => if(data["cost_price"] != "", do: data["cost_price"]),
+            "cost_price" => if(data["cost_price"] not in ["", nil], do: data["cost_price"]),
             "compare_at_price" =>
-              if(data["compare_at_price"] != "", do: data["compare_at_price"]),
-            "stock" => data["stock"],
+              if(data["compare_at_price"] not in ["", nil], do: data["compare_at_price"]),
+            "stock" => if(data["track_inventory?"], do: data["stock"], else: 0),
             "low_stock_threshold" => data["low_stock_threshold"],
             "track_inventory?" => data["track_inventory?"],
             "option_values" => %{},
@@ -577,16 +596,23 @@ defmodule AlgoieWeb.ProductLive.Wizard do
         ]
       else
         Enum.map(socket.assigns.generated_variants, fn v ->
+          effective_price =
+            if data["variant_price_differs"],
+              do: v["price"],
+              else: data["price"]
+
           %{
             "product_id" => product.id,
             "store_id" => socket.assigns.store_id,
             "sku" => v["sku"],
-            "price" => v["price"],
-            "cost_price" => v["cost_price"],
-            "compare_at_price" => v["compare_at_price"],
-            "stock" => v["stock"],
+            "price" => effective_price,
+            "cost_price" => if(v["cost_price"] not in ["", nil], do: v["cost_price"]),
+            "compare_at_price" =>
+              if(v["compare_at_price"] not in ["", nil], do: v["compare_at_price"]),
+            "barcode" => if(v["barcode"] not in ["", nil], do: v["barcode"]),
+            "stock" => if(Map.get(v, "track_inventory?", true), do: v["stock"] || "0", else: 0),
             "low_stock_threshold" => data["low_stock_threshold"],
-            "track_inventory?" => data["track_inventory?"],
+            "track_inventory?" => Map.get(v, "track_inventory?", true),
             "option_values" => v["option_values"],
             "position" => v["position"]
           }
@@ -608,15 +634,22 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       Enum.each(socket.assigns.generated_variants, fn v ->
         with id when is_binary(id) <- v["id"],
              {:ok, variant} <- Ash.get(Variant, id, opts) do
+          effective_price =
+            if data["variant_price_differs"],
+              do: v["price"],
+              else: data["price"]
+
           Ash.update(
             variant,
             %{
               "sku" => v["sku"],
-              "price" => v["price"],
-              "cost_price" => if(v["cost_price"] != "", do: v["cost_price"]),
-              "compare_at_price" => if(v["compare_at_price"] != "", do: v["compare_at_price"]),
-              "stock" => v["stock"],
-              "barcode" => v["barcode"]
+              "price" => effective_price,
+              "cost_price" => if(v["cost_price"] not in ["", nil], do: v["cost_price"]),
+              "compare_at_price" =>
+                if(v["compare_at_price"] not in ["", nil], do: v["compare_at_price"]),
+              "stock" => if(Map.get(v, "track_inventory?", true), do: v["stock"] || "0", else: 0),
+              "track_inventory?" => Map.get(v, "track_inventory?", true),
+              "barcode" => if(v["barcode"] not in ["", nil], do: v["barcode"])
             },
             opts
           )
@@ -809,10 +842,12 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       |> Enum.map(fn {option_values, idx} ->
         %{
           "sku" => VariantGenerator.generate_sku(data["slug"] || "product", option_values),
-          "price" => data["price"],
-          "cost_price" => data["cost_price"],
-          "compare_at_price" => data["compare_at_price"],
-          "stock" => data["stock"],
+          "price" => data["price"] || "",
+          "cost_price" => data["cost_price"] || "",
+          "compare_at_price" => data["compare_at_price"] || "",
+          "stock" => data["stock"] || "0",
+          "barcode" => "",
+          "track_inventory?" => data["track_inventory?"],
           "option_values" => option_values,
           "position" => idx,
           "image_urls" => []
@@ -851,14 +886,19 @@ defmodule AlgoieWeb.ProductLive.Wizard do
     errors = []
 
     errors =
-      if data["price"] == "" || Decimal.parse(data["price"]) == :error do
-        ["Valid price is required" | errors]
+      if data["product_type"] == "variable" && data["variant_price_differs"] do
+        # Per-variant prices — no global price required
+        errors
       else
-        price = elem(Decimal.parse(data["price"]), 0)
+        if data["price"] in ["", nil] || Decimal.parse(data["price"]) == :error do
+          ["Valid selling price is required" | errors]
+        else
+          {parsed, _} = Decimal.parse(data["price"])
 
-        if Decimal.compare(price, Decimal.new(0)) == :lt,
-          do: ["Price must be positive" | errors],
-          else: errors
+          if Decimal.compare(parsed, Decimal.new(0)) != :gt,
+            do: ["Selling price must be greater than 0" | errors],
+            else: errors
+        end
       end
 
     if errors == [], do: :ok, else: {:error, errors}
@@ -885,6 +925,7 @@ defmodule AlgoieWeb.ProductLive.Wizard do
 
   defp list_related(socket, resource) do
     opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, false)
+
     case Ash.read(resource, opts) do
       {:ok, records} -> records
       _ -> []

@@ -56,7 +56,11 @@ defmodule AlgoieWeb.OrderLive.Show do
           case Algoie.Orders.OrderLineItem
                |> Ash.Query.filter(order_id == ^order.id)
                |> Ash.Query.for_read(:read)
-               |> Ash.read(tenant: socket.assigns.tenant, actor: socket.assigns[:current_user], page: false) do
+               |> Ash.read(
+                 tenant: socket.assigns.tenant,
+                 actor: socket.assigns[:current_user],
+                 page: false
+               ) do
             {:ok, items} -> items
             _ -> []
           end

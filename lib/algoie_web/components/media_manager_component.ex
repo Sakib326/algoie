@@ -87,6 +87,24 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
 
   @impl true
   def update(assigns, socket) do
+    # Build the new selected from parent assigns (used only when it actually changed)
+    incoming_selected =
+      cond do
+        field = assigns[:field] ->
+          field.value |> List.wrap() |> Enum.reject(&(&1 in [nil, ""]))
+
+        value = assigns[:selected] ->
+          value |> List.wrap() |> Enum.reject(&(&1 in [nil, ""]))
+
+        true ->
+          []
+      end
+
+    # Only overwrite local `selected` if the parent actually sent a different list.
+    # This prevents a parent re-render (triggered by *any* event) from resetting
+    # selections the user just made inside this component.
+    current_selected = socket.assigns[:selected]
+
     socket =
       socket
       |> assign(assigns)
@@ -97,7 +115,6 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
       |> assign_new(:name, fn -> nil end)
       |> assign_new(:field, fn -> nil end)
       |> assign_new(:form, fn -> nil end)
-      |> assign_new(:selected, fn -> initial_selected(assigns) end)
       |> assign_new(:folders, fn -> Media.list_folders(socket_opts(assigns)) end)
       |> assign_new(:counts, fn -> Media.folder_counts(socket_opts(assigns)) end)
       |> assign_new(:assets_page, fn -> load_assets_page(socket_opts(assigns), nil, :all, 1) end)
@@ -108,6 +125,16 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
           _ -> []
         end
       end)
+
+    # Restore local selected if parent didn't actually change the list
+    socket =
+      if is_nil(current_selected) or current_selected == incoming_selected do
+        # First render or parent intentionally synced a new list — accept it
+        assign(socket, :selected, incoming_selected)
+      else
+        # Parent re-render with stale snapshot — keep the locally-staged selection
+        assign(socket, :selected, current_selected)
+      end
 
     {:ok, socket}
   end
@@ -336,15 +363,22 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
   end
 
   defp reload_assets(socket) do
-    case load_assets_page(socket_opts(socket.assigns), socket.assigns.query, socket.assigns.current_folder, socket.assigns.page) do
+    case load_assets_page(
+           socket_opts(socket.assigns),
+           socket.assigns.query,
+           socket.assigns.current_folder,
+           socket.assigns.page
+         ) do
       %Ash.Page.Offset{} = page_result ->
         socket
         |> assign(:assets, page_result.results)
         |> assign(:assets_page, page_result)
+
       results when is_list(results) ->
         socket
         |> assign(:assets, results)
         |> assign(:assets_page, nil)
+
       _ ->
         socket
         |> assign(:assets, [])
@@ -365,14 +399,6 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
   defp real_folder_id(:all), do: nil
   defp real_folder_id(:unfiled), do: nil
   defp real_folder_id(id), do: id
-
-  defp initial_selected(assigns) do
-    cond do
-      field = assigns[:field] -> field.value |> List.wrap() |> Enum.reject(&(&1 in [nil, ""]))
-      value = assigns[:value] -> value |> List.wrap() |> Enum.reject(&(&1 in [nil, ""]))
-      true -> []
-    end
-  end
 
   defp toggle_url(_staged, url, false, _max), do: [url]
 
@@ -501,7 +527,6 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
 
       <p :if={@helper} class="text-xs text-base-content/40">{@helper}</p>
 
-      <input :if={@multiple} type="hidden" name={hidden_name(@field, @name, true)} value="" />
       <input
         :for={url <- @selected}
         type="hidden"
@@ -709,7 +734,7 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
                     </button>
                   </div>
                 </div>
-                
+
                 <.pagination
                   page={@assets_page}
                   phx_click="set-page"
