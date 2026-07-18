@@ -780,6 +780,8 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   end
 
   defp find_media_asset(url, opts) do
+    opts = Keyword.put(opts, :page, false)
+
     MediaAsset
     |> Ash.Query.filter(url == ^url)
     |> Ash.Query.limit(1)
