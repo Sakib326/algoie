@@ -40,20 +40,22 @@ defmodule Algoie.Products.ProductCategory do
       accept([:product_id, :category_id])
     end
 
-    destroy(:destroy)
+    destroy :destroy do
+      primary?(true)
+      require_atomic?(false)
+    end
   end
 
   policies do
-    policy action_type(:create) do
+    policy action_type([:create, :destroy, :update]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
     end
 
     policy action_type(:read) do
       authorize_if(always())
     end
 
-    policy action_type(:destroy) do
-      authorize_if(always())
-    end
+
   end
 end

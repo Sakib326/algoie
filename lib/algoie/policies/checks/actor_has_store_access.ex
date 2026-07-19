@@ -52,12 +52,27 @@ defmodule Algoie.Policies.Checks.ActorHasStoreAccess do
   defp get_store_staff_role(nil, _store_id, _tenant_id), do: nil
 
   defp get_store_staff_role(actor, store_id, tenant_id) do
-    StoreStaff
-    |> Ash.Query.filter(user_id == ^actor.id and store_id == ^store_id)
-    |> Ash.read_one(tenant: tenant_id, authorize?: false)
-    |> case do
-      {:ok, %{role: role}} -> role
-      _ -> nil
+    cache_key = {:store_staff_role, actor.id, store_id, tenant_id}
+
+    case Process.get(cache_key) do
+      nil ->
+        role =
+          StoreStaff
+          |> Ash.Query.filter(user_id == ^actor.id and store_id == ^store_id)
+          |> Ash.read_one(tenant: tenant_id, authorize?: false)
+          |> case do
+            {:ok, %{role: role}} -> role
+            _ -> :unauthorized
+          end
+
+        Process.put(cache_key, role)
+        if role == :unauthorized, do: nil, else: role
+
+      :unauthorized ->
+        nil
+
+      role ->
+        role
     end
   end
 end

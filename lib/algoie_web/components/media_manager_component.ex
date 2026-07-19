@@ -258,6 +258,7 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
   end
 
   def handle_event("confirm-selection", _params, socket) do
+    notify_parent(socket, socket.assigns.staged)
     {:noreply,
      socket
      |> assign(:selected, socket.assigns.staged)
@@ -265,11 +266,15 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
   end
 
   def handle_event("remove-selected", %{"url" => url}, socket) do
-    {:noreply, assign(socket, :selected, Enum.reject(socket.assigns.selected, &(&1 == url)))}
+    new_selected = Enum.reject(socket.assigns.selected, &(&1 == url))
+    notify_parent(socket, new_selected)
+    {:noreply, assign(socket, :selected, new_selected)}
   end
 
   def handle_event("move-selected", %{"url" => url, "dir" => dir}, socket) do
-    {:noreply, assign(socket, :selected, move(socket.assigns.selected, url, dir))}
+    new_selected = move(socket.assigns.selected, url, dir)
+    notify_parent(socket, new_selected)
+    {:noreply, assign(socket, :selected, new_selected)}
   end
 
   def handle_event("cancel-entry", %{"ref" => ref}, socket) do
@@ -281,11 +286,14 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
       {:ok, asset} ->
         Media.delete_asset(asset, socket_opts(socket.assigns))
 
+        new_selected = Enum.reject(socket.assigns.selected, &(&1 == asset.url))
+        notify_parent(socket, new_selected)
+
         {:noreply,
          socket
          |> assign(:assets, Enum.reject(socket.assigns.assets, &(&1.id == id)))
          |> assign(:staged, Enum.reject(socket.assigns.staged, &(&1 == asset.url)))
-         |> assign(:selected, Enum.reject(socket.assigns.selected, &(&1 == asset.url)))
+         |> assign(:selected, new_selected)
          |> reload_folders()}
 
       _ ->
@@ -431,6 +439,10 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
     a = Enum.at(list, i)
     b = Enum.at(list, j)
     list |> List.replace_at(i, b) |> List.replace_at(j, a)
+  end
+
+  defp notify_parent(socket, selected) do
+    send(self(), {:media_manager_updated, socket.assigns.id, selected})
   end
 
   defp hidden_name(field, name, multiple) do

@@ -51,12 +51,7 @@ defmodule Algoie.Products.ProductImage do
   end
 
   policies do
-    policy action_type(:create) do
-      authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
-    end
-
-    policy action_type([:read, :update]) do
+    policy action_type([:create, :destroy, :update, :read]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
       authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
     end

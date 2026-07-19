@@ -1,0 +1,203 @@
+[debug] QUERY OK source="products" db=8.2ms decode=1.6ms queue=1.2ms idle=249.3ms
+SELECT p0."id", p0."name", p0."status", p0."description", p0."attribute_definitions", p0."brand_id", p0."category_id", p0."featured", p0."inserted_at", p0."is_new", p0."meta_description", p0."meta_title", p0."product_type", p0."slug", p0."store_id", p0."updated_at" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."products" AS p0 WHERE (p0."id"::uuid = $1::uuid) ["afcb1aba-7328-4163-8b24-bad6f965a9fd"]
+[90m↳ anonymous fn/3 in AshPostgres.DataLayer.run_query/2, at: lib/data_layer.ex:867[0m
+[debug] QUERY OK source="product_images" db=0.7ms queue=1.0ms idle=343.3ms
+SELECT p0."id", p0."position", p0."product_id", p0."inserted_at", p0."updated_at", p0."variant_id", p0."alt_text", p0."media_asset_id" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."product_images" AS p0 WHERE (p0."product_id"::uuid = ANY($1::uuid[])) [["afcb1aba-7328-4163-8b24-bad6f965a9fd"]]
+[90m↳ anonymous fn/3 in AshPostgres.DataLayer.run_query/2, at: lib/data_layer.ex:867[0m
+[debug] QUERY OK source="variants" db=6.3ms queue=0.9ms idle=343.5ms
+SELECT v0."id", v0."position", v0."product_id", v0."inserted_at", v0."store_id", v0."updated_at", v0."low_stock_threshold", v0."option_values", v0."price", v0."sku", v0."stock", v0."track_inventory?", v0."barcode", v0."compare_at_price", v0."cost_price", v0."reserved_quantity" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."variants" AS v0 WHERE (v0."product_id"::uuid = ANY($1::uuid[])) [["afcb1aba-7328-4163-8b24-bad6f965a9fd"]]
+[90m↳ anonymous fn/3 in AshPostgres.DataLayer.run_query/2, at: lib/data_layer.ex:867[0m
+[debug] QUERY OK source="products" db=1.3ms queue=2.2ms idle=352.8ms
+SELECT DISTINCT p0."id", s1."id", s1."name", s1."inserted_at", s1."slug", s1."store_id", s1."updated_at" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."products" AS p0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."name" AS "name", st0."inserted_at" AS "inserted_at", st0."slug" AS "slug", st0."store_id" AS "store_id", st0."updated_at" AS "updated_at" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."tags" AS st0 INNER JOIN (SELECT ssp0."id" AS "id", ssp0."product_id" AS "product_id", ssp0."tag_id" AS "tag_id", ssp0."inserted_at" AS "inserted_at", ssp0."updated_at" AS "updated_at" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."product_tags" AS ssp0 WHERE (ssp0."product_id" = p0."id")) AS ss1 ON ss1."tag_id" = st0."id") AS s1 ON TRUE WHERE (p0."id"::uuid = ANY($1::uuid[])) AND (p0."id" = ANY($2)) [["afcb1aba-7328-4163-8b24-bad6f965a9fd"], ["afcb1aba-7328-4163-8b24-bad6f965a9fd"]]
+[90m↳ AshPostgres.DataLayer.run_query_with_lateral_join/4, at: lib/data_layer.ex:1104[0m
+[debug] QUERY OK source="products" db=2.2ms queue=1.6ms idle=352.9ms
+SELECT DISTINCT p0."id", s1."id", s1."name", s1."inserted_at", s1."store_id", s1."updated_at", s1."parent_id" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."products" AS p0 INNER JOIN LATERAL (SELECT sc0."id" AS "id", sc0."name" AS "name", sc0."inserted_at" AS "inserted_at", sc0."store_id" AS "store_id", sc0."updated_at" AS "updated_at", sc0."parent_id" AS "parent_id" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."categories" AS sc0 INNER JOIN (SELECT ssp0."id" AS "id", ssp0."product_id" AS "product_id", ssp0."category_id" AS "category_id", ssp0."inserted_at" AS "inserted_at", ssp0."updated_at" AS "updated_at" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."product_categories" AS ssp0 WHERE (ssp0."product_id" = p0."id")) AS ss1 ON ss1."category_id" = sc0."id") AS s1 ON TRUE WHERE (p0."id"::uuid = ANY($1::uuid[])) AND (p0."id" = ANY($2)) [["afcb1aba-7328-4163-8b24-bad6f965a9fd"], ["afcb1aba-7328-4163-8b24-bad6f965a9fd"]]
+[90m↳ AshPostgres.DataLayer.run_query_with_lateral_join/4, at: lib/data_layer.ex:1104[0m
+[debug] QUERY OK source="product_images" db=0.7ms queue=1.0ms idle=366.4ms
+SELECT p0."id", p0."position", p0."product_id", p0."inserted_at", p0."updated_at", p0."variant_id", p0."alt_text", p0."media_asset_id" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."product_images" AS p0 WHERE (p0."variant_id"::uuid = ANY($1::uuid[])) [["1bffe104-acf9-42c8-8e55-920fba360c95", "3f4602ac-962d-4ea7-bcd4-8ac86ff61e4c", "59dbcbea-4324-410e-85db-6596fa7b439a"]]
+[90m↳ anonymous fn/3 in AshPostgres.DataLayer.run_query/2, at: lib/data_layer.ex:867[0m
+[debug] QUERY OK source="media_assets" db=0.6ms queue=0.7ms idle=366.9ms
+SELECT m0."id", m0."size", m0."filename", m0."width", m0."url", m0."content_type", m0."inserted_at", m0."store_id", m0."updated_at", m0."alt_text", m0."folder_id", m0."height" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."media_assets" AS m0 WHERE (m0."id"::uuid = ANY($1::uuid[])) [["02e02af9-f6b7-4b01-9485-5a45c6ac002e", "11a2e326-ac1a-4cfd-ad6e-cacf72966503", "adb4a3fb-a12f-4aa8-b06d-63290247edc8"]]
+[90m↳ anonymous fn/3 in AshPostgres.DataLayer.run_query/2, at: lib/data_layer.ex:867[0m
+{
+  "id": "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+  "name": "Xyla Fry",
+  "status": "active",
+  "description": "Et tempora obcaecati",
+  "tags": [],
+  "variants": [
+    {
+      "id": "59dbcbea-4324-410e-85db-6596fa7b439a",
+      "position": 0,
+      "product_id": "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      "product_images": [],
+      "inserted_at": "2026-07-18T12:38:24.362909Z",
+      "store_id": "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+      "updated_at": "2026-07-19T12:29:10.311362Z",
+      "low_stock_threshold": 10,
+      "option_values": {
+        "color": "Red"
+      },
+      "price": 234.0,
+      "sku": "Consequatur Dicta e-red",
+      "stock": 100,
+      "track_inventory?": true,
+      "barcode": "4353246",
+      "compare_at_price": 345345.0,
+      "cost_price": 678.0,
+      "reserved_quantity": 0
+    },
+    {
+      "id": "3f4602ac-962d-4ea7-bcd4-8ac86ff61e4c",
+      "position": 1,
+      "product_id": "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      "product_images": [],
+      "inserted_at": "2026-07-18T12:38:24.376461Z",
+      "store_id": "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+      "updated_at": "2026-07-19T12:29:10.330952Z",
+      "low_stock_threshold": 10,
+      "option_values": {
+        "color": "Green"
+      },
+      "price": 234.0,
+      "sku": "Consequatur Dicta e-green",
+      "stock": 0,
+      "track_inventory?": false,
+      "barcode": "123123",
+      "compare_at_price": 345345.0,
+      "cost_price": 678.0,
+      "reserved_quantity": 0
+    },
+    {
+      "id": "1bffe104-acf9-42c8-8e55-920fba360c95",
+      "position": 2,
+      "product_id": "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      "product_images": [],
+      "inserted_at": "2026-07-18T12:38:24.383286Z",
+      "store_id": "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+      "updated_at": "2026-07-19T12:29:10.342987Z",
+      "low_stock_threshold": 10,
+      "option_values": {
+        "color": "Blue"
+      },
+      "price": 234.0,
+      "sku": "Consequatur Dicta e-blue",
+      "stock": 0,
+      "track_inventory?": false,
+      "barcode": "123123",
+      "compare_at_price": 345345.0,
+      "cost_price": 678.0,
+      "reserved_quantity": 0
+    }
+  ],
+  "categories": [
+    {
+      "id": "0d522223-6e3f-4ce3-9b75-219f097f6277",
+      "name": "Electronics 2",
+      "inserted_at": "2026-07-13T08:47:32.681378Z",
+      "store_id": "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+      "updated_at": "2026-07-18T12:44:06.669432Z",
+      "parent_id": null
+    },
+    {
+      "id": "41af7d67-4181-4c7d-8a9a-783e42bcb6bd",
+      "name": "Laptops",
+      "inserted_at": "2026-07-13T08:47:32.688841Z",
+      "store_id": "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+      "updated_at": "2026-07-13T08:47:32.688841Z",
+      "parent_id": "0d522223-6e3f-4ce3-9b75-219f097f6277"
+    }
+  ],
+  "product_images": [
+    {
+      "id": "46a85a41-9d1b-416a-8210-b13abf349fa4",
+      "position": 0,
+      "product_id": "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      "media_asset": {
+        "id": "02e02af9-f6b7-4b01-9485-5a45c6ac002e",
+        "size": 2431169,
+        "filename": "ChatGPT Image Jul 13, 2026, 03_39_35 PM.png",
+        "width": null,
+        "url": "/uploads/tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d/4518d71f-3342-42c6-a056-81f2406e9750-chatgpt-image-jul-13-2026-03-39-35-pm.png",
+        "content_type": "image/png",
+        "inserted_at": "2026-07-18T11:47:45.094938Z",
+        "store_id": "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+        "updated_at": "2026-07-18T11:47:45.094938Z",
+        "alt_text": null,
+        "folder_id": "b559bde8-8b34-41a8-a5c6-25479956fe2c",
+        "height": null
+      },
+      "inserted_at": "2026-07-19T12:35:16.204081Z",
+      "updated_at": "2026-07-19T12:35:16.204081Z",
+      "variant_id": null,
+      "alt_text": null,
+      "media_asset_id": "02e02af9-f6b7-4b01-9485-5a45c6ac002e"
+    },
+    {
+      "id": "acbaf1ff-4013-4f80-9985-e62d2be93fb5",
+      "position": 1,
+      "product_id": "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      "media_asset": {
+        "id": "adb4a3fb-a12f-4aa8-b06d-63290247edc8",
+        "size": 2435165,
+        "filename": "6310a760-ac7f-4115-ba83-7c7cb62ebf34.png",
+        "width": null,
+        "url": "/uploads/tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d/5c1bc8a3-5076-4a1a-8f00-5440e6082e92-6310a760-ac7f-4115-ba83-7c7cb62ebf34.png",
+        "content_type": "image/png",
+        "inserted_at": "2026-07-18T11:47:45.228836Z",
+        "store_id": "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+        "updated_at": "2026-07-18T11:47:45.228836Z",
+        "alt_text": null,
+        "folder_id": "b559bde8-8b34-41a8-a5c6-25479956fe2c",
+        "height": null
+      },
+      "inserted_at": "2026-07-19T12:35:16.211641Z",
+      "updated_at": "2026-07-19T12:35:16.211641Z",
+      "variant_id": null,
+      "alt_text": null,
+      "media_asset_id": "adb4a3fb-a12f-4aa8-b06d-63290247edc8"
+    },
+    {
+      "id": "e4fd49c2-86ad-4a1b-adaa-b6a056a80493",
+      "position": 2,
+      "product_id": "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      "media_asset": {
+        "id": "11a2e326-ac1a-4cfd-ad6e-cacf72966503",
+        "size": 2401759,
+        "filename": "ChatGPT Image Jul 11, 2026, 01_17_28 PM.png",
+        "width": null,
+        "url": "/uploads/tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d/113a3c4c-dd44-4f71-b217-4eeac15cd301-chatgpt-image-jul-11-2026-01-17-28-pm.png",
+        "content_type": "image/png",
+        "inserted_at": "2026-07-18T11:47:45.074708Z",
+        "store_id": "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+        "updated_at": "2026-07-18T11:47:45.074708Z",
+        "alt_text": null,
+        "folder_id": "b559bde8-8b34-41a8-a5c6-25479956fe2c",
+        "height": null
+      },
+      "inserted_at": "2026-07-19T12:35:16.219483Z",
+      "updated_at": "2026-07-19T12:35:16.219483Z",
+      "variant_id": null,
+      "alt_text": null,
+      "media_asset_id": "11a2e326-ac1a-4cfd-ad6e-cacf72966503"
+    }
+  ],
+  "attribute_definitions": {
+    "color": [
+      "Red",
+      "Green",
+      "Blue"
+    ]
+  },
+  "brand_id": "560c1a54-22a6-4142-8b35-911b94dd6f10",
+  "category_id": "1d4302de-93b0-49c2-9db4-2b21b5a62cba",
+  "featured": true,
+  "inserted_at": "2026-07-18T12:38:24.348877Z",
+  "is_new": true,
+  "meta_description": null,
+  "meta_title": "AOC CS25G 24.5\" FHD 310Hz Fast IPS CS mode Gaming Monitor",
+  "product_type": "variable",
+  "slug": "dfghnegue-enrgnerjg",
+  "store_id": "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+  "updated_at": "2026-07-19T11:31:06.548117Z"
+}

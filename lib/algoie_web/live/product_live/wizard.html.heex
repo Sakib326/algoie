@@ -112,13 +112,17 @@
           <div>
             <label class="label"><span class="label-text font-medium">Product type *</span></label>
             <form phx-submit="noop" class="flex gap-4">
-              <label class="flex items-center gap-2 cursor-pointer">
+              <label class={[
+                "flex items-center gap-2",
+                if(@mode == :edit, do: "cursor-not-allowed opacity-60", else: "cursor-pointer")
+              ]}>
                 <input
                   type="radio"
                   name="product_type"
                   value="simple"
                   checked={@wizard_data["product_type"] == "simple"}
                   phx-change="update_field"
+                  disabled={@mode == :edit}
                   class="radio radio-primary"
                 />
                 <span class="text-sm">
@@ -126,13 +130,17 @@
                   <span class="text-base-content/50 block text-xs">Single variant, no options</span>
                 </span>
               </label>
-              <label class="flex items-center gap-2 cursor-pointer">
+              <label class={[
+                "flex items-center gap-2",
+                if(@mode == :edit, do: "cursor-not-allowed opacity-60", else: "cursor-pointer")
+              ]}>
                 <input
                   type="radio"
                   name="product_type"
                   value="variable"
                   checked={@wizard_data["product_type"] == "variable"}
                   phx-change="update_field"
+                  disabled={@mode == :edit}
                   class="radio radio-primary"
                 />
                 <span class="text-sm">
@@ -141,6 +149,9 @@
                 </span>
               </label>
             </form>
+            <p :if={@mode == :edit} class="text-xs text-base-content/40 mt-1">
+              Product type cannot be changed after creation.
+            </p>
           </div>
         </div>
         <div class="flex items-center justify-end gap-3 border-t border-base-200 px-6 py-4">
@@ -578,7 +589,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr :for={{variant, idx} <- Enum.with_index(@generated_variants)}>
+                    <tr :for={{variant, idx} <- Enum.with_index(@generated_variants)} id={"variant-#{idx}"}>
                       <td class="text-xs text-base-content/60 font-medium">
                         {variant["option_values"]
                         |> Enum.map(fn {k, v} -> "#{k}: #{v}" end)
@@ -711,24 +722,18 @@
           </p>
         </div>
         <div class="p-6 space-y-6">
-          <form id="product-images-form" phx-submit="save_product_images">
-            <.live_component
-              module={AlgoieWeb.Components.MediaManagerComponent}
-              id="product-images"
-              name="product_images"
-              form="#product-images-form"
-              multiple
-              selected={@wizard_data["product_image_urls"]}
-              label="Product images"
-              helper="The first image is used as the cover photo. Use the reorder arrows to change order."
-              store_id={@store_id}
-              tenant={@tenant}
-              current_user={@current_user}
-            />
-            <div class="mt-3">
-              <.ui_button type="submit" variant="secondary" size="sm">Save Images</.ui_button>
-            </div>
-          </form>
+          <.live_component
+            module={AlgoieWeb.Components.MediaManagerComponent}
+            id="product-images"
+            name="product_images"
+            multiple
+            selected={@wizard_data["product_image_urls"]}
+            label="Product images"
+            helper="The first image is used as the cover photo. Use the reorder arrows to change order."
+            store_id={@store_id}
+            tenant={@tenant}
+            current_user={@current_user}
+          />
 
           <div
             :if={@wizard_data["product_type"] == "variable" && @generated_variants != []}
@@ -741,26 +746,16 @@
                 |> Enum.map(fn {k, v} -> "#{k}: #{v}" end)
                 |> Enum.join(", ")}
               </p>
-              <form
-                id={"variant-images-form-#{idx}"}
-                phx-submit="save_variant_images"
-                phx-value-index={idx}
-              >
-                <.live_component
-                  module={AlgoieWeb.Components.MediaManagerComponent}
-                  id={"variant-images-#{idx}"}
-                  name="variant_images"
-                  form={"#variant-images-form-#{idx}"}
-                  multiple
-                  selected={variant["image_urls"] || []}
-                  store_id={@store_id}
-                  tenant={@tenant}
-                  current_user={@current_user}
-                />
-                <div class="mt-3">
-                  <.ui_button type="submit" variant="secondary" size="sm">Save Images</.ui_button>
-                </div>
-              </form>
+              <.live_component
+                module={AlgoieWeb.Components.MediaManagerComponent}
+                id={"variant-images-#{idx}"}
+                name="variant_images"
+                multiple
+                selected={variant["image_urls"] || []}
+                store_id={@store_id}
+                tenant={@tenant}
+                current_user={@current_user}
+              />
             </div>
           </div>
         </div>
@@ -875,7 +870,7 @@
               <p><span class="font-medium">Name:</span> {@wizard_data["name"]}</p>
               <p><span class="font-medium">Slug:</span> {@wizard_data["slug"]}</p>
               <p><span class="font-medium">Type:</span> {@wizard_data["product_type"]}</p>
-              <p :if={@wizard_data["description"]}>
+              <p :if={@wizard_data["description"] != ""}>
                 <span class="font-medium">Description:</span>
                 <span class="text-base-content/60">{String.slice(
                   @wizard_data["description"],
@@ -932,13 +927,32 @@
                   do: @wizard_data["sku"],
                   else: @wizard_data["slug"]}
               </p>
-              <p><span class="font-medium">Price:</span> ${@wizard_data["price"]}</p>
-              <p :if={@wizard_data["cost_price"] != ""}>
-                <span class="font-medium">Cost:</span> ${@wizard_data["cost_price"]}
-              </p>
-              <p :if={@wizard_data["compare_at_price"] != ""}>
-                <span class="font-medium">Compare-at:</span> ${@wizard_data["compare_at_price"]}
-              </p>
+              <%= if @wizard_data["product_type"] == "variable" && @wizard_data["variant_price_differs"] do %>
+                <p>
+                  <span class="font-medium">Pricing:</span>
+                  <span class="text-base-content/60">Per-variant pricing enabled</span>
+                </p>
+                <div class="mt-2 space-y-1">
+                  <%= for {variant, _idx} <- Enum.with_index(@generated_variants) do %>
+                    <p class="text-sm">
+                      <span class="text-base-content/60">
+                        {variant["option_values"]
+                        |> Enum.map(fn {k, v} -> "#{k}: #{v}" end)
+                        |> Enum.join(", ")}
+                      </span>
+                      — ${variant["price"]}
+                    </p>
+                  <% end %>
+                </div>
+              <% else %>
+                <p><span class="font-medium">Price:</span> ${@wizard_data["price"]}</p>
+                <p :if={@wizard_data["cost_price"] != ""}>
+                  <span class="font-medium">Cost:</span> ${@wizard_data["cost_price"]}
+                </p>
+                <p :if={@wizard_data["compare_at_price"] != ""}>
+                  <span class="font-medium">Compare-at:</span> ${@wizard_data["compare_at_price"]}
+                </p>
+              <% end %>
               <p>
                 <span class="font-medium">Variants:</span>
                 {if @wizard_data["product_type"] == "simple",

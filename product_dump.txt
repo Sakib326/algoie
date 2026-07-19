@@ -1,0 +1,977 @@
+[debug] QUERY OK source="products" db=13.0ms decode=2.0ms queue=4.2ms idle=277.1ms
+SELECT p0."id", p0."name", p0."status", p0."description", p0."attribute_definitions", p0."brand_id", p0."category_id", p0."featured", p0."inserted_at", p0."is_new", p0."meta_description", p0."meta_title", p0."product_type", p0."slug", p0."store_id", p0."updated_at" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."products" AS p0 WHERE (p0."id"::uuid = $1::uuid) ["afcb1aba-7328-4163-8b24-bad6f965a9fd"]
+[90m↳ anonymous fn/3 in AshPostgres.DataLayer.run_query/2, at: lib/data_layer.ex:867[0m
+[debug] QUERY OK source="product_images" db=1.0ms queue=2.9ms idle=394.2ms
+SELECT p0."id", p0."position", p0."product_id", p0."inserted_at", p0."updated_at", p0."variant_id", p0."alt_text", p0."media_asset_id" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."product_images" AS p0 WHERE (p0."product_id"::uuid = ANY($1::uuid[])) [["afcb1aba-7328-4163-8b24-bad6f965a9fd"]]
+[90m↳ anonymous fn/3 in AshPostgres.DataLayer.run_query/2, at: lib/data_layer.ex:867[0m
+[debug] QUERY OK source="variants" db=16.4ms queue=1.4ms idle=395.4ms
+SELECT v0."id", v0."position", v0."product_id", v0."inserted_at", v0."store_id", v0."updated_at", v0."low_stock_threshold", v0."option_values", v0."price", v0."sku", v0."stock", v0."track_inventory?", v0."barcode", v0."compare_at_price", v0."cost_price", v0."reserved_quantity" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."variants" AS v0 WHERE (v0."product_id"::uuid = ANY($1::uuid[])) [["afcb1aba-7328-4163-8b24-bad6f965a9fd"]]
+[90m↳ anonymous fn/3 in AshPostgres.DataLayer.run_query/2, at: lib/data_layer.ex:867[0m
+[debug] QUERY OK source="products" db=4.1ms queue=2.7ms idle=411.3ms
+SELECT DISTINCT p0."id", s1."id", s1."name", s1."inserted_at", s1."store_id", s1."updated_at", s1."parent_id" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."products" AS p0 INNER JOIN LATERAL (SELECT sc0."id" AS "id", sc0."name" AS "name", sc0."inserted_at" AS "inserted_at", sc0."store_id" AS "store_id", sc0."updated_at" AS "updated_at", sc0."parent_id" AS "parent_id" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."categories" AS sc0 INNER JOIN (SELECT ssp0."id" AS "id", ssp0."product_id" AS "product_id", ssp0."category_id" AS "category_id", ssp0."inserted_at" AS "inserted_at", ssp0."updated_at" AS "updated_at" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."product_categories" AS ssp0 WHERE (ssp0."product_id" = p0."id")) AS ss1 ON ss1."category_id" = sc0."id") AS s1 ON TRUE WHERE (p0."id"::uuid = ANY($1::uuid[])) AND (p0."id" = ANY($2)) [["afcb1aba-7328-4163-8b24-bad6f965a9fd"], ["afcb1aba-7328-4163-8b24-bad6f965a9fd"]]
+[90m↳ AshPostgres.DataLayer.run_query_with_lateral_join/4, at: lib/data_layer.ex:1104[0m
+[debug] QUERY OK source="products" db=4.0ms queue=2.4ms idle=411.6ms
+SELECT DISTINCT p0."id", s1."id", s1."name", s1."inserted_at", s1."slug", s1."store_id", s1."updated_at" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."products" AS p0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."name" AS "name", st0."inserted_at" AS "inserted_at", st0."slug" AS "slug", st0."store_id" AS "store_id", st0."updated_at" AS "updated_at" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."tags" AS st0 INNER JOIN (SELECT ssp0."id" AS "id", ssp0."product_id" AS "product_id", ssp0."tag_id" AS "tag_id", ssp0."inserted_at" AS "inserted_at", ssp0."updated_at" AS "updated_at" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."product_tags" AS ssp0 WHERE (ssp0."product_id" = p0."id")) AS ss1 ON ss1."tag_id" = st0."id") AS s1 ON TRUE WHERE (p0."id"::uuid = ANY($1::uuid[])) AND (p0."id" = ANY($2)) [["afcb1aba-7328-4163-8b24-bad6f965a9fd"], ["afcb1aba-7328-4163-8b24-bad6f965a9fd"]]
+[90m↳ AshPostgres.DataLayer.run_query_with_lateral_join/4, at: lib/data_layer.ex:1104[0m
+[debug] QUERY OK source="media_assets" db=0.8ms queue=1.4ms idle=423.3ms
+SELECT m0."id", m0."size", m0."filename", m0."width", m0."url", m0."content_type", m0."inserted_at", m0."store_id", m0."updated_at", m0."alt_text", m0."folder_id", m0."height" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."media_assets" AS m0 WHERE (m0."id"::uuid = ANY($1::uuid[])) [["02e02af9-f6b7-4b01-9485-5a45c6ac002e", "11a2e326-ac1a-4cfd-ad6e-cacf72966503", "adb4a3fb-a12f-4aa8-b06d-63290247edc8"]]
+[90m↳ anonymous fn/3 in AshPostgres.DataLayer.run_query/2, at: lib/data_layer.ex:867[0m
+[debug] QUERY OK source="product_images" db=0.8ms queue=0.7ms idle=425.2ms
+SELECT p0."id", p0."position", p0."product_id", p0."inserted_at", p0."updated_at", p0."variant_id", p0."alt_text", p0."media_asset_id" FROM "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"."product_images" AS p0 WHERE (p0."variant_id"::uuid = ANY($1::uuid[])) [["1bffe104-acf9-42c8-8e55-920fba360c95", "3f4602ac-962d-4ea7-bcd4-8ac86ff61e4c", "59dbcbea-4324-410e-85db-6596fa7b439a"]]
+[90m↳ anonymous fn/3 in AshPostgres.DataLayer.run_query/2, at: lib/data_layer.ex:867[0m
+%{
+  inserted_at: %{
+    microsecond: {348877, 6},
+    second: 24,
+    calendar: Calendar.ISO,
+    month: 7,
+    __struct__: DateTime,
+    day: 18,
+    year: 2026,
+    minute: 38,
+    hour: 12,
+    time_zone: "Etc/UTC",
+    zone_abbr: "UTC",
+    utc_offset: 0,
+    std_offset: 0
+  },
+  collection_products: %{
+    type: :relationship,
+    resource: Algoie.Products.Product,
+    __struct__: Ash.NotLoaded,
+    field: :collection_products
+  },
+  attribute_definitions: %{"color" => ["Red", "Green", "Blue"]},
+  categories_join_assoc: %{
+    type: :relationship,
+    resource: Algoie.Products.Product,
+    __struct__: Ash.NotLoaded,
+    field: :categories_join_assoc
+  },
+  meta_title: "AOC CS25G 24.5\" FHD 310Hz Fast IPS CS mode Gaming Monitor",
+  product_tags: %{
+    type: :relationship,
+    resource: Algoie.Products.Product,
+    __struct__: Ash.NotLoaded,
+    field: :product_tags
+  },
+  product_images: [
+    %{
+      id: "46a85a41-9d1b-416a-8210-b13abf349fa4",
+      position: 0,
+      product: %{
+        type: :relationship,
+        resource: Algoie.Products.ProductImage,
+        __struct__: Ash.NotLoaded,
+        field: :product
+      },
+      __struct__: Algoie.Products.ProductImage,
+      product_id: "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      media_asset: %{
+        id: "02e02af9-f6b7-4b01-9485-5a45c6ac002e",
+        size: 2431169,
+        filename: "ChatGPT Image Jul 13, 2026, 03_39_35 PM.png",
+        store: %{
+          type: :relationship,
+          resource: Algoie.Media.MediaAsset,
+          __struct__: Ash.NotLoaded,
+          field: :store
+        },
+        width: nil,
+        __struct__: Algoie.Media.MediaAsset,
+        url: "/uploads/tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d/4518d71f-3342-42c6-a056-81f2406e9750-chatgpt-image-jul-13-2026-03-39-35-pm.png",
+        content_type: "image/png",
+        aggregates: %{},
+        calculations: %{},
+        __metadata__: %{
+          selected: [:id, :size, :filename, :width, :url, :content_type,
+           :inserted_at, :store_id, :updated_at, :alt_text, :folder_id, :height],
+          tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"
+        },
+        __lateral_join_source__: nil,
+        __order__: nil,
+        inserted_at: %{
+          microsecond: {94938, 6},
+          second: 45,
+          calendar: Calendar.ISO,
+          month: 7,
+          __struct__: DateTime,
+          day: 18,
+          year: 2026,
+          minute: 47,
+          hour: 11,
+          time_zone: "Etc/UTC",
+          zone_abbr: "UTC",
+          utc_offset: 0,
+          std_offset: 0
+        },
+        store_id: "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+        updated_at: %{
+          microsecond: {94938, 6},
+          second: 45,
+          calendar: Calendar.ISO,
+          month: 7,
+          __struct__: DateTime,
+          day: 18,
+          year: 2026,
+          minute: 47,
+          hour: 11,
+          time_zone: "Etc/UTC",
+          zone_abbr: "UTC",
+          utc_offset: 0,
+          std_offset: 0
+        },
+        __meta__: %{
+          state: :loaded,
+          context: nil,
+          prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+          source: "media_assets",
+          __struct__: Ecto.Schema.Metadata,
+          schema: Algoie.Media.MediaAsset
+        },
+        alt_text: nil,
+        folder_id: "b559bde8-8b34-41a8-a5c6-25479956fe2c",
+        height: nil,
+        folder: %{
+          type: :relationship,
+          resource: Algoie.Media.MediaAsset,
+          __struct__: Ash.NotLoaded,
+          field: :folder
+        }
+      },
+      aggregates: %{},
+      calculations: %{},
+      __metadata__: %{
+        selected: [:id, :position, :product_id, :inserted_at, :updated_at,
+         :variant_id, :alt_text, :media_asset_id],
+        tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        keyset: "g2o="
+      },
+      __lateral_join_source__: nil,
+      __order__: nil,
+      inserted_at: %{
+        microsecond: {204081, 6},
+        second: 16,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 19,
+        year: 2026,
+        minute: 35,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      updated_at: %{
+        microsecond: {204081, 6},
+        second: 16,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 19,
+        year: 2026,
+        minute: 35,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      __meta__: %{
+        state: :loaded,
+        context: nil,
+        prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        source: "product_images",
+        __struct__: Ecto.Schema.Metadata,
+        schema: Algoie.Products.ProductImage
+      },
+      variant: %{
+        type: :relationship,
+        resource: Algoie.Products.ProductImage,
+        __struct__: Ash.NotLoaded,
+        field: :variant
+      },
+      variant_id: nil,
+      alt_text: nil,
+      media_asset_id: "02e02af9-f6b7-4b01-9485-5a45c6ac002e"
+    },
+    %{
+      id: "acbaf1ff-4013-4f80-9985-e62d2be93fb5",
+      position: 1,
+      product: %{
+        type: :relationship,
+        resource: Algoie.Products.ProductImage,
+        __struct__: Ash.NotLoaded,
+        field: :product
+      },
+      __struct__: Algoie.Products.ProductImage,
+      product_id: "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      media_asset: %{
+        id: "adb4a3fb-a12f-4aa8-b06d-63290247edc8",
+        size: 2435165,
+        filename: "6310a760-ac7f-4115-ba83-7c7cb62ebf34.png",
+        store: %{
+          type: :relationship,
+          resource: Algoie.Media.MediaAsset,
+          __struct__: Ash.NotLoaded,
+          field: :store
+        },
+        width: nil,
+        __struct__: Algoie.Media.MediaAsset,
+        url: "/uploads/tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d/5c1bc8a3-5076-4a1a-8f00-5440e6082e92-6310a760-ac7f-4115-ba83-7c7cb62ebf34.png",
+        content_type: "image/png",
+        aggregates: %{},
+        calculations: %{},
+        __metadata__: %{
+          selected: [:id, :size, :filename, :width, :url, :content_type,
+           :inserted_at, :store_id, :updated_at, :alt_text, :folder_id, :height],
+          tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"
+        },
+        __lateral_join_source__: nil,
+        __order__: nil,
+        inserted_at: %{
+          microsecond: {228836, 6},
+          second: 45,
+          calendar: Calendar.ISO,
+          month: 7,
+          __struct__: DateTime,
+          day: 18,
+          year: 2026,
+          minute: 47,
+          hour: 11,
+          time_zone: "Etc/UTC",
+          zone_abbr: "UTC",
+          utc_offset: 0,
+          std_offset: 0
+        },
+        store_id: "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+        updated_at: %{
+          microsecond: {228836, 6},
+          second: 45,
+          calendar: Calendar.ISO,
+          month: 7,
+          __struct__: DateTime,
+          day: 18,
+          year: 2026,
+          minute: 47,
+          hour: 11,
+          time_zone: "Etc/UTC",
+          zone_abbr: "UTC",
+          utc_offset: 0,
+          std_offset: 0
+        },
+        __meta__: %{
+          state: :loaded,
+          context: nil,
+          prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+          source: "media_assets",
+          __struct__: Ecto.Schema.Metadata,
+          schema: Algoie.Media.MediaAsset
+        },
+        alt_text: nil,
+        folder_id: "b559bde8-8b34-41a8-a5c6-25479956fe2c",
+        height: nil,
+        folder: %{
+          type: :relationship,
+          resource: Algoie.Media.MediaAsset,
+          __struct__: Ash.NotLoaded,
+          field: :folder
+        }
+      },
+      aggregates: %{},
+      calculations: %{},
+      __metadata__: %{
+        selected: [:id, :position, :product_id, :inserted_at, :updated_at,
+         :variant_id, :alt_text, :media_asset_id],
+        tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        keyset: "g2o="
+      },
+      __lateral_join_source__: nil,
+      __order__: nil,
+      inserted_at: %{
+        microsecond: {211641, 6},
+        second: 16,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 19,
+        year: 2026,
+        minute: 35,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      updated_at: %{
+        microsecond: {211641, 6},
+        second: 16,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 19,
+        year: 2026,
+        minute: 35,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      __meta__: %{
+        state: :loaded,
+        context: nil,
+        prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        source: "product_images",
+        __struct__: Ecto.Schema.Metadata,
+        schema: Algoie.Products.ProductImage
+      },
+      variant: %{
+        type: :relationship,
+        resource: Algoie.Products.ProductImage,
+        __struct__: Ash.NotLoaded,
+        field: :variant
+      },
+      variant_id: nil,
+      alt_text: nil,
+      media_asset_id: "adb4a3fb-a12f-4aa8-b06d-63290247edc8"
+    },
+    %{
+      id: "e4fd49c2-86ad-4a1b-adaa-b6a056a80493",
+      position: 2,
+      product: %{
+        type: :relationship,
+        resource: Algoie.Products.ProductImage,
+        __struct__: Ash.NotLoaded,
+        field: :product
+      },
+      __struct__: Algoie.Products.ProductImage,
+      product_id: "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      media_asset: %{
+        id: "11a2e326-ac1a-4cfd-ad6e-cacf72966503",
+        size: 2401759,
+        filename: "ChatGPT Image Jul 11, 2026, 01_17_28 PM.png",
+        store: %{
+          type: :relationship,
+          resource: Algoie.Media.MediaAsset,
+          __struct__: Ash.NotLoaded,
+          field: :store
+        },
+        width: nil,
+        __struct__: Algoie.Media.MediaAsset,
+        url: "/uploads/tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d/113a3c4c-dd44-4f71-b217-4eeac15cd301-chatgpt-image-jul-11-2026-01-17-28-pm.png",
+        content_type: "image/png",
+        aggregates: %{},
+        calculations: %{},
+        __metadata__: %{
+          selected: [:id, :size, :filename, :width, :url, :content_type,
+           :inserted_at, :store_id, :updated_at, :alt_text, :folder_id, :height],
+          tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"
+        },
+        __lateral_join_source__: nil,
+        __order__: nil,
+        inserted_at: %{
+          microsecond: {74708, 6},
+          second: 45,
+          calendar: Calendar.ISO,
+          month: 7,
+          __struct__: DateTime,
+          day: 18,
+          year: 2026,
+          minute: 47,
+          hour: 11,
+          time_zone: "Etc/UTC",
+          zone_abbr: "UTC",
+          utc_offset: 0,
+          std_offset: 0
+        },
+        store_id: "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+        updated_at: %{
+          microsecond: {74708, 6},
+          second: 45,
+          calendar: Calendar.ISO,
+          month: 7,
+          __struct__: DateTime,
+          day: 18,
+          year: 2026,
+          minute: 47,
+          hour: 11,
+          time_zone: "Etc/UTC",
+          zone_abbr: "UTC",
+          utc_offset: 0,
+          std_offset: 0
+        },
+        __meta__: %{
+          state: :loaded,
+          context: nil,
+          prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+          source: "media_assets",
+          __struct__: Ecto.Schema.Metadata,
+          schema: Algoie.Media.MediaAsset
+        },
+        alt_text: nil,
+        folder_id: "b559bde8-8b34-41a8-a5c6-25479956fe2c",
+        height: nil,
+        folder: %{
+          type: :relationship,
+          resource: Algoie.Media.MediaAsset,
+          __struct__: Ash.NotLoaded,
+          field: :folder
+        }
+      },
+      aggregates: %{},
+      calculations: %{},
+      __metadata__: %{
+        selected: [:id, :position, :product_id, :inserted_at, :updated_at,
+         :variant_id, :alt_text, :media_asset_id],
+        tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        keyset: "g2o="
+      },
+      __lateral_join_source__: nil,
+      __order__: nil,
+      inserted_at: %{
+        microsecond: {219483, 6},
+        second: 16,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 19,
+        year: 2026,
+        minute: 35,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      updated_at: %{
+        microsecond: {219483, 6},
+        second: 16,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 19,
+        year: 2026,
+        minute: 35,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      __meta__: %{
+        state: :loaded,
+        context: nil,
+        prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        source: "product_images",
+        __struct__: Ecto.Schema.Metadata,
+        schema: Algoie.Products.ProductImage
+      },
+      variant: %{
+        type: :relationship,
+        resource: Algoie.Products.ProductImage,
+        __struct__: Ash.NotLoaded,
+        field: :variant
+      },
+      variant_id: nil,
+      alt_text: nil,
+      media_asset_id: "11a2e326-ac1a-4cfd-ad6e-cacf72966503"
+    }
+  ],
+  product_type: :variable,
+  updated_at: %{
+    microsecond: {548117, 6},
+    second: 6,
+    calendar: Calendar.ISO,
+    month: 7,
+    __struct__: DateTime,
+    day: 19,
+    year: 2026,
+    minute: 31,
+    hour: 11,
+    time_zone: "Etc/UTC",
+    zone_abbr: "UTC",
+    utc_offset: 0,
+    std_offset: 0
+  },
+  __struct__: Algoie.Products.Product,
+  name: "Xyla Fry",
+  meta_description: nil,
+  __metadata__: %{
+    selected: [:id, :name, :status, :description, :attribute_definitions,
+     :brand_id, :category_id, :featured, :inserted_at, :is_new,
+     :meta_description, :meta_title, :product_type, :slug, :store_id,
+     :updated_at],
+    tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"
+  },
+  variants: [
+    %{
+      id: "59dbcbea-4324-410e-85db-6596fa7b439a",
+      position: 0,
+      product: %{
+        type: :relationship,
+        resource: Algoie.Products.Variant,
+        __struct__: Ash.NotLoaded,
+        field: :product
+      },
+      store: %{
+        type: :relationship,
+        resource: Algoie.Products.Variant,
+        __struct__: Ash.NotLoaded,
+        field: :store
+      },
+      __struct__: Algoie.Products.Variant,
+      product_id: "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      product_images: [],
+      aggregates: %{},
+      calculations: %{},
+      __metadata__: %{
+        selected: [:id, :position, :product_id, :inserted_at, :store_id,
+         :updated_at, :low_stock_threshold, :option_values, :price, :sku,
+         :stock, :track_inventory?, :barcode, :compare_at_price, :cost_price,
+         :reserved_quantity],
+        tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        keyset: "g2o="
+      },
+      __lateral_join_source__: nil,
+      __order__: nil,
+      inserted_at: %{
+        microsecond: {362909, 6},
+        second: 24,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 18,
+        year: 2026,
+        minute: 38,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      store_id: "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+      updated_at: %{
+        microsecond: {311362, 6},
+        second: 10,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 19,
+        year: 2026,
+        minute: 29,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      low_stock_threshold: 10,
+      option_values: %{"color" => "Red"},
+      price: %{exp: -2, __struct__: Decimal, sign: 1, coef: 23400},
+      sku: "Consequatur Dicta e-red",
+      stock: 100,
+      track_inventory?: true,
+      __meta__: %{
+        state: :loaded,
+        context: nil,
+        prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        source: "variants",
+        __struct__: Ecto.Schema.Metadata,
+        schema: Algoie.Products.Variant
+      },
+      barcode: "4353246",
+      compare_at_price: %{exp: -2, __struct__: Decimal, sign: 1, coef: 34534500},
+      cost_price: %{exp: -2, __struct__: Decimal, sign: 1, coef: 67800},
+      reserved_quantity: 0,
+      order_line_items: %{
+        type: :relationship,
+        resource: Algoie.Products.Variant,
+        __struct__: Ash.NotLoaded,
+        field: :order_line_items
+      }
+    },
+    %{
+      id: "3f4602ac-962d-4ea7-bcd4-8ac86ff61e4c",
+      position: 1,
+      product: %{
+        type: :relationship,
+        resource: Algoie.Products.Variant,
+        __struct__: Ash.NotLoaded,
+        field: :product
+      },
+      store: %{
+        type: :relationship,
+        resource: Algoie.Products.Variant,
+        __struct__: Ash.NotLoaded,
+        field: :store
+      },
+      __struct__: Algoie.Products.Variant,
+      product_id: "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      product_images: [],
+      aggregates: %{},
+      calculations: %{},
+      __metadata__: %{
+        selected: [:id, :position, :product_id, :inserted_at, :store_id,
+         :updated_at, :low_stock_threshold, :option_values, :price, :sku,
+         :stock, :track_inventory?, :barcode, :compare_at_price, :cost_price,
+         :reserved_quantity],
+        tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        keyset: "g2o="
+      },
+      __lateral_join_source__: nil,
+      __order__: nil,
+      inserted_at: %{
+        microsecond: {376461, 6},
+        second: 24,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 18,
+        year: 2026,
+        minute: 38,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      store_id: "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+      updated_at: %{
+        microsecond: {330952, 6},
+        second: 10,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 19,
+        year: 2026,
+        minute: 29,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      low_stock_threshold: 10,
+      option_values: %{"color" => "Green"},
+      price: %{exp: -2, __struct__: Decimal, sign: 1, coef: 23400},
+      sku: "Consequatur Dicta e-green",
+      stock: 0,
+      track_inventory?: false,
+      __meta__: %{
+        state: :loaded,
+        context: nil,
+        prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        source: "variants",
+        __struct__: Ecto.Schema.Metadata,
+        schema: Algoie.Products.Variant
+      },
+      barcode: "123123",
+      compare_at_price: %{exp: -2, __struct__: Decimal, sign: 1, coef: 34534500},
+      cost_price: %{exp: -2, __struct__: Decimal, sign: 1, coef: 67800},
+      reserved_quantity: 0,
+      order_line_items: %{
+        type: :relationship,
+        resource: Algoie.Products.Variant,
+        __struct__: Ash.NotLoaded,
+        field: :order_line_items
+      }
+    },
+    %{
+      id: "1bffe104-acf9-42c8-8e55-920fba360c95",
+      position: 2,
+      product: %{
+        type: :relationship,
+        resource: Algoie.Products.Variant,
+        __struct__: Ash.NotLoaded,
+        field: :product
+      },
+      store: %{
+        type: :relationship,
+        resource: Algoie.Products.Variant,
+        __struct__: Ash.NotLoaded,
+        field: :store
+      },
+      __struct__: Algoie.Products.Variant,
+      product_id: "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+      product_images: [],
+      aggregates: %{},
+      calculations: %{},
+      __metadata__: %{
+        selected: [:id, :position, :product_id, :inserted_at, :store_id,
+         :updated_at, :low_stock_threshold, :option_values, :price, :sku,
+         :stock, :track_inventory?, :barcode, :compare_at_price, :cost_price,
+         :reserved_quantity],
+        tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        keyset: "g2o="
+      },
+      __lateral_join_source__: nil,
+      __order__: nil,
+      inserted_at: %{
+        microsecond: {383286, 6},
+        second: 24,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 18,
+        year: 2026,
+        minute: 38,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      store_id: "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+      updated_at: %{
+        microsecond: {342987, 6},
+        second: 10,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 19,
+        year: 2026,
+        minute: 29,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      low_stock_threshold: 10,
+      option_values: %{"color" => "Blue"},
+      price: %{exp: -2, __struct__: Decimal, sign: 1, coef: 23400},
+      sku: "Consequatur Dicta e-blue",
+      stock: 0,
+      track_inventory?: false,
+      __meta__: %{
+        state: :loaded,
+        context: nil,
+        prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        source: "variants",
+        __struct__: Ecto.Schema.Metadata,
+        schema: Algoie.Products.Variant
+      },
+      barcode: "123123",
+      compare_at_price: %{exp: -2, __struct__: Decimal, sign: 1, coef: 34534500},
+      cost_price: %{exp: -2, __struct__: Decimal, sign: 1, coef: 67800},
+      reserved_quantity: 0,
+      order_line_items: %{
+        type: :relationship,
+        resource: Algoie.Products.Variant,
+        __struct__: Ash.NotLoaded,
+        field: :order_line_items
+      }
+    }
+  ],
+  categories: [
+    %{
+      id: "0d522223-6e3f-4ce3-9b75-219f097f6277",
+      name: "Electronics 2",
+      parent: %{
+        type: :relationship,
+        resource: Algoie.Products.Category,
+        __struct__: Ash.NotLoaded,
+        field: :parent
+      },
+      store: %{
+        type: :relationship,
+        resource: Algoie.Products.Category,
+        __struct__: Ash.NotLoaded,
+        field: :store
+      },
+      __struct__: Algoie.Products.Category,
+      children: %{
+        type: :relationship,
+        resource: Algoie.Products.Category,
+        __struct__: Ash.NotLoaded,
+        field: :children
+      },
+      aggregates: %{},
+      calculations: %{},
+      __metadata__: %{
+        selected: [:id, :name, :inserted_at, :store_id, :updated_at, :parent_id],
+        tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"
+      },
+      __lateral_join_source__: %{id: "afcb1aba-7328-4163-8b24-bad6f965a9fd"},
+      __order__: nil,
+      inserted_at: %{
+        microsecond: {681378, 6},
+        second: 32,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 13,
+        year: 2026,
+        minute: 47,
+        hour: 8,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      store_id: "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+      updated_at: %{
+        microsecond: {669432, 6},
+        second: 6,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 18,
+        year: 2026,
+        minute: 44,
+        hour: 12,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      __meta__: %{
+        state: :loaded,
+        context: nil,
+        prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        source: "categories",
+        __struct__: Ecto.Schema.Metadata,
+        schema: Algoie.Products.Category
+      },
+      parent_id: nil,
+      products: %{
+        type: :relationship,
+        resource: Algoie.Products.Category,
+        __struct__: Ash.NotLoaded,
+        field: :products
+      }
+    },
+    %{
+      id: "41af7d67-4181-4c7d-8a9a-783e42bcb6bd",
+      name: "Laptops",
+      parent: %{
+        type: :relationship,
+        resource: Algoie.Products.Category,
+        __struct__: Ash.NotLoaded,
+        field: :parent
+      },
+      store: %{
+        type: :relationship,
+        resource: Algoie.Products.Category,
+        __struct__: Ash.NotLoaded,
+        field: :store
+      },
+      __struct__: Algoie.Products.Category,
+      children: %{
+        type: :relationship,
+        resource: Algoie.Products.Category,
+        __struct__: Ash.NotLoaded,
+        field: :children
+      },
+      aggregates: %{},
+      calculations: %{},
+      __metadata__: %{
+        selected: [:id, :name, :inserted_at, :store_id, :updated_at, :parent_id],
+        tenant: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d"
+      },
+      __lateral_join_source__: %{id: "afcb1aba-7328-4163-8b24-bad6f965a9fd"},
+      __order__: nil,
+      inserted_at: %{
+        microsecond: {688841, 6},
+        second: 32,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 13,
+        year: 2026,
+        minute: 47,
+        hour: 8,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      store_id: "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+      updated_at: %{
+        microsecond: {688841, 6},
+        second: 32,
+        calendar: Calendar.ISO,
+        month: 7,
+        __struct__: DateTime,
+        day: 13,
+        year: 2026,
+        minute: 47,
+        hour: 8,
+        time_zone: "Etc/UTC",
+        zone_abbr: "UTC",
+        utc_offset: 0,
+        std_offset: 0
+      },
+      __meta__: %{
+        state: :loaded,
+        context: nil,
+        prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+        source: "categories",
+        __struct__: Ecto.Schema.Metadata,
+        schema: Algoie.Products.Category
+      },
+      parent_id: "0d522223-6e3f-4ce3-9b75-219f097f6277",
+      products: %{
+        type: :relationship,
+        resource: Algoie.Products.Category,
+        __struct__: Ash.NotLoaded,
+        field: :products
+      }
+    }
+  ],
+  description: "Et tempora obcaecati",
+  calculations: %{},
+  __lateral_join_source__: nil,
+  slug: "dfghnegue-enrgnerjg",
+  category: %{
+    type: :relationship,
+    resource: Algoie.Products.Product,
+    __struct__: Ash.NotLoaded,
+    field: :category
+  },
+  store_id: "59e2eeea-f1f2-4cf0-95c6-777445fa0cc3",
+  brand_id: "560c1a54-22a6-4142-8b35-911b94dd6f10",
+  tags_join_assoc: %{
+    type: :relationship,
+    resource: Algoie.Products.Product,
+    __struct__: Ash.NotLoaded,
+    field: :tags_join_assoc
+  },
+  store: %{
+    type: :relationship,
+    resource: Algoie.Products.Product,
+    __struct__: Ash.NotLoaded,
+    field: :store
+  },
+  __order__: nil,
+  id: "afcb1aba-7328-4163-8b24-bad6f965a9fd",
+  __meta__: %{
+    state: :loaded,
+    context: nil,
+    prefix: "tenant_82c28c95-e068-4d07-ae9d-d74c0d32321d",
+    source: "products",
+    __struct__: Ecto.Schema.Metadata,
+    schema: Algoie.Products.Product
+  },
+  status: :active,
+  brand: %{
+    type: :relationship,
+    resource: Algoie.Products.Product,
+    __struct__: Ash.NotLoaded,
+    field: :brand
+  },
+  is_new: true,
+  featured: true,
+  tags: [],
+  aggregates: %{},
+  product_categories: %{
+    type: :relationship,
+    resource: Algoie.Products.Product,
+    __struct__: Ash.NotLoaded,
+    field: :product_categories
+  },
+  category_id: "1d4302de-93b0-49c2-9db4-2b21b5a62cba"
+}

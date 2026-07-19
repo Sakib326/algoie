@@ -8,6 +8,7 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   require Ash.Query
 
   @steps ~w(basic category attributes pricing images seo review)
+  @boolean_fields ~w(track_inventory? featured is_new variant_price_differs)
 
   @impl true
   def mount(params, _session, socket) do
@@ -120,6 +121,7 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       "stock" => "0",
       "low_stock_threshold" => "10",
       "track_inventory?" => true,
+      "barcode" => "",
       "variant_price_differs" => false,
       "meta_title" => "",
       "meta_description" => "",
@@ -162,7 +164,7 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   end
 
   defp load_image_urls(socket, product_id, variant_id) do
-    opts = AlgoieWeb.Scope.opts(socket)
+    opts = AlgoieWeb.Scope.opts(socket) |> Keyword.put(:authorize?, false)
 
     query =
       case variant_id do
@@ -180,8 +182,20 @@ defmodule AlgoieWeb.ProductLive.Wizard do
     |> Ash.Query.load(:media_asset)
     |> Ash.read(opts)
     |> case do
-      {:ok, images} -> Enum.map(images, & &1.media_asset.url)
-      _ -> []
+      {:ok, images} ->
+        urls = Enum.map(images, fn img ->
+          if img.media_asset do
+            img.media_asset.url
+          else
+            "MISSING MEDIA ASSET"
+          end
+        end)
+        IO.inspect(urls, label: "LOADED IMAGE URLS FOR #{variant_id || "PRODUCT"}")
+        urls
+
+      err ->
+        IO.inspect(err, label: "FAILED TO LOAD IMAGE URLS FOR #{variant_id || "PRODUCT"}")
+        []
     end
   end
 
@@ -208,7 +222,8 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       "low_stock_threshold" =>
         to_string((first_variant && first_variant.low_stock_threshold) || 10),
       "track_inventory?" => if(first_variant, do: first_variant.track_inventory?, else: true),
-      "variant_price_differs" => true,
+      "barcode" => (first_variant && first_variant.barcode) || "",
+      "variant_price_differs" => product.product_type == :variable,
       "meta_title" => product.meta_title || "",
       "meta_description" => product.meta_description || "",
       "tags" => tags,
@@ -226,6 +241,8 @@ defmodule AlgoieWeb.ProductLive.Wizard do
             "cost_price" => decimal_to_string(v.cost_price),
             "compare_at_price" => decimal_to_string(v.compare_at_price),
             "stock" => to_string(v.stock),
+            "low_stock_threshold" => to_string(v.low_stock_threshold),
+            "track_inventory?" => v.track_inventory?,
             "barcode" => v.barcode,
             "option_values" => v.option_values,
             "position" => v.position,
@@ -249,12 +266,6 @@ defmodule AlgoieWeb.ProductLive.Wizard do
     end
   end
 
-  defp extract_urls(params, key) do
-    params
-    |> Map.get(key, [])
-    |> List.wrap()
-    |> Enum.reject(&(&1 in [nil, ""]))
-  end
 
   @impl true
   def handle_params(%{"step" => step_str}, _url, socket) do
@@ -285,6 +296,9 @@ defmodule AlgoieWeb.ProductLive.Wizard do
         :error -> Map.get(params, "value", "")
       end
 
+    # Cast known boolean fields back to booleans so downstream `!` and `if` work correctly.
+    value = if field in @boolean_fields, do: to_boolean(value), else: value
+
     wizard_data = Map.put(socket.assigns.wizard_data, field, value)
 
     wizard_data =
@@ -303,7 +317,9 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   end
 
   def handle_event("toggle_field", %{"field" => field}, socket) do
-    wizard_data = Map.update!(socket.assigns.wizard_data, field, &(!&1))
+    wizard_data =
+      Map.update!(socket.assigns.wizard_data, field, fn val -> !to_boolean(val) end)
+
     {:noreply, assign(socket, :wizard_data, wizard_data)}
   end
 
@@ -434,32 +450,9 @@ defmodule AlgoieWeb.ProductLive.Wizard do
     {:noreply, assign(socket, :generated_variants, variants)}
   end
 
-  def handle_event("save_product_images", params, socket) do
-    urls = extract_urls(params, "product_images")
-    wizard_data = Map.put(socket.assigns.wizard_data, "product_image_urls", urls)
-
-    {:noreply,
-     socket
-     |> assign(:wizard_data, wizard_data)
-     |> put_flash(:info, "Product images saved")}
-  end
-
-  def handle_event("save_variant_images", %{"index" => idx_str} = params, socket) do
-    idx = String.to_integer(idx_str)
-    urls = extract_urls(params, "variant_images")
-
-    variants =
-      List.update_at(socket.assigns.generated_variants, idx, &Map.put(&1, "image_urls", urls))
-
-    {:noreply,
-     socket
-     |> assign(:generated_variants, variants)
-     |> put_flash(:info, "Variant images saved")}
-  end
-
   def handle_event("toggle_variant_price_differs", _params, socket) do
     current = socket.assigns.wizard_data["variant_price_differs"]
-    wizard_data = Map.put(socket.assigns.wizard_data, "variant_price_differs", !current)
+    wizard_data = Map.put(socket.assigns.wizard_data, "variant_price_differs", !to_boolean(current))
     {:noreply, assign(socket, :wizard_data, wizard_data)}
   end
 
@@ -468,7 +461,7 @@ defmodule AlgoieWeb.ProductLive.Wizard do
 
     variants =
       List.update_at(socket.assigns.generated_variants, idx, fn v ->
-        Map.put(v, "track_inventory?", !Map.get(v, "track_inventory?", true))
+        Map.put(v, "track_inventory?", !to_boolean(Map.get(v, "track_inventory?", true)))
       end)
 
     {:noreply, assign(socket, :generated_variants, variants)}
@@ -507,6 +500,22 @@ defmodule AlgoieWeb.ProductLive.Wizard do
     end
   end
 
+  @impl true
+  def handle_info({:media_manager_updated, "product-images", selected_urls}, socket) do
+    wizard_data = Map.put(socket.assigns.wizard_data, "product_image_urls", selected_urls)
+    {:noreply, assign(socket, :wizard_data, wizard_data)}
+  end
+
+  def handle_info({:media_manager_updated, "variant-images-" <> idx_str, selected_urls}, socket) do
+    idx = String.to_integer(idx_str)
+    variants =
+      List.update_at(socket.assigns.generated_variants, idx, fn v ->
+        Map.put(v, "image_urls", selected_urls)
+      end)
+
+    {:noreply, assign(socket, :generated_variants, variants)}
+  end
+
   defp create_product(socket, status) do
     data = socket.assigns.wizard_data
 
@@ -535,18 +544,27 @@ defmodule AlgoieWeb.ProductLive.Wizard do
 
   defp insert_product(socket, product_attrs, opts, data) do
     product_attrs = Map.put(product_attrs, "store_id", socket.assigns.store_id)
+    IO.inspect(product_attrs, label: "[DEBUG - INSERT PRODUCT]")
 
     case Ash.create(Product, product_attrs, opts) do
       {:ok, product} ->
-        created_variants = create_variants(product, socket, data)
+        {created_variants, variant_errors} = create_variants(product, socket, data)
         create_tags(product, socket, data)
         create_categories(product, socket, data)
         create_images(product, socket, data, created_variants)
 
-        {:noreply,
-         socket
-         |> put_flash(:info, "Product created successfully")
-         |> push_navigate(to: ~p"/dashboard/products")}
+        if variant_errors == [] do
+          {:noreply,
+           socket
+           |> put_flash(:info, "Product created successfully")
+           |> push_navigate(to: ~p"/dashboard/products")}
+        else
+          {:noreply,
+           socket
+           |> put_flash(:warning, "Product created but some variants had errors")
+           |> assign(:errors, variant_errors)
+           |> push_navigate(to: ~p"/dashboard/products")}
+        end
 
       {:error, changeset} ->
         errors = format_changeset_errors(changeset)
@@ -555,17 +573,25 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   end
 
   defp update_product(socket, product_attrs, opts, data) do
+    IO.inspect(product_attrs, label: "[DEBUG - UPDATE PRODUCT]")
     case Ash.update(socket.assigns.product, product_attrs, opts) do
       {:ok, product} ->
-        update_variants(socket, data, opts)
+        {_updated, variant_errors} = update_variants(socket, data, opts)
         sync_tags(product, socket, data, opts)
         sync_categories(product, socket, data, opts)
         sync_images(product, socket, data, opts)
 
-        {:noreply,
-         socket
-         |> put_flash(:info, "Product updated successfully")
-         |> push_navigate(to: ~p"/dashboard/products")}
+        if variant_errors == [] do
+          {:noreply,
+           socket
+           |> put_flash(:info, "Product updated successfully")
+           |> push_navigate(to: ~p"/dashboard/products")}
+        else
+          {:noreply,
+           socket
+           |> put_flash(:warning, "Product updated but some variants had errors")
+           |> assign(:errors, variant_errors)}
+        end
 
       {:error, changeset} ->
         errors = format_changeset_errors(changeset)
@@ -587,9 +613,10 @@ defmodule AlgoieWeb.ProductLive.Wizard do
             "cost_price" => if(data["cost_price"] not in ["", nil], do: data["cost_price"]),
             "compare_at_price" =>
               if(data["compare_at_price"] not in ["", nil], do: data["compare_at_price"]),
-            "stock" => if(data["track_inventory?"], do: data["stock"], else: 0),
-            "low_stock_threshold" => data["low_stock_threshold"],
+            "stock" => if(data["track_inventory?"] && data["stock"] not in ["", nil], do: data["stock"], else: 0),
+            "low_stock_threshold" => if(data["low_stock_threshold"] not in ["", nil], do: data["low_stock_threshold"]),
             "track_inventory?" => data["track_inventory?"],
+            "barcode" => if(data["barcode"] not in ["", nil], do: data["barcode"]),
             "option_values" => %{},
             "position" => 0
           }
@@ -601,17 +628,27 @@ defmodule AlgoieWeb.ProductLive.Wizard do
               do: v["price"],
               else: data["price"]
 
+          effective_cost_price =
+            if data["variant_price_differs"],
+              do: v["cost_price"],
+              else: data["cost_price"]
+
+          effective_compare_at_price =
+            if data["variant_price_differs"],
+              do: v["compare_at_price"],
+              else: data["compare_at_price"]
+
           %{
             "product_id" => product.id,
             "store_id" => socket.assigns.store_id,
             "sku" => v["sku"],
             "price" => effective_price,
-            "cost_price" => if(v["cost_price"] not in ["", nil], do: v["cost_price"]),
+            "cost_price" => if(effective_cost_price not in ["", nil], do: effective_cost_price),
             "compare_at_price" =>
-              if(v["compare_at_price"] not in ["", nil], do: v["compare_at_price"]),
+              if(effective_compare_at_price not in ["", nil], do: effective_compare_at_price),
             "barcode" => if(v["barcode"] not in ["", nil], do: v["barcode"]),
-            "stock" => if(Map.get(v, "track_inventory?", true), do: v["stock"] || "0", else: 0),
-            "low_stock_threshold" => data["low_stock_threshold"],
+            "stock" => if(Map.get(v, "track_inventory?", true) && v["stock"] not in ["", nil], do: v["stock"], else: 0),
+            "low_stock_threshold" => if(data["low_stock_threshold"] not in ["", nil], do: data["low_stock_threshold"]),
             "track_inventory?" => Map.get(v, "track_inventory?", true),
             "option_values" => v["option_values"],
             "position" => v["position"]
@@ -619,63 +656,121 @@ defmodule AlgoieWeb.ProductLive.Wizard do
         end)
       end
 
-    Enum.map(variants_to_create, fn attrs ->
-      case Ash.create(Variant, attrs, opts) do
-        {:ok, variant} -> variant
-        {:error, _} -> nil
-      end
+    IO.inspect(variants_to_create, label: "[DEBUG - CREATE VARIANTS]")
+
+    results =
+      Enum.map(variants_to_create, fn attrs ->
+        case Ash.create(Variant, attrs, opts) do
+          {:ok, variant} -> {:ok, variant}
+          {:error, error} -> {:error, error}
+        end
+      end)
+
+    created = Enum.map(results, fn
+      {:ok, variant} -> variant
+      {:error, _} -> nil
     end)
+
+    errors =
+      results
+      |> Enum.filter(&match?({:error, _}, &1))
+      |> Enum.flat_map(fn {:error, err} -> format_changeset_errors(err) end)
+
+    {created, errors}
   end
 
   defp update_variants(socket, data, opts) do
-    if data["product_type"] == "simple" do
-      update_simple_variant(socket, data, opts)
-    else
-      Enum.each(socket.assigns.generated_variants, fn v ->
-        with id when is_binary(id) <- v["id"],
-             {:ok, variant} <- Ash.get(Variant, id, opts) do
-          effective_price =
-            if data["variant_price_differs"],
-              do: v["price"],
-              else: data["price"]
+    results =
+      if data["product_type"] == "simple" do
+        [update_simple_variant(socket, data, opts)]
+      else
+        Enum.map(socket.assigns.generated_variants, fn v ->
+            effective_price =
+              if data["variant_price_differs"],
+                do: v["price"],
+                else: data["price"]
 
-          Ash.update(
-            variant,
-            %{
+            effective_cost_price =
+              if data["variant_price_differs"],
+                do: v["cost_price"],
+                else: data["cost_price"]
+
+            effective_compare_at_price =
+              if data["variant_price_differs"],
+                do: v["compare_at_price"],
+                else: data["compare_at_price"]
+
+          if is_binary(v["id"]) do
+            payload = %{
               "sku" => v["sku"],
               "price" => effective_price,
-              "cost_price" => if(v["cost_price"] not in ["", nil], do: v["cost_price"]),
+              "cost_price" => if(effective_cost_price not in ["", nil], do: effective_cost_price),
               "compare_at_price" =>
-                if(v["compare_at_price"] not in ["", nil], do: v["compare_at_price"]),
-              "stock" => if(Map.get(v, "track_inventory?", true), do: v["stock"] || "0", else: 0),
+                if(effective_compare_at_price not in ["", nil], do: effective_compare_at_price),
+              "stock" => if(Map.get(v, "track_inventory?", true) && v["stock"] not in ["", nil], do: v["stock"], else: 0),
               "track_inventory?" => Map.get(v, "track_inventory?", true),
-              "barcode" => if(v["barcode"] not in ["", nil], do: v["barcode"])
-            },
-            opts
-          )
-        end
-      end)
-    end
+              "barcode" => if(v["barcode"] not in ["", nil], do: v["barcode"], else: nil)
+            }
+            IO.inspect(payload, label: "[DEBUG - UPDATE VARIANT (existing)]")
 
-    :ok
+            case Ash.get(Variant, v["id"], opts) do
+              {:ok, variant} ->
+                Ash.update(variant, payload, opts)
+              error -> error
+            end
+          else
+            # Newly generated variant during edit session
+            payload = %{
+              "product_id" => socket.assigns.product.id,
+              "store_id" => socket.assigns.store_id,
+              "sku" => v["sku"],
+              "price" => effective_price,
+              "cost_price" => if(effective_cost_price not in ["", nil], do: effective_cost_price),
+              "compare_at_price" =>
+                if(effective_compare_at_price not in ["", nil], do: effective_compare_at_price),
+              "stock" => if(Map.get(v, "track_inventory?", true) && v["stock"] not in ["", nil], do: v["stock"], else: 0),
+              "low_stock_threshold" => if(data["low_stock_threshold"] not in ["", nil], do: data["low_stock_threshold"]),
+              "track_inventory?" => Map.get(v, "track_inventory?", true),
+              "barcode" => if(v["barcode"] not in ["", nil], do: v["barcode"]),
+              "option_values" => v["option_values"],
+              "position" => v["position"] || 0
+            }
+            IO.inspect(payload, label: "[DEBUG - UPDATE VARIANT (new)]")
+            Ash.create(Variant, payload, opts)
+          end
+        end)
+      end
+
+    updated = Enum.map(results, fn
+      {:ok, variant} -> variant
+      _ -> nil
+    end)
+
+    errors =
+      results
+      |> Enum.filter(&match?({:error, _}, &1))
+      |> Enum.flat_map(fn {:error, err} -> format_changeset_errors(err) end)
+
+    {updated, errors}
   end
 
   defp update_simple_variant(socket, data, opts) do
     with id when is_binary(id) <- socket.assigns.simple_variant_id,
          {:ok, variant} <- Ash.get(Variant, id, opts) do
-      Ash.update(
-        variant,
-        %{
-          "sku" => simple_sku(data),
-          "price" => data["price"],
-          "cost_price" => if(data["cost_price"] != "", do: data["cost_price"]),
-          "compare_at_price" => if(data["compare_at_price"] != "", do: data["compare_at_price"]),
-          "stock" => data["stock"],
-          "low_stock_threshold" => data["low_stock_threshold"],
-          "track_inventory?" => data["track_inventory?"]
-        },
-        opts
-      )
+      payload = %{
+        "sku" => simple_sku(data),
+        "price" => data["price"],
+        "cost_price" => if(data["cost_price"] not in ["", nil], do: data["cost_price"], else: nil),
+        "compare_at_price" => if(data["compare_at_price"] not in ["", nil], do: data["compare_at_price"], else: nil),
+        "stock" => if(data["track_inventory?"] && data["stock"] not in ["", nil], do: data["stock"], else: 0),
+        "low_stock_threshold" => if(data["low_stock_threshold"] not in ["", nil], do: data["low_stock_threshold"], else: nil),
+        "track_inventory?" => data["track_inventory?"],
+        "barcode" => if(data["barcode"] not in ["", nil], do: data["barcode"], else: nil)
+      }
+      IO.inspect(payload, label: "[DEBUG - UPDATE SIMPLE VARIANT]")
+      Ash.update(variant, payload, opts)
+    else
+      _ -> {:ok, nil}
     end
   end
 
@@ -693,8 +788,13 @@ defmodule AlgoieWeb.ProductLive.Wizard do
 
   defp create_tags(product, socket, data) do
     opts = AlgoieWeb.Scope.opts(socket)
+    tags =
+      (data["tags"] || [])
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.map(&String.trim/1)
+      |> Enum.uniq()
 
-    Enum.each(data["tags"], fn tag_name ->
+    Enum.each(tags, fn tag_name ->
       slug = Slug.slugify(tag_name)
 
       tag =
@@ -722,7 +822,12 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   defp create_categories(product, socket, data) do
     opts = AlgoieWeb.Scope.opts(socket)
 
-    Enum.each(data["category_ids"], fn category_id ->
+    category_ids =
+      (data["category_ids"] || [])
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.uniq()
+
+    Enum.each(category_ids, fn category_id ->
       Ash.create(ProductCategory, %{product_id: product.id, category_id: category_id}, opts)
     end)
   end
@@ -883,28 +988,38 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   end
 
   defp validate_step(3, data) do
-    errors = []
-
-    errors =
-      if data["product_type"] == "variable" && data["variant_price_differs"] do
-        # Per-variant prices — no global price required
-        errors
-      else
-        if data["price"] in ["", nil] || Decimal.parse(data["price"]) == :error do
-          ["Valid selling price is required" | errors]
-        else
-          {parsed, _} = Decimal.parse(data["price"])
-
-          if Decimal.compare(parsed, Decimal.new(0)) != :gt,
-            do: ["Selling price must be greater than 0" | errors],
-            else: errors
-        end
-      end
-
+    errors = validate_pricing(data)
     if errors == [], do: :ok, else: {:error, errors}
   end
 
   defp validate_step(_step, _data), do: :ok
+
+  defp validate_pricing(data) do
+    if data["product_type"] == "variable" && data["variant_price_differs"] do
+      # Per-variant prices — no global price required, but validate each variant
+      []
+    else
+      validate_decimal_price(data["price"], "Selling price")
+    end
+  end
+
+  defp validate_decimal_price(value, label) do
+    cond do
+      value in ["", nil] ->
+        ["Valid #{label} is required"]
+
+      true ->
+        case Decimal.parse(value) do
+          {parsed, ""} ->
+            if Decimal.compare(parsed, Decimal.new(0)) != :gt,
+              do: ["#{label} must be greater than 0"],
+              else: []
+
+          _ ->
+            ["Valid #{label} is required"]
+        end
+    end
+  end
 
   defp format_changeset_errors(error_or_changeset) do
     error_or_changeset
@@ -922,6 +1037,14 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   end
 
   defp extract_errors(error), do: [error]
+
+  # Safely coerce a value to boolean. Handles true/false, "true"/"false", and nil.
+  defp to_boolean(true), do: true
+  defp to_boolean(false), do: false
+  defp to_boolean("true"), do: true
+  defp to_boolean("false"), do: false
+  defp to_boolean(nil), do: false
+  defp to_boolean(_), do: false
 
   defp list_related(socket, resource) do
     opts = Keyword.put(AlgoieWeb.Scope.opts(socket), :page, false)
