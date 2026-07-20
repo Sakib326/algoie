@@ -39,6 +39,7 @@ defmodule AlgoieWeb.Router do
     live "/", HomeLive, :index
     live "/register", RegistrationLive, :index
     live "/sign-in", LoginLive, :index
+    live "/forgot-password", ForgotPasswordLive, :index
 
     get "/switch-store/:store_id", StoreSwitchController, :switch
 
@@ -115,6 +116,9 @@ defmodule AlgoieWeb.Router do
     post "/account/register", StorefrontCustomerController, :create_account
     get "/account/sign-in", StorefrontCustomerController, :sign_in
     post "/account/sign-in", StorefrontCustomerController, :authenticate
+    get "/account/forgot-password", StorefrontCustomerController, :forgot_password
+    post "/account/forgot-password", StorefrontCustomerController, :request_password_reset
+    post "/account/reset-password", StorefrontCustomerController, :reset_password
     delete "/account/sign-out", StorefrontCustomerController, :sign_out
     get "/account", StorefrontCustomerController, :show
     post "/account/profile", StorefrontCustomerController, :update_profile

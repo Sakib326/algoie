@@ -60,6 +60,12 @@ defmodule Algoie.Accounts.User do
       primary?(true)
       accept([:email, :default_tenant])
     end
+
+    update :reset_password do
+      require_atomic?(false)
+      argument(:password, :string, allow_nil?: false, sensitive?: true)
+      change(&set_password/2)
+    end
   end
 
   policies do
@@ -83,6 +89,23 @@ defmodule Algoie.Accounts.User do
     policy action_type(:update) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
       authorize_if(Algoie.Policies.Checks.ActorIsRecordOwner)
+    end
+  end
+
+  defp set_password(changeset, _context) do
+    password = Ash.Changeset.get_argument(changeset, :password) || ""
+
+    if String.length(password) >= 8 do
+      Ash.Changeset.force_change_attribute(
+        changeset,
+        :hashed_password,
+        Bcrypt.hash_pwd_salt(password)
+      )
+    else
+      Ash.Changeset.add_error(changeset,
+        field: :password,
+        message: "must be at least 8 characters"
+      )
     end
   end
 end

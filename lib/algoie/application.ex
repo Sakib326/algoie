@@ -10,6 +10,7 @@ defmodule Algoie.Application do
     children = [
       AlgoieWeb.Telemetry,
       Algoie.Repo,
+      {Task.Supervisor, name: Algoie.EmailTaskSupervisor},
       {DNSCluster, query: Application.get_env(:algoie, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Algoie.PubSub},
       # Start a worker by calling: Algoie.Worker.start_link(arg)

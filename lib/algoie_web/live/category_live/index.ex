@@ -59,8 +59,31 @@ defmodule AlgoieWeb.CategoryLive.Index do
   end
 
   @impl true
+  def handle_event("validate", %{"category" => params}, socket) do
+    params = maybe_put_store_id(params, socket)
+    {:noreply, assign(socket, :form, AshPhoenix.Form.validate(socket.assigns.form, params))}
+  end
+
   def handle_event("save", %{"category" => params}, socket) do
-    save_category(socket, socket.assigns.live_action, params)
+    params = maybe_put_store_id(params, socket)
+
+    case AshPhoenix.Form.submit(socket.assigns.form,
+           params: params,
+           action_opts: AlgoieWeb.Scope.opts(socket)
+         ) do
+      {:ok, _category} ->
+        message =
+          if socket.assigns.live_action == :new, do: "Category created", else: "Category updated"
+
+        {:noreply,
+         socket |> put_flash(:info, message) |> push_patch(to: ~p"/dashboard/categories")}
+
+      {:error, form} ->
+        {:noreply,
+         socket
+         |> assign(:form, form)
+         |> put_flash(:error, "Please correct the highlighted fields.")}
+    end
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
@@ -75,39 +98,10 @@ defmodule AlgoieWeb.CategoryLive.Index do
     end
   end
 
-  defp save_category(socket, :edit, params) do
-    case Ash.update(socket.assigns.category, params, AlgoieWeb.Scope.opts(socket)) do
-      {:ok, _} ->
-        {:noreply, socket |> put_flash(:info, "Category updated") |> load_categories()}
+  defp maybe_put_store_id(params, %{assigns: %{live_action: :new, store_id: store_id}}),
+    do: Map.put(params, "store_id", store_id)
 
-      {:error, cs} ->
-        {:noreply,
-         assign(socket,
-           form:
-             to_form(
-               AshPhoenix.Form.for_update(cs, :update, domain: Algoie.Products, as: "category")
-             )
-         )}
-    end
-  end
-
-  defp save_category(socket, :new, params) do
-    params = Map.put(params, "store_id", socket.assigns.store_id)
-
-    case Ash.create(Category, params, AlgoieWeb.Scope.opts(socket)) do
-      {:ok, _} ->
-        {:noreply, socket |> put_flash(:info, "Category created") |> load_categories()}
-
-      {:error, cs} ->
-        {:noreply,
-         assign(socket,
-           form:
-             to_form(
-               AshPhoenix.Form.for_create(cs, :create, domain: Algoie.Products, as: "category")
-             )
-         )}
-    end
-  end
+  defp maybe_put_store_id(params, _socket), do: params
 
   defp load_categories(socket) do
     limit = 12

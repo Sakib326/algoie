@@ -10,12 +10,79 @@ defmodule AlgoieWeb.StorefrontCustomerController do
   def register(conn, _params) do
     if conn.assigns.current_customer,
       do: redirect(conn, to: ~p"/account"),
-      else: render_page(conn, :register, %{form: form(%{}, :registration)})
+      else: render_page(conn, :register, %{form: form(%{}, :registration), otp_pending: false})
   end
 
   def create_account(conn, %{"registration" => params}) do
     context = context(conn)
 
+    if blank?(params["otp_code"]) do
+      request_customer_registration_code(conn, context, params)
+    else
+      verify_and_create_customer(conn, context, params)
+    end
+  end
+
+  def forgot_password(conn, _params) do
+    render_page(conn, :forgot_password, %{form: form(%{}, :reset), code_sent: false})
+  end
+
+  def request_password_reset(conn, %{"reset" => %{"email" => email}}) do
+    context = context(conn)
+    _ = CustomerAccounts.request_password_reset(context.tenant, context.store_id, email)
+
+    conn
+    |> put_flash(:info, "If that account exists, a verification code has been sent.")
+    |> render_page(:forgot_password, %{
+      code_sent: true,
+      form: form(%{"email" => email}, :reset)
+    })
+  end
+
+  def reset_password(conn, %{"reset" => params}) do
+    context = context(conn)
+
+    case CustomerAccounts.reset_password(
+           context.tenant,
+           context.store_id,
+           params["email"],
+           params["otp_code"],
+           params["password"],
+           params["password_confirmation"]
+         ) do
+      :ok ->
+        conn
+        |> put_flash(:info, "Password updated. You can now sign in.")
+        |> redirect(to: ~p"/account/sign-in")
+
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> put_flash(:error, otp_error(reason))
+        |> render_page(:forgot_password, %{code_sent: true, form: form(params, :reset)})
+    end
+  end
+
+  defp verify_and_create_customer(conn, context, params) do
+    with :ok <- CustomerAccounts.validate_registration_input(params),
+         :ok <-
+           CustomerAccounts.verify_registration_code(
+             context.tenant,
+             context.store_id,
+             params["email"],
+             params["otp_code"]
+           ) do
+      create_verified_customer(conn, context, params)
+    else
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> put_flash(:error, otp_error(reason))
+        |> render_page(:register, %{form: form(params, :registration), otp_pending: true})
+    end
+  end
+
+  defp create_verified_customer(conn, context, params) do
     case CustomerAccounts.register(context.tenant, context.store_id, params) do
       {:ok, customer} ->
         conn
@@ -27,7 +94,35 @@ defmodule AlgoieWeb.StorefrontCustomerController do
         conn
         |> put_status(:unprocessable_entity)
         |> put_flash(:error, error_text(error))
-        |> render_page(:register, %{form: form(params, :registration)})
+        |> render_page(:register, %{form: form(params, :registration), otp_pending: true})
+    end
+  end
+
+  defp request_customer_registration_code(conn, context, params) do
+    with :ok <- CustomerAccounts.validate_registration_input(params),
+         :ok <-
+           CustomerAccounts.request_registration_code(
+             context.tenant,
+             context.store_id,
+             params["email"]
+           ) do
+      safe_params =
+        params
+        |> Map.put("password", "")
+        |> Map.put("password_confirmation", "")
+
+      conn
+      |> put_flash(:info, "We sent a 6-digit verification code to #{params["email"]}")
+      |> render_page(:register, %{
+        form: form(safe_params, :registration),
+        otp_pending: true
+      })
+    else
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> put_flash(:error, otp_error(reason))
+        |> render_page(:register, %{form: form(params, :registration), otp_pending: false})
     end
   end
 
@@ -192,6 +287,14 @@ defmodule AlgoieWeb.StorefrontCustomerController do
   end
 
   defp form(params, name), do: Phoenix.Component.to_form(params, as: name)
+  defp blank?(value), do: String.trim(value || "") == ""
+
+  defp otp_error(:rate_limited), do: "Please wait a minute before requesting another code"
+  defp otp_error(:expired_code), do: "The verification code expired. Request a new code."
+  defp otp_error(:too_many_attempts), do: "Too many incorrect attempts. Request a new code."
+  defp otp_error(:invalid_code), do: "The verification code is incorrect."
+  defp otp_error(message) when is_binary(message), do: message
+  defp otp_error(error), do: error_text(error)
   defp error_text(error) when is_binary(error), do: error
   defp error_text(error), do: error |> Ash.Error.to_error_class() |> Exception.message()
 end

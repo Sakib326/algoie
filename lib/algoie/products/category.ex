@@ -120,13 +120,14 @@ defmodule Algoie.Products.Category do
 
     cond do
       slug && !Regex.match?(~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/, slug) ->
-        {:error, "slug must contain lowercase letters, numbers, and hyphens only"}
+        {:error,
+         field: :slug, message: "must contain lowercase letters, numbers, and hyphens only"}
 
       title && String.length(title) > 60 ->
-        {:error, "SEO title must be 60 characters or fewer"}
+        {:error, field: :meta_title, message: "must be 60 characters or fewer"}
 
       description && String.length(description) > 160 ->
-        {:error, "SEO description must be 160 characters or fewer"}
+        {:error, field: :meta_description, message: "must be 160 characters or fewer"}
 
       true ->
         :ok

@@ -107,19 +107,19 @@ defmodule Algoie.Customers.Coupon do
 
     cond do
       value && Decimal.compare(value, Decimal.new(0)) != :gt ->
-        {:error, "discount value must be greater than zero"}
+        {:error, field: :discount_value, message: "must be greater than zero"}
 
       type == :percent && value && Decimal.compare(value, Decimal.new(100)) == :gt ->
-        {:error, "percentage discount cannot exceed 100"}
+        {:error, field: :discount_value, message: "cannot exceed 100 for percentage discounts"}
 
       minimum && Decimal.negative?(minimum) ->
-        {:error, "minimum order value cannot be negative"}
+        {:error, field: :min_order_value, message: "cannot be negative"}
 
       limit && limit < 1 ->
-        {:error, "usage limit must be at least 1"}
+        {:error, field: :usage_limit, message: "must be at least 1"}
 
       starts_at && expires_at && DateTime.compare(expires_at, starts_at) != :gt ->
-        {:error, "expiry must be after the start time"}
+        {:error, field: :expires_at, message: "must be after the start time"}
 
       true ->
         :ok

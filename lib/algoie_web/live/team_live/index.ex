@@ -28,6 +28,14 @@ defmodule AlgoieWeb.TeamLive.Index do
   def handle_event("create_staff", %{"staff" => params}, socket) do
     if socket.assigns.owner? do
       with {:ok, user, account_created?} <- add_or_create_staff(socket, params) do
+        temporary_password = if account_created?, do: params["password"]
+
+        Algoie.Notifications.staff_access(
+          to_string(user.email),
+          socket.assigns.store_name,
+          temporary_password
+        )
+
         message =
           if account_created? do
             "#{user.name || user.email} was created and added as staff"

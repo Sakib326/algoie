@@ -92,16 +92,16 @@ defmodule Algoie.Stores.DeliveryCharge do
 
     cond do
       charge && Decimal.negative?(charge) ->
-        {:error, "delivery charge cannot be negative"}
+        {:error, field: :charge, message: "cannot be negative"}
 
       threshold && Decimal.negative?(threshold) ->
-        {:error, "free-delivery threshold cannot be negative"}
+        {:error, field: :free_delivery_threshold, message: "cannot be negative"}
 
       minimum && minimum < 0 ->
-        {:error, "minimum delivery days cannot be negative"}
+        {:error, field: :estimated_days_min, message: "cannot be negative"}
 
       minimum && maximum && maximum < minimum ->
-        {:error, "maximum delivery days must be at least the minimum"}
+        {:error, field: :estimated_days_max, message: "must be at least the minimum"}
 
       true ->
         :ok

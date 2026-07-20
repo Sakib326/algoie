@@ -65,4 +65,30 @@ if config_env() == :prod do
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
     ],
     secret_key_base: secret_key_base
+
+  email_provider = System.get_env("EMAIL_PROVIDER", "resend")
+
+  mailer_config =
+    case email_provider do
+      "resend" ->
+        api_key =
+          System.get_env("RESEND_API_KEY") ||
+            raise "RESEND_API_KEY is required when EMAIL_PROVIDER=resend"
+
+        [adapter: Swoosh.Adapters.Resend, api_key: api_key]
+
+      "local" ->
+        [adapter: Swoosh.Adapters.Local]
+
+      unsupported ->
+        raise "Unsupported EMAIL_PROVIDER=#{inspect(unsupported)}. Supported values: resend, local"
+    end
+
+  config :algoie, Algoie.Mailer, mailer_config
+
+  config :algoie, :email,
+    from_name: System.get_env("EMAIL_FROM_NAME", "Algoie"),
+    from_address: System.get_env("EMAIL_FROM_ADDRESS", "noreply@#{host}"),
+    reply_to: System.get_env("EMAIL_REPLY_TO"),
+    app_url: System.get_env("APP_URL", "https://#{host}")
 end

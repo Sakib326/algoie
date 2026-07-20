@@ -14,7 +14,13 @@
         Manage store identity, contact details, invoice preferences, and localization.
       </:subtitle>
     </.page_header>
-    <.form :if={@store} for={@form} id="store-settings-form" phx-submit="save">
+    <.form
+      :if={@store}
+      for={@form}
+      id="store-settings-form"
+      phx-change="validate"
+      phx-submit="save"
+    >
       <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div class="space-y-6">
           <.panel class="p-6">
@@ -26,7 +32,13 @@
               <div class="sm:col-span-2">
                 <.input field={@form[:name]} label="Store name" required />
               </div>
-              <.input field={@form[:slug]} label="Storefront subdomain" required />
+              <.input
+                field={@form[:slug]}
+                label="Storefront subdomain"
+                pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                title="Use lowercase letters, numbers, and single hyphens only"
+                required
+              />
               <.input
                 field={@form[:status]}
                 type="select"
@@ -42,6 +54,7 @@
                 field={@form[:invoice_prefix]}
                 label="Invoice prefix"
                 placeholder="INV"
+                maxlength="12"
                 required
               /><.input field={@form[:currency]} label="Currency" value="BDT" disabled />
             </div>

@@ -19,6 +19,23 @@
       <.input field={@form[:name]} type="text" label="Full name" autocomplete="name" required />
       <.input field={@form[:email]} type="email" label="Email" autocomplete="email" required />
       <.input field={@form[:phone]} type="tel" label="Phone (optional)" autocomplete="tel" />
+      <div
+        :if={@otp_pending}
+        class="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm text-base-content/70"
+      >
+        Enter the code from your email and re-enter your password to finish registration.
+      </div>
+      <.input
+        :if={@otp_pending}
+        field={@form[:otp_code]}
+        label="Verification code"
+        inputmode="numeric"
+        pattern="[0-9]{6}"
+        minlength="6"
+        maxlength="6"
+        autocomplete="one-time-code"
+        required
+      />
       <.input
         field={@form[:password]}
         type="password"
@@ -35,7 +52,9 @@
         autocomplete="new-password"
         required
       />
-      <button type="submit" class="btn btn-primary w-full">Create account</button>
+      <button type="submit" class="btn btn-primary w-full">
+        {if @otp_pending, do: "Verify and create account", else: "Email verification code"}
+      </button>
       <p class="text-center text-sm text-base-content/55">
         Already registered?
         <.link navigate="/account/sign-in" class="font-semibold text-primary hover:underline">Sign in</.link>

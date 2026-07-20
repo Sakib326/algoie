@@ -361,6 +361,15 @@ Enum.each(Enum.zip(customer_list, statuses), fn {customer, status} ->
          %{
            store_id: store.id,
            customer_id: customer.id,
+           address: %{
+             label: "Home",
+             recipient_name: customer.name,
+             phone: customer.phone,
+             address_line1: "#{Enum.random(10..99)} Seed Street",
+             city: "Dhaka",
+             country: "Bangladesh",
+             default?: true
+           },
            variant_quantities: variant_quantities
          },
          owner

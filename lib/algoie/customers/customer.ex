@@ -71,6 +71,12 @@ defmodule Algoie.Customers.Customer do
       accept([:name, :phone])
     end
 
+    update :reset_password do
+      require_atomic?(false)
+      argument(:password, :string, allow_nil?: false, sensitive?: true)
+      change(&hash_password/2)
+    end
+
     destroy :destroy do
       primary?(true)
     end

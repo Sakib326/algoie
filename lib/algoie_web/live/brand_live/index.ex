@@ -59,8 +59,30 @@ defmodule AlgoieWeb.BrandLive.Index do
   end
 
   @impl true
+  def handle_event("validate", %{"brand" => params}, socket) do
+    params = maybe_put_store_id(params, socket)
+    {:noreply, assign(socket, :form, AshPhoenix.Form.validate(socket.assigns.form, params))}
+  end
+
   def handle_event("save", %{"brand" => params}, socket) do
-    save_brand(socket, socket.assigns.live_action, params)
+    params = maybe_put_store_id(params, socket)
+
+    case AshPhoenix.Form.submit(socket.assigns.form,
+           params: params,
+           action_opts: AlgoieWeb.Scope.opts(socket)
+         ) do
+      {:ok, _brand} ->
+        message =
+          if socket.assigns.live_action == :new, do: "Brand created", else: "Brand updated"
+
+        {:noreply, socket |> put_flash(:info, message) |> push_patch(to: ~p"/dashboard/brands")}
+
+      {:error, form} ->
+        {:noreply,
+         socket
+         |> assign(:form, form)
+         |> put_flash(:error, "Please correct the highlighted fields.")}
+    end
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
@@ -75,39 +97,10 @@ defmodule AlgoieWeb.BrandLive.Index do
     end
   end
 
-  defp save_brand(socket, :edit, params) do
-    case Ash.update(socket.assigns.brand, params, AlgoieWeb.Scope.opts(socket)) do
-      {:ok, _} ->
-        {:noreply, socket |> put_flash(:info, "Brand updated") |> load_brands()}
+  defp maybe_put_store_id(params, %{assigns: %{live_action: :new, store_id: store_id}}),
+    do: Map.put(params, "store_id", store_id)
 
-      {:error, cs} ->
-        {:noreply,
-         assign(socket,
-           form:
-             to_form(
-               AshPhoenix.Form.for_update(cs, :update, domain: Algoie.Products, as: "brand")
-             )
-         )}
-    end
-  end
-
-  defp save_brand(socket, :new, params) do
-    params = Map.put(params, "store_id", socket.assigns.store_id)
-
-    case Ash.create(Brand, params, AlgoieWeb.Scope.opts(socket)) do
-      {:ok, _} ->
-        {:noreply, socket |> put_flash(:info, "Brand created") |> load_brands()}
-
-      {:error, cs} ->
-        {:noreply,
-         assign(socket,
-           form:
-             to_form(
-               AshPhoenix.Form.for_create(cs, :create, domain: Algoie.Products, as: "brand")
-             )
-         )}
-    end
-  end
+  defp maybe_put_store_id(params, _socket), do: params
 
   defp load_brands(socket) do
     limit = 12

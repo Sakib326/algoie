@@ -43,7 +43,10 @@ defmodule AlgoieWeb.CouponLive.Index do
          socket |> assign_form(%{}) |> load_coupons() |> put_flash(:info, "Coupon created")}
 
       {:error, error} ->
-        {:noreply, put_flash(socket, :error, error_text(error))}
+        {:noreply,
+         socket
+         |> assign_form(params, AlgoieWeb.FormErrors.to_keyword(error))
+         |> put_flash(:error, error_text(error))}
     end
   end
 
@@ -83,9 +86,14 @@ defmodule AlgoieWeb.CouponLive.Index do
     end
   end
 
-  defp assign_form(socket, params) do
+  defp assign_form(socket, params, errors \\ []) do
     defaults = %{"discount_type" => "percent"}
-    assign(socket, :form, to_form(Map.merge(defaults, params), as: :coupon))
+
+    assign(
+      socket,
+      :form,
+      to_form(Map.merge(defaults, params), as: :coupon, errors: errors, action: :validate)
+    )
   end
 
   defp parse_type("fixed"), do: :fixed

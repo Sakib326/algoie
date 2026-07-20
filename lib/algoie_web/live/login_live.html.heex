@@ -42,21 +42,15 @@
                 autocomplete="current-password"
               />
 
-              <div class="flex items-center justify-between text-sm">
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="user[remember_me]"
-                    value="true"
-                    class="checkbox checkbox-sm checkbox-primary"
-                  />
-                  <span class="text-base-content/70">Remember me</span>
-                </label>
-              </div>
-
               <button type="submit" class="btn btn-primary w-full">
                 Sign In
               </button>
+              <.link
+                navigate="/forgot-password"
+                class="block text-center text-sm font-semibold text-primary hover:underline"
+              >
+                Forgot your password?
+              </.link>
             </.form>
 
             <p class="text-center mt-6 text-sm text-base-content/60">

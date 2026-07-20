@@ -35,6 +35,12 @@ config :algoie, AlgoieWeb.Endpoint,
 # at the `config/runtime.exs`.
 config :algoie, Algoie.Mailer, adapter: Swoosh.Adapters.Local
 
+config :algoie, :email,
+  from_name: "Algoie",
+  from_address: "noreply@localhost",
+  reply_to: nil,
+  app_url: "http://localhost:4000"
+
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",

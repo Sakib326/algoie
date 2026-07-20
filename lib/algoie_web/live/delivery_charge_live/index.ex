@@ -39,7 +39,10 @@ defmodule AlgoieWeb.DeliveryChargeLive.Index do
          |> put_flash(:info, "Delivery rate saved")}
 
       {:error, error} ->
-        {:noreply, put_flash(socket, :error, error_text(error))}
+        {:noreply,
+         socket
+         |> assign_form(params, AlgoieWeb.FormErrors.to_keyword(error))
+         |> put_flash(:error, error_text(error))}
     end
   end
 
@@ -116,7 +119,7 @@ defmodule AlgoieWeb.DeliveryChargeLive.Index do
     |> assign(:page_count, page_count)
   end
 
-  defp assign_form(socket, params) do
+  defp assign_form(socket, params, errors \\ []) do
     defaults = %{
       "charge" => "0",
       "estimated_days_min" => "1",
@@ -124,7 +127,11 @@ defmodule AlgoieWeb.DeliveryChargeLive.Index do
       "priority" => "0"
     }
 
-    assign(socket, :form, to_form(Map.merge(defaults, params), as: :rate))
+    assign(
+      socket,
+      :form,
+      to_form(Map.merge(defaults, params), as: :rate, errors: errors, action: :validate)
+    )
   end
 
   defp rate_attrs(params, store_id),

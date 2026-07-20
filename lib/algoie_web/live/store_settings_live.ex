@@ -27,10 +27,18 @@ defmodule AlgoieWeb.StoreSettingsLive do
   end
 
   @impl true
+  def handle_event("validate", %{"store" => params}, socket) do
+    params = Map.put(params, "currency", "BDT")
+    {:noreply, assign(socket, :form, AshPhoenix.Form.validate(socket.assigns.form, params))}
+  end
+
   def handle_event("save", %{"store" => params}, socket) do
     params = Map.put(params, "currency", "BDT")
 
-    case Ash.update(socket.assigns.store, params, AlgoieWeb.Scope.opts(socket)) do
+    case AshPhoenix.Form.submit(socket.assigns.form,
+           params: params,
+           action_opts: AlgoieWeb.Scope.opts(socket)
+         ) do
       {:ok, store} ->
         form = AshPhoenix.Form.for_update(store, :update, domain: Algoie.Stores, as: "store")
 
@@ -41,9 +49,11 @@ defmodule AlgoieWeb.StoreSettingsLive do
          |> assign(:form, to_form(form))
          |> put_flash(:info, "Store settings saved")}
 
-      {:error, error} ->
+      {:error, form} ->
         {:noreply,
-         put_flash(socket, :error, error |> Ash.Error.to_error_class() |> Exception.message())}
+         socket
+         |> assign(:form, form)
+         |> put_flash(:error, "Please correct the highlighted fields.")}
     end
   end
 end

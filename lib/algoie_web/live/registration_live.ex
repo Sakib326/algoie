@@ -14,6 +14,8 @@ defmodule AlgoieWeb.RegistrationLive do
      |> assign(:slug_available, nil)
      |> assign(:slug_debounce_timer, nil)
      |> assign(:password_strength, nil)
+     |> assign(:pending_registration, nil)
+     |> assign(:otp_form, to_form(%{"code" => ""}, as: :otp))
      |> assign(
        :form,
        to_form(%{
@@ -71,82 +73,48 @@ defmodule AlgoieWeb.RegistrationLive do
          :ok <- validate_slug_available(registration_params["store_slug"]),
          :ok <- validate_password_match(registration_params),
          :ok <- validate_password_length(registration_params) do
-      %{
-        "business_name" => business_name,
-        "store_name" => _store_name,
-        "store_slug" => store_slug,
-        "email" => email,
-        "password" => password
-      } = registration_params
+      email = registration_params["email"]
 
-      case Algoie.Tenants.Provisioner.create_tenant_with_setup(%{
-             name: business_name,
-             owner_email: email,
-             owner_name: business_name,
-             owner_password: password
-           }) do
-        {:ok, %{tenant: tenant, user: _user, store: store}} ->
-          store_tenant = "tenant_#{tenant.id}"
+      case Algoie.Accounts.EmailOtp.issue(email, :platform_registration) do
+        {:ok, code} ->
+          Algoie.Notifications.verification_code(email, code, :registration)
 
-          case Ash.update(store, %{slug: store_slug},
-                 action: :update,
-                 actor: :system,
-                 tenant: store_tenant
-               ) do
-            {:ok, updated_store} ->
-              case Ash.read_one(StoreRegistry,
-                     query: [filter: [store_id: updated_store.id]],
-                     authorize?: false
-                   ) do
-                {:ok, registry} ->
-                  registry
-                  |> Ecto.Changeset.change(%{slug: store_slug})
-                  |> Algoie.Repo.update(prefix: "public")
+          {:noreply,
+           socket
+           |> assign(:step, :otp)
+           |> assign(:pending_registration, registration_params)
+           |> assign(:otp_form, to_form(%{"code" => ""}, as: :otp))
+           |> put_flash(:info, "We sent a 6-digit verification code to #{email}")}
 
-                _ ->
-                  :ok
-              end
+        {:error, :rate_limited} ->
+          {:noreply,
+           put_flash(socket, :error, "Please wait a minute before requesting another code")}
 
-              {:noreply,
-               socket
-               |> assign(:step, :success)
-               |> assign(:email, email)}
-
-            {:error, _} ->
-              {:noreply,
-               socket
-               |> assign(:step, :success)
-               |> assign(:email, email)}
-          end
-
-        {:error, changeset} ->
-          error_message =
-            cond do
-              is_struct(changeset) and Map.has_key?(changeset, :errors) and changeset.errors != [] ->
-                changeset.errors
-                |> Enum.map(fn
-                  %{field: field, message: msg} -> "#{field} #{msg}"
-                  other -> inspect(other)
-                end)
-                |> Enum.join(", ")
-
-              is_struct(changeset) and Map.has_key?(changeset, :valid?) and
-                  changeset.valid? == false ->
-                "Validation failed. Please check your inputs."
-
-              is_binary(changeset) ->
-                changeset
-
-              true ->
-                "Registration failed. Please try again."
-            end
-
-          {:noreply, put_flash(socket, :error, error_message)}
+        {:error, _error} ->
+          {:noreply, put_flash(socket, :error, "We could not send the verification code")}
       end
     else
       {:error, message} ->
         {:noreply, put_flash(socket, :error, message)}
     end
+  end
+
+  def handle_event("verify_registration", %{"otp" => %{"code" => code}}, socket) do
+    params = socket.assigns.pending_registration
+
+    case Algoie.Accounts.EmailOtp.verify(
+           params["email"],
+           :platform_registration,
+           "platform",
+           code
+         ) do
+      :ok -> create_store(socket, params)
+      {:error, reason} -> {:noreply, put_flash(socket, :error, otp_error(reason))}
+    end
+  end
+
+  def handle_event("back_to_registration", _params, socket) do
+    {:noreply, assign(socket, :step, :form)}
   end
 
   @impl true
@@ -179,6 +147,59 @@ defmodule AlgoieWeb.RegistrationLive do
 
     if missing == [], do: :ok, else: {:error, "Please fill in all fields"}
   end
+
+  defp create_store(socket, params) do
+    %{
+      "business_name" => business_name,
+      "store_slug" => store_slug,
+      "email" => email,
+      "password" => password
+    } = params
+
+    case Algoie.Tenants.Provisioner.create_tenant_with_setup(%{
+           name: business_name,
+           owner_email: email,
+           owner_name: business_name,
+           owner_password: password
+         }) do
+      {:ok, %{tenant: tenant, store: store}} ->
+        store_tenant = "tenant_#{tenant.id}"
+
+        with {:ok, updated_store} <-
+               Ash.update(store, %{slug: store_slug},
+                 action: :update,
+                 actor: :system,
+                 tenant: store_tenant
+               ) do
+          update_registry_slug(updated_store.id, store_slug)
+          Algoie.Notifications.welcome_owner(email, updated_store.name)
+        end
+
+        {:noreply, socket |> assign(:step, :success) |> assign(:email, email)}
+
+      {:error, error} ->
+        {:noreply, put_flash(socket, :error, registration_error(error))}
+    end
+  end
+
+  defp update_registry_slug(store_id, slug) do
+    case Ash.read_one(StoreRegistry, query: [filter: [store_id: store_id]], authorize?: false) do
+      {:ok, registry} when not is_nil(registry) ->
+        registry
+        |> Ecto.Changeset.change(%{slug: slug})
+        |> Algoie.Repo.update(prefix: "public")
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp registration_error(error) when is_binary(error), do: error
+  defp registration_error(error), do: error |> Ash.Error.to_error_class() |> Exception.message()
+
+  defp otp_error(:expired_code), do: "The verification code expired. Request a new code."
+  defp otp_error(:too_many_attempts), do: "Too many incorrect attempts. Request a new code."
+  defp otp_error(_), do: "The verification code is incorrect."
 
   defp validate_slug_available(slug) do
     case Ash.read_one(StoreRegistry, query: [filter: [slug: slug]], authorize?: false) do

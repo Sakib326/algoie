@@ -41,6 +41,10 @@ defmodule Algoie.Storefront.CustomerAccounts do
     end
   end
 
+  def validate_registration_input(params) do
+    validate_registration(params, normalize_email(params["email"]))
+  end
+
   def authenticate(tenant, store_id, email, password) do
     customer = find_by_email(tenant, store_id, normalize_email(email))
 
@@ -55,6 +59,66 @@ defmodule Algoie.Storefront.CustomerAccounts do
     |> Ash.Query.filter(id == ^id and store_id == ^store_id and not is_nil(hashed_password))
     |> Ash.read_one(tenant: tenant, authorize?: false)
   end
+
+  def request_registration_code(tenant, store_id, email) do
+    issue_code(email, :customer_registration, otp_context(tenant, store_id))
+  end
+
+  def verify_registration_code(tenant, store_id, email, code) do
+    Algoie.Accounts.EmailOtp.verify(
+      email,
+      :customer_registration,
+      otp_context(tenant, store_id),
+      code
+    )
+  end
+
+  def request_password_reset(tenant, store_id, email) do
+    normalized = normalize_email(email)
+
+    if find_by_email(tenant, store_id, normalized) do
+      issue_code(normalized, :customer_password_reset, otp_context(tenant, store_id))
+    else
+      :ok
+    end
+  end
+
+  def reset_password(tenant, store_id, email, code, password, confirmation) do
+    normalized = normalize_email(email)
+
+    with true <- String.length(password || "") >= 8,
+         true <- password == confirmation,
+         :ok <-
+           Algoie.Accounts.EmailOtp.verify(
+             normalized,
+             :customer_password_reset,
+             otp_context(tenant, store_id),
+             code
+           ),
+         %Customer{} = customer <- find_by_email(tenant, store_id, normalized),
+         {:ok, _customer} <-
+           Ash.update(customer, %{password: password},
+             action: :reset_password,
+             tenant: tenant,
+             authorize?: false
+           ) do
+      :ok
+    else
+      false -> {:error, "Passwords must match and contain at least 8 characters"}
+      nil -> {:error, :invalid_code}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp issue_code(email, purpose, context) do
+    case Algoie.Accounts.EmailOtp.issue(email, purpose, context) do
+      {:ok, code} -> Algoie.Notifications.verification_code(email, code, purpose)
+      {:error, :rate_limited} -> {:error, :rate_limited}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp otp_context(tenant, store_id), do: "#{tenant}:#{store_id}"
 
   defp find_by_email(_tenant, _store_id, nil), do: nil
 

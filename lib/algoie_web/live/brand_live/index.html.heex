@@ -27,7 +27,7 @@
         {if @live_action == :new, do: "New brand", else: "Edit brand"}
       </h2>
     </div>
-    <.form for={@form} id="brand-form" phx-submit="save" class="p-6">
+    <.form for={@form} id="brand-form" phx-change="validate" phx-submit="save" class="p-6">
       <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div class="space-y-5">
           <div class="grid gap-4 sm:grid-cols-2">
@@ -38,7 +38,14 @@
               placeholder="e.g. Acme Co."
               required
             />
-            <.input field={@form[:slug]} type="text" label="URL slug" placeholder="acme-co" />
+            <.input
+              field={@form[:slug]}
+              type="text"
+              label="URL slug"
+              placeholder="acme-co"
+              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+              title="Use lowercase letters, numbers, and single hyphens only"
+            />
           </div>
           <.input
             field={@form[:description]}

@@ -26,6 +26,8 @@ defmodule AlgoieWeb.OrderLive.Show do
 
         case Ash.update(changeset, AlgoieWeb.Scope.opts(socket)) do
           {:ok, order} ->
+            Algoie.Notifications.order_status_changed(order, socket.assigns.store_name)
+
             {:noreply,
              socket
              |> assign(:order, order)
