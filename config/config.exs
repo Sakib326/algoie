@@ -11,9 +11,16 @@ config :algoie,
   ecto_repos: [Algoie.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-# The apex host serves the platform (marketing, auth, dashboard). Any subdomain
-# of it serves a storefront. Used by the router (host scoping) and StoreSlugPlug.
-config :algoie, :apex_host, System.get_env("APP_DOMAIN", "localhost")
+app_url = System.get_env("APP_URL", "http://localhost:4000")
+app_uri = URI.parse(app_url)
+
+# APP_URL is the canonical external origin, including scheme and non-default
+# port. APP_DOMAIN remains an optional router override for compatibility.
+config :algoie, :app_url, app_url
+config :algoie, :apex_host, System.get_env("APP_DOMAIN") || app_uri.host || "localhost"
+config :algoie, :platform_admin_emails, []
+config :algoie, :session_cookie_domain, System.get_env("SESSION_COOKIE_DOMAIN")
+config :algoie, :load_email_settings_from_db, true
 
 # Configure the endpoint
 config :algoie, AlgoieWeb.Endpoint,
@@ -39,7 +46,7 @@ config :algoie, :email,
   from_name: "Algoie",
   from_address: "noreply@localhost",
   reply_to: nil,
-  app_url: "http://localhost:4000"
+  app_url: app_url
 
 # Configure esbuild (the version is required)
 config :esbuild,

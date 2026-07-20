@@ -1,0 +1,343 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:sales_report}
+>
+  <.page_header title="Sales report">
+    <:subtitle>Revenue, orders, customers, and product performance for {@store_name}.</:subtitle>
+    <:actions>
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <.link
+          href={"/dashboard/reports/sales/export/pdf?" <> URI.encode_query(%{"period" => @period, "status" => @detail_status, "q" => @detail_search})}
+          class="btn btn-sm btn-outline"
+        ><.icon name="hero-document-arrow-down" /> PDF</.link>
+        <.link
+          href={"/dashboard/reports/sales/export/xlsx?" <> URI.encode_query(%{"period" => @period, "status" => @detail_status, "q" => @detail_search})}
+          class="btn btn-sm btn-outline"
+        ><.icon name="hero-table-cells" /> Excel</.link>
+        <div
+          id="sales-report-periods"
+          class="join rounded-lg border border-base-300 bg-base-100 p-1"
+        >
+          <button
+            :for={
+              {label, value} <- [
+                {"7D", "7"},
+                {"30D", "30"},
+                {"90D", "90"},
+                {"1Y", "365"},
+                {"All", "all"}
+              ]
+            }
+            id={"sales-period-#{value}"}
+            type="button"
+            phx-click="period"
+            phx-value-period={value}
+            class={[
+              "join-item rounded-md px-3 py-1.5 text-xs font-semibold transition",
+              @period == value && "bg-primary text-primary-content shadow-sm",
+              @period != value && "text-base-content/50 hover:bg-base-200 hover:text-base-content"
+            ]}
+          >{label}</button>
+        </div>
+      </div>
+    </:actions>
+  </.page_header>
+
+  <section id="sales-summary" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <.stat_card
+      label="Gross revenue"
+      value={money(@report.revenue)}
+      icon="hero-banknotes"
+      tone="success"
+      hint={
+        if @report.revenue_change,
+          do: "#{@report.revenue_change}% vs previous period",
+          else: "No previous-period baseline"
+      }
+    />
+    <.stat_card
+      label="Orders"
+      value={to_string(@report.orders)}
+      icon="hero-shopping-cart"
+      tone="primary"
+      hint={"#{@report.completed_orders} confirmed or fulfilled"}
+    />
+    <.stat_card
+      label="Average order"
+      value={money(@report.average_order)}
+      icon="hero-calculator"
+      tone="info"
+      hint={"#{@report.paid_rate}% paid orders"}
+    />
+    <.stat_card
+      label="Customers"
+      value={to_string(@report.customers)}
+      icon="hero-users"
+      tone="warning"
+      hint={"#{money(@report.refunded)} refunded"}
+    />
+  </section>
+
+  <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(18rem,0.7fr)]">
+    <.panel class="overflow-hidden">
+      <div class="flex items-center justify-between border-b border-base-200 px-5 py-4">
+        <div>
+          <h2 class="font-semibold">Revenue trend</h2><p class="text-xs text-base-content/45">
+            Daily confirmed and fulfilled order value
+          </p>
+        </div><.pill tone="success">{money(@report.revenue)}</.pill>
+      </div>
+      <% maximum = max_trend(@report.trend) %>
+      <div class="px-5 pb-5 pt-8">
+        <div class="flex h-56 items-end gap-1.5 border-b border-base-300 sm:gap-2">
+          <div
+            :for={point <- @report.trend}
+            class="group relative flex h-full min-w-0 flex-1 items-end"
+          >
+            <div
+              class="absolute bottom-[calc(var(--bar-height)+0.5rem)] left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-neutral px-2 py-1 text-[10px] font-semibold text-neutral-content shadow-lg group-hover:block"
+              style={"--bar-height: #{bar_height(point.amount, maximum)}%"}
+            >
+              {Calendar.strftime(point.date, "%d %b")} · {money(point.amount)}
+            </div>
+            <div
+              class="w-full rounded-t-md bg-primary/75 transition hover:bg-primary"
+              style={"height: #{bar_height(point.amount, maximum)}%"}
+            >
+            </div>
+          </div>
+        </div>
+        <div class="mt-2 flex justify-between text-[10px] text-base-content/35">
+          <span>{@report.trend |> List.first() |> Map.fetch!(:date) |> Calendar.strftime("%d %b")}</span><span>{@report.trend
+          |> List.last()
+          |> Map.fetch!(:date)
+          |> Calendar.strftime("%d %b")}</span>
+        </div>
+      </div>
+    </.panel>
+
+    <.panel>
+      <div class="border-b border-base-200 px-5 py-4">
+        <h2 class="font-semibold">Order status</h2><p class="text-xs text-base-content/45">
+          Distribution in this period
+        </p>
+      </div>
+      <div class="space-y-4 p-5">
+        <div :for={entry <- @report.statuses}>
+          <div class="mb-1.5 flex items-center justify-between text-sm">
+            <span class="capitalize text-base-content/65">{humanize(entry.status)}</span><span class="font-semibold tabular-nums">{entry.count}</span>
+          </div>
+          <progress
+            class={[
+              "progress w-full",
+              entry.status == :fulfilled && "progress-success",
+              entry.status == :cancelled && "progress-error",
+              entry.status in [:confirmed, :pre_order] && "progress-primary",
+              entry.status == :pending && "progress-warning"
+            ]}
+            value={entry.count}
+            max={max(@report.orders, 1)}
+          ></progress>
+        </div>
+      </div>
+    </.panel>
+  </section>
+
+  <section class="mt-6 grid gap-6 xl:grid-cols-2">
+    <.panel class="overflow-hidden">
+      <div class="border-b border-base-200 px-5 py-4">
+        <h2 class="font-semibold">Top products</h2><p class="text-xs text-base-content/45">
+          Ranked by confirmed revenue
+        </p>
+      </div>
+      <div :if={@report.top_products == []} class="px-5">
+        <.empty_state
+          icon="hero-chart-bar"
+          title="No product sales yet"
+          description="Confirmed product sales will appear here."
+        />
+      </div>
+      <div :if={@report.top_products != []} class="divide-y divide-base-200">
+        <div
+          :for={{product, index} <- Enum.with_index(@report.top_products, 1)}
+          class="flex items-center gap-4 px-5 py-3.5"
+        >
+          <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-base-200 text-xs font-bold text-base-content/50">{index}</span><div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-semibold">{product.product}</p><p class="truncate text-xs text-base-content/40">
+              {product.variant || "Default variant"} · {product.quantity} sold
+            </p>
+          </div><p class="text-sm font-semibold tabular-nums">{money(product.revenue)}</p>
+        </div>
+      </div>
+    </.panel>
+
+    <.panel class="overflow-hidden">
+      <div class="flex items-center justify-between border-b border-base-200 px-5 py-4">
+        <div>
+          <h2 class="font-semibold">Recent orders</h2><p class="text-xs text-base-content/45">
+            Latest activity in this period
+          </p>
+        </div><.link
+          navigate="/dashboard/orders"
+          class="text-xs font-semibold text-primary hover:underline"
+        >All orders</.link>
+      </div>
+      <div :if={@report.recent_orders == []} class="px-5">
+        <.empty_state
+          icon="hero-shopping-cart"
+          title="No orders in this period"
+          description="Choose a longer range or wait for new sales."
+        />
+      </div>
+      <div :if={@report.recent_orders != []} class="divide-y divide-base-200">
+        <.link
+          :for={order <- @report.recent_orders}
+          navigate={~p"/dashboard/orders/#{order}"}
+          class="flex items-center gap-4 px-5 py-3.5 transition hover:bg-base-200/40"
+        ><span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><.icon name="hero-receipt-percent" /></span><div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-semibold">{order.order_number}</p><p class="text-xs text-base-content/40">
+            {short_date(order.inserted_at)}
+          </p>
+        </div><div class="text-right">
+          <p class="text-sm font-semibold tabular-nums">{money(order.total_amount)}</p><.pill tone={
+            status_tone(order.status)
+          }>
+            {humanize(order.status)}
+          </.pill>
+        </div></.link>
+      </div>
+    </.panel>
+  </section>
+
+  <section
+    id="full-sales-view"
+    class="mt-6 overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm"
+  >
+    <div class="flex flex-col gap-4 border-b border-base-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <h2 class="font-semibold">Full sales view</h2><p class="text-xs text-base-content/45">
+          {@detail_count} orders matching the current report filters
+        </p>
+      </div>
+      <.form
+        for={@detail_form}
+        id="sales-detail-filter"
+        phx-change="filter-orders"
+        class="flex flex-col gap-2 sm:flex-row"
+      >
+        <.input
+          field={@detail_form[:search]}
+          type="search"
+          placeholder="Order or customer…"
+          phx-debounce="250"
+          class="input input-sm w-full sm:w-56"
+        />
+        <.input
+          field={@detail_form[:status]}
+          type="select"
+          options={[
+            {"All statuses", "all"},
+            {"Pending", "pending"},
+            {"Pre-order", "pre_order"},
+            {"Confirmed", "confirmed"},
+            {"Fulfilled", "fulfilled"},
+            {"Cancelled", "cancelled"}
+          ]}
+          class="select select-sm w-full sm:w-40"
+        />
+      </.form>
+    </div>
+
+    <div :if={@detail_orders == []} class="px-5">
+      <.empty_state
+        icon="hero-document-magnifying-glass"
+        title="No matching sales"
+        description="Change the time range, status, or search query."
+      />
+    </div>
+    <div :if={@detail_orders != []} class="overflow-x-auto">
+      <table class="w-full min-w-[1050px] text-sm">
+        <thead class="bg-base-200/55 text-left text-[11px] uppercase tracking-wider text-base-content/40">
+          <tr>
+            <th class="px-4 py-3 font-semibold">Order</th><th class="px-4 py-3 font-semibold">
+              Date
+            </th><th class="px-4 py-3 font-semibold">Customer</th><th class="px-4 py-3 font-semibold">
+              Status
+            </th><th class="px-4 py-3 font-semibold">Payment</th><th class="px-4 py-3 text-right font-semibold">
+              Subtotal
+            </th><th class="px-4 py-3 text-right font-semibold">Discount</th><th class="px-4 py-3 text-right font-semibold">
+              Shipping
+            </th><th class="px-4 py-3 text-right font-semibold">Total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-base-200">
+          <tr
+            :for={order <- @detail_orders}
+            id={"sales-detail-#{order.id}"}
+            class="transition hover:bg-base-200/35"
+          >
+            <td class="px-4 py-3">
+              <.link
+                navigate={~p"/dashboard/orders/#{order}"}
+                class="font-mono text-xs font-semibold text-primary hover:underline"
+              >{order.order_number}</.link>
+            </td>
+            <td class="whitespace-nowrap px-4 py-3 text-base-content/55">
+              {short_date(order.inserted_at)}
+            </td>
+            <td class="px-4 py-3">
+              <p class="font-medium">{order.customer_name}</p><p class="text-xs text-base-content/40">
+                {order.customer_email || "No email"}
+              </p>
+            </td>
+            <td class="px-4 py-3">
+              <.pill tone={status_tone(order.status)}>{humanize(order.status)}</.pill>
+            </td>
+            <td class="px-4 py-3 capitalize text-base-content/60">
+              {humanize(order.payment_status)}
+            </td>
+            <td class="px-4 py-3 text-right tabular-nums">{money(order.subtotal_amount)}</td>
+            <td class="px-4 py-3 text-right tabular-nums text-error">
+              {money(order.discount_amount)}
+            </td>
+            <td class="px-4 py-3 text-right tabular-nums">{money(order.shipping_amount)}</td>
+            <td class="px-4 py-3 text-right font-semibold tabular-nums">
+              {money(order.total_amount)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div
+      :if={@detail_total_pages > 1}
+      class="flex items-center justify-between border-t border-base-200 px-5 py-4"
+    >
+      <p class="text-xs text-base-content/45">Page {@detail_page} of {@detail_total_pages}</p>
+      <div class="join">
+        <button
+          id="sales-page-prev"
+          type="button"
+          phx-click="detail-page"
+          phx-value-page={@detail_page - 1}
+          disabled={@detail_page == 1}
+          class="btn btn-sm join-item"
+        ><.icon name="hero-chevron-left" /></button>
+        <button
+          id="sales-page-next"
+          type="button"
+          phx-click="detail-page"
+          phx-value-page={@detail_page + 1}
+          disabled={@detail_page == @detail_total_pages}
+          class="btn btn-sm join-item"
+        ><.icon name="hero-chevron-right" /></button>
+      </div>
+    </div>
+  </section>
+</Layouts.dashboard>

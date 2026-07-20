@@ -12,6 +12,7 @@ defmodule AlgoieWeb.RegistrationLive do
      |> assign(:page_title, "Create Your Store")
      |> assign(:step, :form)
      |> assign(:slug_available, nil)
+     |> assign(:workspace_available, nil)
      |> assign(:slug_debounce_timer, nil)
      |> assign(:password_strength, nil)
      |> assign(:pending_registration, nil)
@@ -20,6 +21,7 @@ defmodule AlgoieWeb.RegistrationLive do
        :form,
        to_form(%{
          "business_name" => "",
+         "workspace_name" => "",
          "store_name" => "",
          "store_slug" => "",
          "email" => "",
@@ -38,7 +40,17 @@ defmodule AlgoieWeb.RegistrationLive do
       |> String.replace(~r/-+/, "-")
       |> String.trim("-")
 
-    socket = assign(socket, :form, to_form(Map.put(params, "store_slug", slug)))
+    workspace_name = normalize_slug(params["workspace_name"] || "")
+
+    params =
+      params
+      |> Map.put("store_slug", slug)
+      |> Map.put("workspace_name", workspace_name)
+
+    socket =
+      socket
+      |> assign(:form, to_form(params))
+      |> assign(:workspace_available, workspace_available?(workspace_name))
 
     socket =
       socket
@@ -59,9 +71,13 @@ defmodule AlgoieWeb.RegistrationLive do
   end
 
   def handle_event("validate", params, socket) do
+    workspace_name = normalize_slug(params["workspace_name"] || "")
+    params = Map.put(params, "workspace_name", workspace_name)
+
     {:noreply,
      socket
      |> assign(:form, to_form(params))
+     |> assign(:workspace_available, workspace_available?(workspace_name))
      |> assign(:password_strength, compute_password_strength(params["password"] || ""))}
   end
 
@@ -70,6 +86,7 @@ defmodule AlgoieWeb.RegistrationLive do
 
     with :ok <- validate_required_fields(registration_params),
          :ok <- validate_email_unique(registration_params["email"]),
+         :ok <- validate_workspace_available(registration_params["workspace_name"]),
          :ok <- validate_slug_available(registration_params["store_slug"]),
          :ok <- validate_password_match(registration_params),
          :ok <- validate_password_length(registration_params) do
@@ -77,14 +94,23 @@ defmodule AlgoieWeb.RegistrationLive do
 
       case Algoie.Accounts.EmailOtp.issue(email, :platform_registration) do
         {:ok, code} ->
-          Algoie.Notifications.verification_code(email, code, :registration)
+          case Algoie.Notifications.verification_code(email, code, :registration) do
+            {:ok, _metadata} ->
+              {:noreply,
+               socket
+               |> assign(:step, :otp)
+               |> assign(:pending_registration, registration_params)
+               |> assign(:otp_form, to_form(%{"code" => ""}, as: :otp))
+               |> put_flash(:info, "We sent a 6-digit verification code to #{email}")}
 
-          {:noreply,
-           socket
-           |> assign(:step, :otp)
-           |> assign(:pending_registration, registration_params)
-           |> assign(:otp_form, to_form(%{"code" => ""}, as: :otp))
-           |> put_flash(:info, "We sent a 6-digit verification code to #{email}")}
+            {:error, _reason} ->
+              {:noreply,
+               put_flash(
+                 socket,
+                 :error,
+                 "We could not send the verification code. Check the email configuration."
+               )}
+          end
 
         {:error, :rate_limited} ->
           {:noreply,
@@ -124,7 +150,9 @@ defmodule AlgoieWeb.RegistrationLive do
 
   defp do_slug_check(socket, slug) do
     available? =
-      case Ash.read_one(StoreRegistry, query: [filter: [slug: slug]], authorize?: false) do
+      case StoreRegistry
+           |> Ash.Query.filter(slug == ^slug)
+           |> Ash.read_one(authorize?: false) do
         {:ok, nil} -> true
         {:ok, _} -> false
         _ -> true
@@ -136,6 +164,7 @@ defmodule AlgoieWeb.RegistrationLive do
   defp validate_required_fields(params) do
     required = [
       "business_name",
+      "workspace_name",
       "store_name",
       "store_slug",
       "email",
@@ -151,6 +180,7 @@ defmodule AlgoieWeb.RegistrationLive do
   defp create_store(socket, params) do
     %{
       "business_name" => business_name,
+      "workspace_name" => workspace_name,
       "store_slug" => store_slug,
       "email" => email,
       "password" => password
@@ -158,6 +188,7 @@ defmodule AlgoieWeb.RegistrationLive do
 
     case Algoie.Tenants.Provisioner.create_tenant_with_setup(%{
            name: business_name,
+           tenant_slug: workspace_name,
            owner_email: email,
            owner_name: business_name,
            owner_password: password
@@ -172,7 +203,11 @@ defmodule AlgoieWeb.RegistrationLive do
                  tenant: store_tenant
                ) do
           update_registry_slug(updated_store.id, store_slug)
-          Algoie.Notifications.welcome_owner(email, updated_store.name)
+
+          Algoie.Notifications.welcome_owner(email, updated_store.name, %{
+            tenant: store_tenant,
+            store_id: updated_store.id
+          })
         end
 
         {:noreply, socket |> assign(:step, :success) |> assign(:email, email)}
@@ -183,7 +218,9 @@ defmodule AlgoieWeb.RegistrationLive do
   end
 
   defp update_registry_slug(store_id, slug) do
-    case Ash.read_one(StoreRegistry, query: [filter: [store_id: store_id]], authorize?: false) do
+    case StoreRegistry
+         |> Ash.Query.filter(store_id == ^store_id)
+         |> Ash.read_one(authorize?: false) do
       {:ok, registry} when not is_nil(registry) ->
         registry
         |> Ecto.Changeset.change(%{slug: slug})
@@ -202,17 +239,45 @@ defmodule AlgoieWeb.RegistrationLive do
   defp otp_error(_), do: "The verification code is incorrect."
 
   defp validate_slug_available(slug) do
-    case Ash.read_one(StoreRegistry, query: [filter: [slug: slug]], authorize?: false) do
+    case StoreRegistry
+         |> Ash.Query.filter(slug == ^slug)
+         |> Ash.read_one(authorize?: false) do
       {:ok, nil} -> :ok
       {:ok, _} -> {:error, "This store URL is already taken"}
       _ -> :ok
     end
   end
 
+  defp validate_workspace_available(slug) do
+    if workspace_available?(slug),
+      do: :ok,
+      else: {:error, "This workspace name is already taken"}
+  end
+
+  defp workspace_available?(slug) when byte_size(slug) in 3..63 do
+    case Algoie.Accounts.Tenant
+         |> Ash.Query.filter(slug == ^slug)
+         |> Ash.read_one(authorize?: false) do
+      {:ok, nil} -> true
+      _ -> false
+    end
+  end
+
+  defp workspace_available?(_), do: nil
+
+  defp normalize_slug(value) do
+    value
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9]+/, "-")
+    |> String.trim("-")
+  end
+
   defp validate_email_unique(email) do
     alias Algoie.Accounts.User
 
-    case Ash.read_one(User, query: [filter: [email: email]], authorize?: false) do
+    case User
+         |> Ash.Query.filter(email == ^email)
+         |> Ash.read_one(authorize?: false) do
       {:ok, nil} -> :ok
       {:ok, _} -> {:error, "This email is already registered"}
       _ -> :ok

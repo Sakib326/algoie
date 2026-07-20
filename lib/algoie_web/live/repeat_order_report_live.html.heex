@@ -1,0 +1,191 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:repeat_orders}
+>
+  <.page_header title="Repeat orders">
+    <:subtitle>Understand returning customers, repeat purchases, and retained revenue.</:subtitle>
+    <:actions>
+      <div
+        id="repeat-order-periods"
+        class="join rounded-lg border border-base-300 bg-base-100 p-1"
+      >
+        <button
+          :for={
+            {label, value} <- [
+              {"7D", "7"},
+              {"30D", "30"},
+              {"90D", "90"},
+              {"1Y", "365"},
+              {"All", "all"}
+            ]
+          }
+          id={"repeat-period-#{value}"}
+          type="button"
+          phx-click="period"
+          phx-value-period={value}
+          class={[
+            "join-item rounded-md px-3 py-1.5 text-xs font-semibold transition",
+            @period == value && "bg-primary text-primary-content shadow-sm",
+            @period != value && "text-base-content/50 hover:bg-base-200 hover:text-base-content"
+          ]}
+        >{label}</button>
+      </div>
+    </:actions>
+  </.page_header>
+
+  <div class="mb-5 flex items-center gap-2 text-xs text-base-content/45">
+    <.link navigate="/dashboard/reports/sales" class="font-semibold text-primary hover:underline">Sales report</.link><.icon
+      name="hero-chevron-right"
+      class="size-3"
+    /><span>Repeat orders</span>
+  </div>
+
+  <section id="repeat-order-summary" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <.stat_card
+      label="Returning customers"
+      value={to_string(@report.repeat_customers)}
+      icon="hero-user-group"
+      tone="primary"
+      hint={"#{@report.repeat_rate}% of #{@report.customers} customers"}
+    />
+    <.stat_card
+      label="Repeat orders"
+      value={to_string(@report.repeat_order_count)}
+      icon="hero-arrow-path-rounded-square"
+      tone="success"
+      hint="Purchases after a customer's first"
+    />
+    <.stat_card
+      label="Repeat revenue"
+      value={money(@report.repeat_revenue)}
+      icon="hero-banknotes"
+      tone="warning"
+      hint="Confirmed revenue after acquisition"
+    />
+    <.stat_card
+      label="Purchase frequency"
+      value={"#{@report.average_frequency}×"}
+      icon="hero-chart-bar-square"
+      tone="info"
+      hint="Average orders per returning customer"
+    />
+  </section>
+
+  <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
+    <.panel class="overflow-hidden">
+      <div class="flex items-center justify-between border-b border-base-200 px-5 py-4">
+        <div>
+          <h2 class="font-semibold">Returning customers</h2><p class="text-xs text-base-content/45">
+            Customers with at least two non-cancelled orders in this period
+          </p>
+        </div>
+        <.pill tone="primary">{@report.repeat_customers} customers</.pill>
+      </div>
+
+      <div :if={@report.customer_rows == []} class="px-5">
+        <.empty_state
+          icon="hero-arrow-path-rounded-square"
+          title="No repeat customers yet"
+          description="When a customer places their second order, their retention activity will appear here."
+        />
+      </div>
+
+      <div :if={@report.customer_rows != []} class="overflow-x-auto">
+        <table class="w-full min-w-[700px] text-sm">
+          <thead class="bg-base-200/50 text-left text-[11px] uppercase tracking-wider text-base-content/40">
+            <tr>
+              <th class="px-5 py-3 font-semibold">Customer</th><th class="px-5 py-3 font-semibold">
+                Orders
+              </th><th class="px-5 py-3 font-semibold">First order</th><th class="px-5 py-3 font-semibold">
+                Last order
+              </th><th class="px-5 py-3 text-right font-semibold">Repeat revenue</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-base-200">
+            <tr
+              :for={customer <- @report.customer_rows}
+              id={"repeat-customer-#{customer.customer_id}"}
+              class="transition hover:bg-base-200/35"
+            >
+              <td class="px-5 py-4">
+                <div class="flex items-center gap-3">
+                  <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{customer.name
+                  |> to_string()
+                  |> String.first()
+                  |> String.upcase()}</span><div class="min-w-0">
+                    <p class="truncate font-semibold">{customer.name}</p><p class="truncate text-xs text-base-content/40">
+                      {customer.email || "No email"}
+                    </p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-5 py-4">
+                <span class="rounded-lg bg-success/10 px-2.5 py-1 font-semibold text-success">{customer.order_count}</span>
+              </td>
+              <td class="px-5 py-4 text-base-content/55">
+                {short_date(customer.first_order_at)}
+              </td>
+              <td class="px-5 py-4 text-base-content/55">{short_date(customer.last_order_at)}</td>
+              <td class="px-5 py-4 text-right">
+                <p class="font-semibold tabular-nums">{money(customer.repeat_revenue)}</p><p class="text-xs text-base-content/35">
+                  {money(customer.total_revenue)} lifetime
+                </p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </.panel>
+
+    <.panel class="overflow-hidden">
+      <div class="border-b border-base-200 px-5 py-4">
+        <h2 class="font-semibold">Latest repeat purchases</h2><p class="text-xs text-base-content/45">
+          Most recent second-and-later orders
+        </p>
+      </div>
+      <div :if={@report.recent_repeat_orders == []} class="px-5">
+        <.empty_state
+          icon="hero-receipt-percent"
+          title="No repeat purchases"
+          description="Repeat order activity will appear here."
+        />
+      </div>
+      <div :if={@report.recent_repeat_orders != []} class="divide-y divide-base-200">
+        <.link
+          :for={order <- @report.recent_repeat_orders}
+          navigate={~p"/dashboard/orders/#{order}"}
+          class="flex items-center gap-3 px-5 py-3.5 transition hover:bg-base-200/40"
+        >
+          <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success"><.icon name="hero-arrow-path" /></span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-semibold">{order.customer_name}</p><p class="truncate text-xs text-base-content/40">
+              {order.order_number} · {short_time(order.inserted_at)}
+            </p>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-semibold tabular-nums">{money(order.total_amount)}</p><.pill tone={
+              status_tone(order.status)
+            }>
+              {humanize(order.status)}
+            </.pill>
+          </div>
+        </.link>
+      </div>
+    </.panel>
+  </section>
+
+  <div class="mt-6 rounded-xl border border-info/20 bg-info/5 p-4 text-sm text-base-content/60">
+    <div class="flex gap-3">
+      <.icon name="hero-information-circle" class="mt-0.5 size-5 shrink-0 text-info" /><p>
+        <span class="font-semibold text-base-content">How this report works:</span>
+        the first non-cancelled order in the selected period is treated as acquisition. Every later order from the same customer is counted as a repeat order. Revenue includes confirmed and fulfilled repeat orders.
+      </p>
+    </div>
+  </div>
+</Layouts.dashboard>

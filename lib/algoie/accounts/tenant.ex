@@ -13,6 +13,7 @@ defmodule Algoie.Accounts.Tenant do
   attributes do
     uuid_primary_key(:id)
     attribute(:name, :string, allow_nil?: false)
+    attribute(:slug, :string, allow_nil?: false)
     attribute(:owner_email, :ci_string, allow_nil?: false)
 
     attribute(:billing_status, :atom,
@@ -27,6 +28,7 @@ defmodule Algoie.Accounts.Tenant do
 
   identities do
     identity(:unique_owner_email, [:owner_email])
+    identity(:unique_slug, [:slug])
   end
 
   actions do
@@ -34,11 +36,11 @@ defmodule Algoie.Accounts.Tenant do
 
     create :create do
       primary?(true)
-      accept([:name, :owner_email, :billing_status])
+      accept([:name, :slug, :owner_email, :billing_status])
     end
 
     update :update do
-      accept([:name, :owner_email, :billing_status])
+      accept([:name, :slug, :owner_email, :billing_status])
     end
 
     destroy(:destroy)

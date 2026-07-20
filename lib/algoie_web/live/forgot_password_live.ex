@@ -19,26 +19,41 @@ defmodule AlgoieWeb.ForgotPasswordLive do
   def handle_event("request_code", %{"reset" => %{"email" => email}}, socket) do
     email = email |> String.trim() |> String.downcase()
 
-    case find_user(email) do
-      %User{} ->
-        case EmailOtp.issue(email, :platform_password_reset) do
-          {:ok, code} -> Algoie.Notifications.verification_code(email, code, :password_reset)
-          _ -> :ok
-        end
+    delivery_result =
+      case find_user(email) do
+        %User{} ->
+          case EmailOtp.issue(email, :platform_password_reset) do
+            {:ok, code} -> Algoie.Notifications.verification_code(email, code, :password_reset)
+            _ -> :ok
+          end
 
-      nil ->
-        :ok
+        nil ->
+          :ok
+      end
+
+    case delivery_result do
+      {:error, _reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           "The email service is unavailable. Check its configuration and try again."
+         )}
+
+      _result ->
+        {:noreply,
+         socket
+         |> assign(:step, :verify)
+         |> assign(:email, email)
+         |> assign(
+           :form,
+           to_form(
+             %{"code" => "", "password" => "", "password_confirmation" => ""},
+             as: :reset
+           )
+         )
+         |> put_flash(:info, "If that account exists, a verification code has been sent.")}
     end
-
-    {:noreply,
-     socket
-     |> assign(:step, :verify)
-     |> assign(:email, email)
-     |> assign(
-       :form,
-       to_form(%{"code" => "", "password" => "", "password_confirmation" => ""}, as: :reset)
-     )
-     |> put_flash(:info, "If that account exists, a verification code has been sent.")}
   end
 
   def handle_event("reset_password", %{"reset" => params}, socket) do

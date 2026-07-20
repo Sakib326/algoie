@@ -57,11 +57,15 @@ defmodule AlgoieWeb.Layouts do
   attr :current_scope, :map, default: nil
   attr :current_user, :any, default: nil
   attr :wide, :boolean, default: false
+  attr :shell, :string, default: "public", values: ~w(public bare)
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
-    <header class="navbar bg-base-100 border-b border-base-200 px-4 sm:px-6 lg:px-8">
+    <header
+      :if={@shell == "public"}
+      class="navbar bg-base-100 border-b border-base-200 px-4 sm:px-6 lg:px-8"
+    >
       <div class="flex-1">
         <.link navigate="/" class="flex items-center gap-2">
           <.icon name="hero-shopping-bag" class="size-8 text-primary" />
@@ -77,12 +81,13 @@ defmodule AlgoieWeb.Layouts do
         </ul>
       </div>
     </header>
-    <main class="px-4 py-8 sm:px-6 lg:px-8">
+    <main :if={@shell == "public"} class="px-4 py-8 sm:px-6 lg:px-8">
       <div class={"mx-auto space-y-4 #{if @wide, do: "max-w-5xl", else: "max-w-2xl"}"}>
         {render_slot(@inner_block)}
       </div>
     </main>
-    <footer class="footer footer-center p-4 bg-base-200 text-base-content">
+    <div :if={@shell == "bare"}>{render_slot(@inner_block)}</div>
+    <footer :if={@shell == "public"} class="footer footer-center p-4 bg-base-200 text-base-content">
       <div>
         <p>Algoie — Multi-tenant ecommerce platform</p>
       </div>
@@ -103,6 +108,16 @@ defmodule AlgoieWeb.Layouts do
   slot :inner_block, required: true
 
   def dashboard(assigns) do
+    current_store = Enum.find(assigns.user_stores, &(&1.store_id == to_string(assigns.store_id)))
+    permissions = if current_store, do: current_store.permissions, else: []
+    tenant_portal? = current_store && is_binary(current_store[:tenant_slug])
+
+    assigns =
+      assigns
+      |> assign(:store_permissions, permissions)
+      |> assign(:tenant_portal?, tenant_portal?)
+      |> assign(:store_selector_url, store_selector_url(current_store))
+
     ~H"""
     <div class="min-h-screen bg-base-200/40">
       <input type="checkbox" id="nav-toggle" class="peer sr-only" />
@@ -120,20 +135,25 @@ defmodule AlgoieWeb.Layouts do
         <%!-- Store switcher --%>
         <div class="px-3 py-3 border-b border-base-200">
           <.link
-            :if={length(@user_stores) > 1}
-            navigate="/store-select"
+            :if={length(@user_stores) > 1 || @tenant_portal?}
+            href={@store_selector_url}
             class="group flex items-center gap-3 rounded-lg p-2 hover:bg-base-200 transition-colors"
           >
             <span class="flex size-9 items-center justify-center rounded-lg bg-secondary/15 text-secondary text-sm font-semibold">
               {String.first(to_string(@store_name || "S")) |> String.upcase()}
             </span>
             <span class="flex-1 min-w-0">
-              <span class="block text-[11px] uppercase tracking-wider text-base-content/40">Store</span>
+              <span class="block text-[11px] uppercase tracking-wider text-base-content/40">
+                {if @tenant_portal?, do: "Tenant control center", else: "Switch store"}
+              </span>
               <span class="block text-sm font-medium truncate">{@store_name}</span>
             </span>
             <.icon name="hero-chevron-up-down" class="size-4 text-base-content/40" />
           </.link>
-          <div :if={length(@user_stores) <= 1} class="flex items-center gap-3 p-2">
+          <div
+            :if={length(@user_stores) <= 1 && !@tenant_portal?}
+            class="flex items-center gap-3 p-2"
+          >
             <span class="flex size-9 items-center justify-center rounded-lg bg-secondary/15 text-secondary text-sm font-semibold">
               {String.first(to_string(@store_name || "S")) |> String.upcase()}
             </span>
@@ -158,30 +178,35 @@ defmodule AlgoieWeb.Layouts do
               Catalog
             </p>
             <.nav_item
+              :if={allowed?(@store_permissions, "catalog.view")}
               navigate="/dashboard/products"
               icon="hero-cube"
               label="Products"
               active={@active == :products}
             />
             <.nav_item
+              :if={allowed?(@store_permissions, "catalog.view")}
               navigate="/dashboard/categories"
               icon="hero-folder"
               label="Categories"
               active={@active == :categories}
             />
             <.nav_item
+              :if={allowed?(@store_permissions, "catalog.view")}
               navigate="/dashboard/brands"
               icon="hero-tag"
               label="Brands"
               active={@active == :brands}
             />
             <.nav_item
+              :if={allowed?(@store_permissions, "catalog.view")}
               navigate="/dashboard/media"
               icon="hero-photo"
               label="Media Library"
               active={@active == :media}
             />
             <.nav_item
+              :if={allowed?(@store_permissions, "inventory.view")}
               navigate="/dashboard/inventory"
               icon="hero-archive-box"
               label="Inventory"
@@ -193,28 +218,46 @@ defmodule AlgoieWeb.Layouts do
               Sales
             </p>
             <.nav_item
+              :if={allowed?(@store_permissions, "orders.view")}
               navigate="/dashboard/orders"
               icon="hero-shopping-cart"
               label="Orders"
               active={@active == :orders}
             />
             <.nav_item
+              :if={allowed?(@store_permissions, "customers.view")}
               navigate="/dashboard/customers"
               icon="hero-users"
               label="Customers"
               active={@active == :customers}
             />
             <.nav_item
+              :if={allowed?(@store_permissions, "discounts.view")}
               navigate="/dashboard/coupons"
               icon="hero-ticket"
               label="Coupons"
               active={@active == :coupons}
             />
             <.nav_item
+              :if={allowed?(@store_permissions, "discounts.view")}
               navigate="/dashboard/delivery-charges"
               icon="hero-truck"
               label="Delivery Charges"
               active={@active == :delivery_charges}
+            />
+            <.nav_item
+              :if={allowed?(@store_permissions, "reports.view")}
+              navigate="/dashboard/reports/sales"
+              icon="hero-chart-bar-square"
+              label="Sales Report"
+              active={@active == :sales_report}
+            />
+            <.nav_item
+              :if={allowed?(@store_permissions, "reports.view")}
+              navigate="/dashboard/reports/repeat-orders"
+              icon="hero-arrow-path-rounded-square"
+              label="Repeat Orders"
+              active={@active == :repeat_orders}
             />
           </div>
           <div class="space-y-1">
@@ -222,12 +265,14 @@ defmodule AlgoieWeb.Layouts do
               Engage
             </p>
             <.nav_item
+              :if={allowed?(@store_permissions, "engagement.view")}
               navigate="/dashboard/conversations"
               icon="hero-chat-bubble-left-right"
               label="Conversations"
               active={@active == :conversations}
             />
             <.nav_item
+              :if={allowed?(@store_permissions, "engagement.view")}
               navigate="/dashboard/campaigns"
               icon="hero-megaphone"
               label="Ad Campaigns"
@@ -239,12 +284,21 @@ defmodule AlgoieWeb.Layouts do
               Configuration
             </p>
             <.nav_item
+              :if={allowed?(@store_permissions, "settings.view")}
               navigate="/dashboard/settings"
               icon="hero-cog-6-tooth"
               label="Store Settings"
               active={@active == :settings}
             />
             <.nav_item
+              :if={allowed?(@store_permissions, "settings.view")}
+              navigate="/dashboard/settings/email"
+              icon="hero-envelope"
+              label="Email Settings"
+              active={@active == :email_settings}
+            />
+            <.nav_item
+              :if={allowed?(@store_permissions, "team.view")}
               navigate="/dashboard/team"
               icon="hero-user-group"
               label="Team & Roles"
@@ -304,6 +358,18 @@ defmodule AlgoieWeb.Layouts do
       <.flash_group flash={@flash} />
     </div>
     """
+  end
+
+  defp allowed?(permissions, permission), do: permission in permissions
+
+  defp store_selector_url(current_store) do
+    path =
+      case current_store do
+        %{tenant_slug: slug} when is_binary(slug) -> "/tenant/#{slug}/dashboard"
+        _ -> "/store-select"
+      end
+
+    AlgoieWeb.PublicURL.apex(path)
   end
 
   attr :navigate, :string, required: true

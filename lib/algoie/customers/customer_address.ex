@@ -79,7 +79,7 @@ defmodule Algoie.Customers.CustomerAddress do
   policies do
     policy action_type([:create, :read, :update]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "customers"})
     end
   end
 end

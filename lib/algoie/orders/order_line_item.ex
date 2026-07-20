@@ -4,8 +4,6 @@ defmodule Algoie.Orders.OrderLineItem do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
-  import Ash.Policy.Check.Builtins, only: [always: 0]
-
   postgres do
     table("order_line_items")
     repo(Algoie.Repo)
@@ -48,7 +46,8 @@ defmodule Algoie.Orders.OrderLineItem do
     end
 
     policy action_type(:read) do
-      authorize_if(always())
+      authorize_if(Algoie.Policies.Checks.ActorIsSystem)
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "orders"})
     end
   end
 end

@@ -32,3 +32,23 @@ APP_URL=https://example.com
 
 `EMAIL_PROVIDER` supports `resend` and `local`. Use `local` only for development-style
 deployments where messages should remain in the Swoosh mailbox instead of being sent.
+
+## Platform and tenant administration
+
+`APP_URL` is the single canonical public origin, including its scheme and any non-default port.
+For example, `APP_URL=http://localhost:4100` produces
+`http://localhost:4100/tenant/<workspace>/dashboard` and
+`http://<store-slug>.localhost:4100/dashboard`. `APP_DOMAIN` is only an optional
+host-routing override for backwards compatibility.
+
+Tenant owners and staff use `<store-slug>.<APP_URL host>/dashboard`. The apex
+`/dashboard` and `/admin` routes are reserved for SaaS owners whose account email is listed in:
+
+```text
+PLATFORM_ADMIN_EMAILS=founder@example.com,ops@example.com
+SESSION_COOKIE_DOMAIN=.example.com
+```
+
+This list is authorization configuration, not an account creator; each listed email must belong
+to an existing platform user. `SESSION_COOKIE_DOMAIN` must cover the apex and store subdomains so
+an authenticated session can safely follow store-switch and post-login redirects.

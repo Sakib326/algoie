@@ -160,6 +160,22 @@ defmodule Algoie.Orders.Order do
         :courier_payload
       ])
     end
+
+    update :update_payment_status do
+      require_atomic?(false)
+      accept([:payment_status])
+
+      validate(fn changeset, _context ->
+        current = Ash.Changeset.get_data(changeset, :payment_status)
+        next = Ash.Changeset.get_attribute(changeset, :payment_status)
+
+        if current == next or next in allowed_payment_transitions(current) do
+          :ok
+        else
+          {:error, "cannot transition payment from #{current} to #{next}"}
+        end
+      end)
+    end
   end
 
   identities do
@@ -173,6 +189,12 @@ defmodule Algoie.Orders.Order do
   defp allowed_transitions(:cancelled), do: []
   defp allowed_transitions(_), do: []
 
+  defp allowed_payment_transitions(:pending), do: [:paid, :failed]
+  defp allowed_payment_transitions(:failed), do: [:paid]
+  defp allowed_payment_transitions(:paid), do: [:refunded]
+  defp allowed_payment_transitions(:refunded), do: []
+  defp allowed_payment_transitions(_), do: []
+
   policies do
     policy action_type(:create) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
@@ -180,7 +202,7 @@ defmodule Algoie.Orders.Order do
 
     policy action_type([:read, :update]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "orders"})
     end
   end
 end

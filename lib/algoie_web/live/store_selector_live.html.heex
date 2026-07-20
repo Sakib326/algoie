@@ -1,41 +1,127 @@
-<Layouts.app flash={@flash}>
-  <div class="max-w-lg mx-auto">
-    <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold mb-2">Select a Store</h1>
-      <p class="text-base-content/70">
-        You have access to multiple stores. Choose one to continue.
-      </p>
-    </div>
-
-    <div class="space-y-3">
-      <%= for store <- @stores do %>
-        <button
-          class="card bg-base-200 hover:bg-base-300 transition cursor-pointer w-full text-left"
-          phx-click="select_store"
-          phx-value-store_id={store.store_id}
-        >
-          <div class="card-body flex-row items-center gap-4 py-4 px-6">
-            <div class="avatar placeholder">
-              <div class="bg-primary text-primary-content rounded-full w-12">
-                <span class="text-lg">
-                  {String.first(store.store_name || "?") |> String.upcase()}
-                </span>
-              </div>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="font-semibold truncate">{store.store_name}</p>
-              <p class="text-sm text-base-content/50 capitalize">{store.role}</p>
-            </div>
-            <.icon name="hero-chevron-right" class="size-5 text-base-content/30" />
-          </div>
-        </button>
-      <% end %>
-    </div>
-
-    <div class="text-center mt-8">
-      <.link href="/sign-out" method="delete" class="btn btn-ghost btn-sm">
-        Sign out
+<Layouts.app
+  flash={@flash}
+  current_scope={@current_scope}
+  current_user={@current_user}
+  wide
+>
+  <div class="mx-auto max-w-5xl space-y-8">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+          Your workspace
+        </p>
+        <h1 class="mt-2 text-3xl font-bold tracking-tight text-base-content">Stores</h1>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-base-content/60">
+          Open a store dashboard or create another store inside a tenant you own.
+        </p>
+      </div>
+      <.link
+        href="/sign-out"
+        method="delete"
+        class="inline-flex items-center gap-2 rounded-xl border border-base-300 px-4 py-2.5 text-sm font-medium transition hover:border-error/40 hover:bg-error/5 hover:text-error"
+      >
+        <.icon name="hero-arrow-right-on-rectangle" class="size-4" /> Sign out
       </.link>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)]">
+      <section id="owner-store-list" class="space-y-3">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold">Available stores</h2>
+          <span class="rounded-full bg-base-200 px-3 py-1 text-xs font-medium text-base-content/60">
+            {length(@stores)} {if length(@stores) == 1, do: "store", else: "stores"}
+          </span>
+        </div>
+
+        <.link
+          :for={store <- @stores}
+          id={"select-store-#{store.store_id}"}
+          href={"/switch-store/#{store.store_id}"}
+          class="group flex w-full items-center gap-4 rounded-2xl border border-base-300 bg-base-100 p-5 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg"
+        >
+          <span class="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-lg font-bold text-primary transition group-hover:bg-primary group-hover:text-primary-content">
+            {String.first(store.store_name || "?") |> String.upcase()}
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate font-semibold">{store.store_name}</span>
+            <span class="mt-1 block text-xs capitalize text-base-content/50">
+              {store.role} · {length(store.permissions)} permissions
+            </span>
+          </span>
+          <span class="flex size-9 items-center justify-center rounded-full bg-base-200 text-base-content/45 transition group-hover:bg-primary/10 group-hover:text-primary">
+            <.icon name="hero-arrow-right" class="size-4" />
+          </span>
+        </.link>
+      </section>
+
+      <section
+        :if={@owner_tenants != []}
+        id="create-store-panel"
+        class="h-fit rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-base-100 to-secondary/10 p-6 shadow-sm lg:sticky lg:top-6"
+      >
+        <span class="flex size-11 items-center justify-center rounded-2xl bg-primary text-primary-content shadow-lg shadow-primary/20">
+          <.icon name="hero-plus" class="size-5" />
+        </span>
+        <h2 class="mt-5 text-xl font-bold">Create another store</h2>
+        <p class="mt-2 text-sm leading-6 text-base-content/60">
+          It will use the selected tenant while keeping its own catalog, orders, staff permissions, and storefront.
+        </p>
+
+        <.form
+          for={@store_form}
+          id="create-additional-store-form"
+          phx-change="validate_store"
+          phx-submit="create_store"
+          class="mt-6 space-y-4"
+        >
+          <.input
+            :if={length(@owner_tenants) > 1}
+            field={@store_form[:tenant]}
+            type="select"
+            label="Tenant"
+            options={Enum.map(@owner_tenants, &{&1.name, &1.tenant})}
+            required
+          />
+          <input
+            :if={length(@owner_tenants) == 1}
+            type="hidden"
+            name={@store_form[:tenant].name}
+            value={@store_form[:tenant].value}
+          />
+          <.input
+            field={@store_form[:name]}
+            type="text"
+            label="Store name"
+            placeholder="Northwind Outlet"
+            minlength="2"
+            maxlength="100"
+            required
+          />
+          <.input
+            field={@store_form[:slug]}
+            type="text"
+            label="Store URL slug"
+            placeholder="northwind-outlet"
+            minlength="3"
+            maxlength="63"
+            required
+          />
+          <p class="text-xs text-base-content/50">
+            Storefront:
+            <span class="font-medium text-base-content">{AlgoieWeb.PublicURL.store(
+              @store_form[:slug].value || "your-store"
+            )}</span>
+          </p>
+          <button
+            id="create-additional-store"
+            type="submit"
+            phx-disable-with="Creating store…"
+            class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-content shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-wait disabled:opacity-60"
+          >
+            <.icon name="hero-building-storefront" class="size-5" /> Create store
+          </button>
+        </.form>
+      </section>
     </div>
   </div>
 </Layouts.app>

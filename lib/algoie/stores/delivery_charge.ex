@@ -111,7 +111,7 @@ defmodule Algoie.Stores.DeliveryCharge do
   policies do
     policy action_type([:create, :read, :update]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "discounts"})
     end
 
     policy action_type(:destroy) do

@@ -2,10 +2,42 @@ defmodule AlgoieWeb.AuthController do
   use AlgoieWeb, :controller
   use AshAuthentication.Phoenix.Controller
 
-  import Ecto.Query
-  require Ash.Query
+  alias Algoie.Accounts.UserContext
 
   def success(conn, _activity, user, _token) do
+    cond do
+      conn.assigns[:store] ->
+        store = conn.assigns.store
+        tenant = get_session(conn, "store_tenant")
+
+        conn
+        |> store_in_session(user)
+        |> put_session("store_tenant", tenant)
+        |> put_session("store_id", store.id)
+        |> put_session("store_name", store.name)
+        |> redirect(to: "/dashboard")
+
+      platform_admin?(user) ->
+        conn |> store_in_session(user) |> redirect(to: "/dashboard")
+
+      true ->
+        tenant_success(conn, user)
+    end
+  end
+
+  defp tenant_success(conn, user) do
+    case Algoie.Accounts.TenantPortal.list_for_user(user.id) do
+      [tenant | _] ->
+        conn
+        |> store_in_session(user)
+        |> redirect(to: "/tenant/#{tenant.slug}/dashboard")
+
+      [] ->
+        legacy_store_success(conn, user)
+    end
+  end
+
+  defp legacy_store_success(conn, user) do
     case resolve_user_store_context(user) do
       {:ok, %{tenant: tenant, store_id: store_id, store_name: store_name, stores: stores}} ->
         conn
@@ -14,18 +46,32 @@ defmodule AlgoieWeb.AuthController do
         |> put_session("store_id", store_id)
         |> put_session("store_name", store_name)
         |> put_session("user_stores", stores)
-        |> redirect(to: "/dashboard")
+        |> redirect(external: store_dashboard_url(conn, store_id))
 
-      {:error, :no_store} ->
-        conn
-        |> store_in_session(user)
-        |> redirect(to: "/dashboard")
-
-      {:error, _reason} ->
-        conn
-        |> store_in_session(user)
-        |> redirect(to: "/dashboard")
+      _ ->
+        conn |> store_in_session(user) |> redirect(to: "/")
     end
+  end
+
+  defp platform_admin?(user) do
+    String.downcase(to_string(user.email)) in Application.get_env(
+      :algoie,
+      :platform_admin_emails,
+      []
+    )
+  end
+
+  defp store_dashboard_url(_conn, store_id) do
+    slug =
+      case Algoie.Repo.query!(
+             "SELECT slug FROM public.store_registry WHERE store_id::text = $1 LIMIT 1",
+             [store_id]
+           ).rows do
+        [[slug]] -> slug
+        _ -> raise "Store registry missing for #{store_id}"
+      end
+
+    AlgoieWeb.PublicURL.store(slug, "/dashboard")
   end
 
   def failure(conn, _activity, reason) do
@@ -45,82 +91,18 @@ defmodule AlgoieWeb.AuthController do
   end
 
   defp resolve_user_store_context(user) do
-    # Get all store_staff memberships across all tenants
-    # We need to query each tenant schema the user might belong to
-    case get_user_tenants(user.id) do
+    case UserContext.load_all_user_stores(user.id) do
       [] ->
         {:error, :no_store}
 
-      tenants ->
-        find_first_store(user.id, tenants)
-    end
-  end
-
-  defp get_user_tenants(user_id) do
-    # Get all tenants
-    case Algoie.Repo.all(
-           from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))
-         ) do
-      tenant_ids ->
-        Enum.filter(tenant_ids, fn tenant_id ->
-          schema = "tenant_#{tenant_id}"
-
-          case Ecto.Adapters.SQL.query(
-                 Algoie.Repo,
-                 "SELECT 1 FROM \"#{schema}\".store_staff WHERE user_id::text = $1 LIMIT 1",
-                 [user_id]
-               ) do
-            {:ok, %{rows: [_ | _]}} -> true
-            _ -> false
-          end
-        end)
-    end
-  end
-
-  defp find_first_store(user_id, [tenant_id | rest]) do
-    schema = "tenant_#{tenant_id}"
-
-    case Ecto.Adapters.SQL.query(
-           Algoie.Repo,
-           "SELECT ss.store_id::text, s.name FROM \"#{schema}\".store_staff ss JOIN \"#{schema}\".stores s ON s.id = ss.store_id WHERE ss.user_id::text = $1 LIMIT 1",
-           [user_id]
-         ) do
-      {:ok, %{rows: [[store_id, store_name] | _]}} ->
-        # Build list of all stores for this user across all tenants
-        all_stores = get_all_user_stores(user_id, [tenant_id | rest])
-
+      [first | _] = stores ->
         {:ok,
          %{
-           tenant: schema,
-           store_id: store_id,
-           store_name: store_name,
-           stores: all_stores
+           tenant: first.tenant,
+           store_id: first.store_id,
+           store_name: first.store_name,
+           stores: stores
          }}
-
-      _ ->
-        find_first_store(user_id, rest)
     end
-  end
-
-  defp find_first_store(_user_id, []), do: {:error, :no_store}
-
-  defp get_all_user_stores(user_id, tenants) do
-    Enum.flat_map(tenants, fn tenant_id ->
-      schema = "tenant_#{tenant_id}"
-
-      case Ecto.Adapters.SQL.query(
-             Algoie.Repo,
-             "SELECT ss.store_id::text, s.name, ss.role FROM \"#{schema}\".store_staff ss JOIN \"#{schema}\".stores s ON s.id = ss.store_id WHERE ss.user_id::text = $1",
-             [user_id]
-           ) do
-        {:ok, %{rows: rows}} ->
-          Enum.map(rows, fn [store_id, store_name, role] ->
-            %{store_id: store_id, store_name: store_name, tenant: schema, role: role}
-          end)
-
-        _ ->
-          []
-      end
-    end)
   end
 end

@@ -4,8 +4,6 @@ defmodule Algoie.Products.ProductCategory do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
-  import Ash.Policy.Check.Builtins, only: [always: 0]
-
   postgres do
     table("product_categories")
     repo(Algoie.Repo)
@@ -49,11 +47,12 @@ defmodule Algoie.Products.ProductCategory do
   policies do
     policy action_type([:create, :destroy, :update]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "catalog"})
     end
 
     policy action_type(:read) do
-      authorize_if(always())
+      authorize_if(Algoie.Policies.Checks.ActorIsSystem)
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "catalog"})
     end
   end
 end

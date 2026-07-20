@@ -29,6 +29,10 @@ defmodule AlgoieWeb.Router do
     plug AlgoieWeb.Plugs.LoadStorefrontCustomer
   end
 
+  pipeline :tenant_dashboard do
+    plug AlgoieWeb.Plugs.RequireStore
+  end
+
   # ═══════════════════════════════════════════════════════════
   # PLATFORM ROUTES (apex host only — e.g. algoie.com / localhost)
   # ═══════════════════════════════════════════════════════════
@@ -38,11 +42,14 @@ defmodule AlgoieWeb.Router do
 
     live "/", HomeLive, :index
     live "/register", RegistrationLive, :index
+    get "/switch-store/:store_id", StoreSwitchController, :switch
+  end
+
+  scope "/", AlgoieWeb do
+    pipe_through :browser
+
     live "/sign-in", LoginLive, :index
     live "/forgot-password", ForgotPasswordLive, :index
-
-    get "/switch-store/:store_id", StoreSwitchController, :switch
-
     sign_out_route(AuthController, "/sign-out")
     auth_routes(AuthController, Algoie.Accounts.User, path: "/auth")
 
@@ -52,12 +59,42 @@ defmodule AlgoieWeb.Router do
     )
   end
 
+  scope "/", AlgoieWeb, host: @apex_host do
+    pipe_through :browser
+
+    ash_authentication_live_session :platform_admin,
+      otp_app: :algoie,
+      on_mount: [{AlgoieWeb.Live.OnPlatformAdminMount, :default}] do
+      live "/dashboard", PlatformAdminLive, :index
+      live "/admin", PlatformAdminLive, :index
+      live "/admin/tenants", PlatformAdminLive, :tenants
+      live "/admin/tenants/:id", PlatformAdminLive, :tenant
+      live "/admin/stores", PlatformAdminLive, :stores
+      live "/admin/stores/:id", PlatformAdminLive, :store
+      live "/admin/email", PlatformAdminLive, :email
+    end
+
+    ash_authentication_live_session :store_selection,
+      otp_app: :algoie,
+      on_mount: [{AlgoieWeb.Live.OnUserMount, :default}] do
+      live "/store-select", StoreSelectorLive, :index
+      live "/tenant/:tenant_slug", TenantPortalLive, :dashboard
+      live "/tenant/:tenant_slug/dashboard", TenantPortalLive, :dashboard
+      live "/tenant/:tenant_slug/stores", TenantPortalLive, :stores
+      live "/tenant/:tenant_slug/team", TenantPortalLive, :team
+      live "/tenant/:tenant_slug/reports", TenantPortalLive, :reports
+      live "/tenant/:tenant_slug/settings", TenantPortalLive, :settings
+    end
+  end
+
   # ═══════════════════════════════════════════════════════════
-  # DASHBOARD ROUTES (apex host, /dashboard — auth required)
+  # TENANT DASHBOARD ROUTES (store slug host — auth required)
   # ═══════════════════════════════════════════════════════════
 
-  scope "/", AlgoieWeb, host: @apex_host do
-    pipe_through [:browser]
+  scope "/", AlgoieWeb do
+    pipe_through [:browser, :tenant_dashboard]
+
+    get "/dashboard/reports/sales/export/:format", SalesReportExportController, :export
 
     ash_authentication_live_session :dashboard,
       otp_app: :algoie,
@@ -79,6 +116,8 @@ defmodule AlgoieWeb.Router do
       live "/dashboard/orders/new", OrderLive.New, :new
       live "/dashboard/orders/:id/invoice", OrderLive.Invoice, :show
       live "/dashboard/orders/:id", OrderLive.Show, :show
+      live "/dashboard/reports/sales", SalesReportLive, :index
+      live "/dashboard/reports/repeat-orders", RepeatOrderReportLive, :index
       live "/dashboard/coupons", CouponLive.Index, :index
       live "/dashboard/delivery-charges", DeliveryChargeLive.Index, :index
       live "/dashboard/customers", CustomerLive.Index, :index
@@ -87,8 +126,8 @@ defmodule AlgoieWeb.Router do
       live "/dashboard/conversations", ConversationLive.Index, :index
       live "/dashboard/campaigns", CampaignLive.Index, :index
       live "/dashboard/settings", StoreSettingsLive, :edit
+      live "/dashboard/settings/email", StoreEmailSettingsLive, :edit
       live "/dashboard/team", TeamLive.Index, :index
-      live "/store-select", StoreSelectorLive, :index
     end
   end
 

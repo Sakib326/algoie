@@ -31,9 +31,8 @@ defmodule Algoie.Stores do
       {:ok, _} ->
         :ok
 
-      {:error, err} ->
-        IO.puts("DEBUG create_registry_entry error: #{inspect(err)}")
-        :ok
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -79,17 +78,20 @@ defmodule Algoie.Stores do
   Returns {:ok, %{tenant_id, store_id}} or {:error, :not_found}.
   """
   def lookup_store_by_slug(slug) do
-    case Algoie.Repo.one(
-           from(r in __MODULE__.StoreRegistry,
-             prefix: "public",
-             where: r.slug == ^slug,
-             select: %{tenant_id: r.tenant_id, store_id: r.store_id}
-           )
-         ) do
-      %{tenant_id: tenant_id, store_id: store_id} ->
+    case Algoie.Repo.query!(
+           """
+           SELECT r.tenant_id, r.store_id::text
+           FROM public.store_registry r
+           JOIN public.tenants t ON t.id::text = r.tenant_id
+           WHERE r.slug = $1 AND t.billing_status != 'suspended'
+           LIMIT 1
+           """,
+           [slug]
+         ).rows do
+      [[tenant_id, store_id]] ->
         {:ok, %{tenant_id: tenant_id, store_id: store_id}}
 
-      nil ->
+      [] ->
         {:error, :not_found}
     end
   end

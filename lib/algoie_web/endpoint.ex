@@ -4,12 +4,17 @@ defmodule AlgoieWeb.Endpoint do
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
-  @session_options [
+  @session_options_base [
     store: :cookie,
     key: "_algoie_key",
     signing_salt: "QDWfWTKE",
     same_site: "Lax"
   ]
+
+  @session_options (case Application.compile_env(:algoie, :session_cookie_domain) do
+                      nil -> @session_options_base
+                      domain -> Keyword.put(@session_options_base, :domain, domain)
+                    end)
 
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]],

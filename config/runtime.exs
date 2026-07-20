@@ -1,5 +1,19 @@
 import Config
 
+app_url =
+  System.get_env("APP_URL", Application.get_env(:algoie, :app_url, "http://localhost:4000"))
+
+app_uri = URI.parse(app_url)
+
+if app_uri.scheme not in ["http", "https"] or is_nil(app_uri.host) or
+     app_uri.path not in [nil, "", "/"] or not is_nil(app_uri.query) or
+     not is_nil(app_uri.fragment) do
+  raise "APP_URL must be an http:// or https:// origin without a path, query, or fragment, got: #{inspect(app_url)}"
+end
+
+config :algoie, :app_url, String.trim_trailing(app_url, "/")
+config :algoie, :apex_host, System.get_env("APP_DOMAIN") || app_uri.host
+
 config :algoie, ecto_repos: [Algoie.Repo]
 
 if config_env() == :test do
@@ -38,6 +52,22 @@ config :algoie, :ash_domains, [
   Algoie.Media
 ]
 
+platform_admin_emails =
+  System.get_env("PLATFORM_ADMIN_EMAILS", "")
+  |> String.split(",", trim: true)
+  |> Enum.map(&(&1 |> String.trim() |> String.downcase()))
+
+platform_admin_emails =
+  if config_env() == :dev do
+    Enum.uniq(["saas-owner@algoie.local" | platform_admin_emails])
+  else
+    platform_admin_emails
+  end
+
+config :algoie,
+       :platform_admin_emails,
+       platform_admin_emails
+
 if config_env() == :prod do
   token_signing_secret =
     System.get_env("TOKEN_SIGNING_SECRET") ||
@@ -55,12 +85,14 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host = app_uri.host
+  scheme = app_uri.scheme
+  port = app_uri.port || if(scheme == "https", do: 443, else: 80)
 
   config :algoie, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :algoie, AlgoieWeb.Endpoint,
-    url: [host: host, port: 443, scheme: "https"],
+    url: [host: host, port: port, scheme: scheme],
     http: [
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
     ],
@@ -90,5 +122,5 @@ if config_env() == :prod do
     from_name: System.get_env("EMAIL_FROM_NAME", "Algoie"),
     from_address: System.get_env("EMAIL_FROM_ADDRESS", "noreply@#{host}"),
     reply_to: System.get_env("EMAIL_REPLY_TO"),
-    app_url: System.get_env("APP_URL", "https://#{host}")
+    app_url: String.trim_trailing(app_url, "/")
 end

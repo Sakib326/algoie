@@ -47,8 +47,9 @@
               />
               <div class="sm:col-span-2 rounded-xl bg-base-200 px-4 py-3 text-sm">
                 <span class="text-base-content/50">Storefront URL:</span>
-                <span class="ml-1 font-medium">{(@form[:slug].value || "your-store") <>
-                  "." <> Application.get_env(:algoie, :apex_host, "localhost")}</span>
+                <span class="ml-1 font-medium">{AlgoieWeb.PublicURL.store(
+                  @form[:slug].value || "your-store"
+                )}</span>
               </div>
               <.input
                 field={@form[:invoice_prefix]}

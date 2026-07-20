@@ -6,7 +6,7 @@ defmodule Algoie.Tenants.Provisioner do
   """
 
   alias Algoie.Repo
-  alias Algoie.Accounts.{Tenant, User, StoreStaff}
+  alias Algoie.Accounts.{StoreStaff, Tenant, TenantMembership, User}
   alias Algoie.Stores.Store
 
   @doc """
@@ -25,6 +25,7 @@ defmodule Algoie.Tenants.Provisioner do
            Tenant,
            %{
              name: attrs.name,
+             slug: Map.get(attrs, :tenant_slug) || generate_tenant_slug(attrs.name),
              owner_email: attrs.owner_email
            },
            actor: :system
@@ -55,6 +56,12 @@ defmodule Algoie.Tenants.Provisioner do
                            password: attrs.owner_password
                          },
                          action: :register_with_password,
+                         actor: :system
+                       ),
+                     {:ok, _tenant_membership} <-
+                       Ash.create(
+                         TenantMembership,
+                         %{tenant_id: tenant.id, user_id: user.id, role: :owner},
                          actor: :system
                        ),
                      {:ok, _staff} <-
@@ -133,5 +140,19 @@ defmodule Algoie.Tenants.Provisioner do
     |> String.replace(~r/[^a-z0-9]+/, "-")
     |> String.trim("-")
     |> then(&"#{&1}-#{System.unique_integer([:positive])}")
+  end
+
+  defp generate_tenant_slug(name) do
+    base =
+      name
+      |> String.downcase()
+      |> String.replace(~r/[^a-z0-9]+/, "-")
+      |> String.trim("-")
+      |> case do
+        "" -> "tenant"
+        value -> value
+      end
+
+    "#{base}-#{System.unique_integer([:positive])}"
   end
 end

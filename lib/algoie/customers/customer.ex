@@ -85,12 +85,12 @@ defmodule Algoie.Customers.Customer do
   policies do
     policy action_type(:create) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "customers"})
     end
 
     policy action_type([:read, :update]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "customers"})
     end
 
     policy action_type(:destroy) do

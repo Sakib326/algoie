@@ -11,6 +11,8 @@ defmodule Algoie.Accounts.StoreStaff do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  import Ash.Resource.Change.Builtins, only: [after_action: 1]
+
   postgres do
     table("store_staff")
     repo(Algoie.Repo)
@@ -30,6 +32,7 @@ defmodule Algoie.Accounts.StoreStaff do
 
     attribute(:user_id, :uuid, allow_nil?: false)
     attribute(:store_id, :uuid, allow_nil?: false)
+    attribute(:permissions, {:array, :string})
 
     create_timestamp(:inserted_at)
     update_timestamp(:updated_at)
@@ -44,11 +47,19 @@ defmodule Algoie.Accounts.StoreStaff do
 
     create :create do
       primary?(true)
-      accept([:role, :user_id, :store_id])
+      accept([:role, :user_id, :store_id, :permissions])
+
+      change(
+        after_action(fn _changeset, membership, _context ->
+          Algoie.Accounts.TenantPortal.ensure_membership_from_store(membership)
+          {:ok, membership}
+        end)
+      )
     end
 
     update :update do
-      accept([:role])
+      primary?(true)
+      accept([:role, :permissions])
     end
   end
 
@@ -60,7 +71,7 @@ defmodule Algoie.Accounts.StoreStaff do
 
     policy action_type(:read) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, permission: "team.view"})
     end
 
     policy action_type([:update, :destroy]) do

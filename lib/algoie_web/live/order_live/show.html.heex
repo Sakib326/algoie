@@ -22,6 +22,9 @@
             {@order.order_number || "Order ##{short_id(@order.id)}"}
           </h1>
           <.pill tone={status_tone(@order.status)}>{humanize(@order.status)}</.pill>
+          <.pill tone={payment_tone(@order.payment_status)}>
+            Payment: {humanize(@order.payment_status)}
+          </.pill>
         </div>
         <p class="mt-1 text-sm text-base-content/50">
           Placed {Calendar.strftime(@order.inserted_at, "%B %d, %Y at %I:%M %p")}
@@ -173,6 +176,14 @@
                 <.pill tone={status_tone(@order.status)}>{humanize(@order.status)}</.pill>
               </dd>
             </div>
+            <div class="flex items-center justify-between">
+              <dt class="text-base-content/50">Payment</dt>
+              <dd>
+                <.pill tone={payment_tone(@order.payment_status)}>
+                  {humanize(@order.payment_status)}
+                </.pill>
+              </dd>
+            </div>
             <div class="flex items-center justify-between border-t border-base-200 pt-3">
               <dt class="text-base-content/50">Total</dt>
               <dd class="text-base font-semibold tabular-nums">
@@ -180,6 +191,74 @@
               </dd>
             </div>
           </dl>
+        </.panel>
+
+        <%!-- Payment confirmation --%>
+        <.panel class="overflow-hidden">
+          <div class="border-b border-base-200 p-6">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex gap-3">
+                <span class={[
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  @order.payment_status == :paid && "bg-success/10 text-success",
+                  @order.payment_status == :pending && "bg-warning/10 text-warning",
+                  @order.payment_status == :failed && "bg-error/10 text-error",
+                  @order.payment_status == :refunded && "bg-info/10 text-info"
+                ]}>
+                  <.icon name="hero-credit-card" class="size-5" />
+                </span>
+                <div>
+                  <h2 class="text-sm font-semibold">Payment confirmation</h2>
+                  <p class="mt-1 text-xs text-base-content/50">
+                    Customer notifications use this store's email configuration, with platform fallback.
+                  </p>
+                </div>
+              </div>
+              <.pill tone={payment_tone(@order.payment_status)}>
+                {humanize(@order.payment_status)}
+              </.pill>
+            </div>
+          </div>
+
+          <div :if={allowed_payment_statuses(@order.payment_status) != []} class="p-6">
+            <.form
+              for={
+                to_form(
+                  %{"status" => List.first(allowed_payment_statuses(@order.payment_status))},
+                  as: :payment
+                )
+              }
+              id="payment-status-form"
+              phx-submit="update_payment_status"
+              class="space-y-3"
+            >
+              <.input
+                name="payment[status]"
+                id="payment-status-select"
+                type="select"
+                value={List.first(allowed_payment_statuses(@order.payment_status))}
+                options={
+                  Enum.map(allowed_payment_statuses(@order.payment_status), &{humanize(&1), &1})
+                }
+                label="New payment status"
+              />
+              <button
+                id="confirm-payment-status"
+                type="submit"
+                class="btn btn-primary w-full"
+                data-confirm="Update payment status and notify the customer?"
+                phx-disable-with="Updating…"
+              >
+                <.icon name="hero-check-badge" /> Update and notify customer
+              </button>
+            </.form>
+          </div>
+
+          <div :if={allowed_payment_statuses(@order.payment_status) == []} class="p-6">
+            <div class="rounded-lg bg-base-200/50 p-3 text-xs leading-5 text-base-content/55">
+              This payment is final. Refunded payments cannot be moved to another status.
+            </div>
+          </div>
         </.panel>
 
         <%!-- Update status --%>

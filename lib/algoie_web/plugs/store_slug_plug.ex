@@ -42,8 +42,11 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
                 |> Ash.PlugHelpers.set_tenant(schema_name)
                 |> Ash.PlugHelpers.set_context(%{store_id: store_id})
                 |> assign(:store, store)
+                |> assign(:store_slug, slug)
                 |> put_session(:store_tenant, schema_name)
                 |> put_session(:store_id, store_id)
+                |> put_session(:store_name, store.name)
+                |> put_session(:store_slug, slug)
 
               _ ->
                 not_found(conn)
@@ -64,7 +67,7 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
 
   defp extract_store_slug(conn) do
     host = conn.host
-    domain = Application.get_env(:algoie, :apex_host, "localhost")
+    domain = AlgoieWeb.PublicURL.host()
 
     # Strip port if present (e.g. "store.localhost:4000" → "store.localhost")
     host = String.split(host, ":") |> List.first()

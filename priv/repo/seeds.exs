@@ -44,6 +44,24 @@ IO.puts("  Schema: #{schema}")
 IO.puts("  Store: #{store.name} (#{store.slug})")
 IO.puts("  Owner: #{owner.email}")
 
+# Create a separate account for the apex SaaS administration portal. This user
+# is intentionally not attached to a tenant store.
+IO.puts("Creating SaaS owner...")
+
+{:ok, saas_owner} =
+  Ash.create(
+    User,
+    %{
+      email: "saas-owner@algoie.local",
+      name: "SaaS Owner",
+      password: "saasowner123"
+    },
+    action: :register_with_password,
+    actor: :system
+  )
+
+IO.puts("  SaaS owner: #{saas_owner.email}")
+
 # Create staff user
 IO.puts("Creating staff user...")
 
@@ -389,6 +407,7 @@ IO.puts("  Created orders in various states")
 
 IO.puts("\n═══ Seed Complete ═══")
 IO.puts("\nAccounts:")
+IO.puts("  SaaS owner: saas-owner@algoie.local / saasowner123")
 IO.puts("  Owner: owner@demo.com / password123")
 IO.puts("  Staff: staff@demo.com / password123")
 IO.puts("\nStore: #{store.slug}")

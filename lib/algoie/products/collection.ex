@@ -50,7 +50,7 @@ defmodule Algoie.Products.Collection do
 
     policy action_type([:read, :update]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "catalog"})
     end
 
     policy action_type(:destroy) do

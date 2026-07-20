@@ -1,0 +1,229 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:email_settings}
+>
+  <.page_header title="Email settings">
+    <:subtitle>
+      Choose the platform mailer or connect a custom SMTP account for {@store_name}.
+    </:subtitle>
+    <:actions>
+      <button id="test-store-email" type="button" phx-click="test" class="btn btn-sm btn-outline"><.icon name="hero-paper-airplane" />
+      Send test email</button>
+    </:actions>
+  </.page_header>
+
+  <div
+    :if={!@owner?}
+    class="mb-5 rounded-xl border border-warning/25 bg-warning/10 p-4 text-sm text-base-content/70"
+  >
+    <div class="flex gap-3">
+      <.icon name="hero-lock-closed" class="mt-0.5 size-5 shrink-0 text-warning" /><p>
+        You can review this configuration and send a test email, but only the store owner can change credentials.
+      </p>
+    </div>
+  </div>
+
+  <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+    <.form
+      for={@form}
+      id="store-email-settings-form"
+      phx-change="validate"
+      phx-submit="save"
+      class="overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm"
+    >
+      <div class="border-b border-base-200 p-6">
+        <div class="flex items-center gap-3">
+          <span class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><.icon
+            name="hero-envelope"
+            class="size-5"
+          /></span><div>
+            <h2 class="font-semibold">Delivery source</h2><p class="text-sm text-base-content/45">
+              Platform fallback is available without custom credentials.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-7 p-6">
+        <div class="rounded-xl border border-base-300 bg-base-200/35 p-4">
+          <.input
+            field={@form[:use_platform]}
+            type="checkbox"
+            label="Use platform email configuration"
+            disabled={!@owner?}
+          /><p class="ml-7 text-xs leading-5 text-base-content/45">
+            When enabled—or when custom credentials are unavailable—messages use the SaaS platform mailer.
+          </p>
+        </div>
+
+        <div :if={@form[:use_platform].value not in [true, "true"]} class="space-y-6">
+          <div>
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-semibold">Custom SMTP credentials</h3><p class="text-xs text-base-content/45">
+                  Mailtrap, Amazon SES, Postmark SMTP, or another compatible relay.
+                </p>
+              </div><.pill tone={
+                if StoreEmailSettings.configured?(@settings), do: "success", else: "warning"
+              }>
+                {if StoreEmailSettings.configured?(@settings),
+                  do: "Configured",
+                  else: "Setup required"}
+              </.pill>
+            </div>
+            <div class="mt-5 grid gap-5 sm:grid-cols-2">
+              <.input
+                field={@form[:smtp_host]}
+                label="Host"
+                placeholder="sandbox.smtp.mailtrap.io"
+                disabled={!@owner?}
+              /><.input
+                field={@form[:smtp_port]}
+                type="number"
+                label="Port"
+                min="1"
+                max="65535"
+                disabled={!@owner?}
+              /><.input
+                field={@form[:smtp_username]}
+                label="Username"
+                autocomplete="off"
+                disabled={!@owner?}
+              /><.input
+                field={@form[:smtp_password]}
+                type="password"
+                label="Password"
+                placeholder={
+                  if StoreEmailSettings.configured?(@settings),
+                    do: "#{StoreEmailSettings.masked_password(@settings)} · leave blank to keep",
+                    else: "Enter SMTP password"
+                }
+                autocomplete="new-password"
+                disabled={!@owner?}
+              /><.input
+                field={@form[:smtp_auth]}
+                type="select"
+                label="Authentication"
+                options={[
+                  {"Required", "always"},
+                  {"Automatic", "if_available"},
+                  {"None", "never"}
+                ]}
+                disabled={!@owner?}
+              /><.input
+                field={@form[:smtp_tls]}
+                type="select"
+                label="TLS / STARTTLS"
+                options={[
+                  {"Optional", "if_available"},
+                  {"Required", "always"},
+                  {"Disabled", "never"}
+                ]}
+                disabled={!@owner?}
+              />
+            </div>
+          </div>
+
+          <div class="border-t border-base-200 pt-6">
+            <h3 class="text-sm font-semibold">Sender identity</h3><p class="mt-1 text-xs text-base-content/45">
+              Use an address verified by your SMTP provider.
+            </p><div class="mt-5 grid gap-5 sm:grid-cols-2">
+              <.input
+                field={@form[:from_name]}
+                label="Sender name"
+                placeholder={@store_name}
+                disabled={!@owner?}
+              /><.input
+                field={@form[:from_address]}
+                type="email"
+                label="Sender email"
+                placeholder="orders@example.com"
+                disabled={!@owner?}
+              /><.input
+                field={@form[:reply_to]}
+                type="email"
+                label="Reply-to email"
+                placeholder="support@example.com"
+                disabled={!@owner?}
+              /><.input
+                field={@form[:enabled]}
+                type="checkbox"
+                label="Enable store email delivery"
+                disabled={!@owner?}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        :if={@owner?}
+        class="flex flex-col-reverse gap-3 border-t border-base-200 bg-base-200/30 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <button
+          id="reset-store-email"
+          type="button"
+          phx-click="reset"
+          data-confirm="Remove this store's saved SMTP password?"
+          class="btn btn-ghost btn-sm text-error"
+        ><.icon name="hero-arrow-path" /> Reset credentials</button><button
+          id="save-store-email"
+          type="submit"
+          class="btn btn-primary"
+          phx-disable-with="Saving…"
+        ><.icon name="hero-check" /> Save email settings</button>
+      </div>
+    </.form>
+
+    <aside class="space-y-4">
+      <div class="rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wider text-base-content/40">
+          Active delivery
+        </p><div class="mt-4 flex items-center gap-3">
+          <span class={[
+            "flex size-10 items-center justify-center rounded-xl",
+            @settings.use_platform && "bg-primary/10 text-primary",
+            !@settings.use_platform && "bg-success/10 text-success"
+          ]}><.icon
+            name={if @settings.use_platform, do: "hero-cloud", else: "hero-server-stack"}
+            class="size-5"
+          /></span><div>
+            <p class="text-sm font-semibold">
+              {if @settings.use_platform, do: "Platform fallback", else: "Custom SMTP"}
+            </p><p class="text-xs text-base-content/40">
+              {if @settings.use_platform,
+                do: "Managed by SaaS owner",
+                else: @settings.smtp_host || "Not configured"}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-info/20 bg-info/5 p-5">
+        <.icon name="hero-arrows-right-left" class="size-6 text-info" /><h3 class="mt-3 font-semibold">
+          Automatic fallback
+        </h3><p class="mt-2 text-sm leading-6 text-base-content/55">
+          If no usable store configuration exists, transactional messages automatically use the platform email service.
+        </p>
+      </div>
+      <div class="rounded-xl border border-base-300 bg-base-100 p-5">
+        <p class="text-xs font-semibold uppercase tracking-wider text-base-content/40">
+          Used for
+        </p><ul class="mt-3 space-y-2 text-sm text-base-content/60">
+          <li class="flex gap-2">
+            <.icon name="hero-check-circle" class="size-4 text-success" /> Order confirmations
+          </li><li class="flex gap-2">
+            <.icon name="hero-check-circle" class="size-4 text-success" /> Order status updates
+          </li><li class="flex gap-2">
+            <.icon name="hero-check-circle" class="size-4 text-success" /> Staff invitations
+          </li>
+        </ul>
+      </div>
+    </aside>
+  </section>
+</Layouts.dashboard>

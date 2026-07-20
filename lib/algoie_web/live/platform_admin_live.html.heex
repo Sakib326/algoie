@@ -1,0 +1,543 @@
+<Layouts.app flash={@flash} wide shell="bare">
+  <div class="min-h-screen bg-base-200/40 text-base-content lg:grid lg:grid-cols-[17rem_1fr]">
+    <aside class="border-b border-base-300 bg-base-100 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
+      <div class="flex h-16 items-center justify-between px-5 lg:h-20">
+        <.link navigate="/admin" class="flex items-center gap-3">
+          <span class="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-content shadow-lg shadow-primary/20">
+            <.icon name="hero-command-line" class="size-5" />
+          </span>
+          <div>
+            <p class="font-bold tracking-tight">Algoie</p><p class="text-[10px] uppercase tracking-[0.2em] text-base-content/40">
+              SaaS control
+            </p>
+          </div>
+        </.link>
+        <button
+          id="mobile-admin-menu"
+          class="rounded-lg p-2 text-base-content/50 hover:bg-base-200 lg:hidden"
+        ><.icon name="hero-bars-3" /></button>
+      </div>
+
+      <nav
+        id="admin-navigation"
+        class="flex gap-1 overflow-x-auto px-3 pb-4 lg:block lg:space-y-1 lg:overflow-visible lg:px-3 lg:py-5"
+      >
+        <.link
+          :for={
+            {label, path, icon, section} <- [
+              {"Overview", "/admin", "hero-home", :overview},
+              {"Tenants", "/admin/tenants", "hero-building-office-2", :tenants},
+              {"Stores", "/admin/stores", "hero-shopping-bag", :stores},
+              {"Email", "/admin/email", "hero-envelope", :email}
+            ]
+          }
+          navigate={path}
+          class={[
+            "flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+            @section == section && "bg-primary text-primary-content shadow-sm",
+            @section != section &&
+              "text-base-content/55 hover:bg-base-200 hover:text-base-content"
+          ]}
+        >
+          <.icon name={icon} class="size-[1.1rem]" /> {label}
+        </.link>
+      </nav>
+
+      <div class="hidden px-4 lg:absolute lg:inset-x-0 lg:bottom-5 lg:block">
+        <div class="rounded-2xl border border-base-300 bg-base-200/60 p-3">
+          <p class="truncate text-sm font-medium">{@current_scope.user.name || "SaaS Owner"}</p>
+          <p class="truncate text-xs text-base-content/45">{@current_scope.user.email}</p>
+          <.link
+            href="/sign-out"
+            method="delete"
+            class="mt-3 flex items-center gap-2 text-xs font-medium text-base-content/50 hover:text-error"
+          ><.icon name="hero-arrow-right-start-on-rectangle" class="size-4" /> Sign out</.link>
+        </div>
+      </div>
+    </aside>
+
+    <main class="min-w-0">
+      <header class="flex h-16 items-center justify-between border-b border-base-300 bg-base-100 px-5 sm:px-8 lg:h-20">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-primary">
+            Platform administration
+          </p><h1 class="text-xl font-bold tracking-tight sm:text-2xl">
+            {page_title(@section) |> String.split(" ·") |> List.first()}
+          </h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="hidden items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success sm:flex">
+            <span class="size-2 rounded-full bg-success"></span> System online
+          </div><Layouts.theme_toggle />
+        </div>
+      </header>
+
+      <div class="mx-auto max-w-[1500px] p-4 sm:p-8">
+        <%= if @section == :overview do %>
+          <section id="admin-overview">
+            <div class="relative overflow-hidden rounded-3xl border border-base-300 bg-base-100 p-6 shadow-sm sm:p-8">
+              <div class="pointer-events-none absolute -right-20 -top-28 size-72 rounded-full bg-primary/10 blur-3xl">
+              </div>
+              <div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+                <div>
+                  <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">MVP operations</span><h2 class="mt-4 text-3xl font-bold tracking-tight">
+                    Your platform at a glance.
+                  </h2><p class="mt-2 max-w-xl text-sm leading-6 text-base-content/55">
+                    Monitor tenants, control storefront availability, and manage transactional email from one place.
+                  </p>
+                </div><.link
+                  navigate="/admin/tenants"
+                  class="btn btn-primary"
+                >Manage tenants <.icon name="hero-arrow-right" /></.link>
+              </div>
+            </div>
+
+            <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div
+                :for={
+                  {label, value, note, icon, color} <- [
+                    {"Total tenants", @stats.tenants, "#{@stats.trial_tenants} on trial",
+                     "hero-building-office-2", "bg-primary/10 text-primary"},
+                    {"Active tenants", @stats.active_tenants, "Paying or enabled", "hero-bolt",
+                     "bg-success/10 text-success"},
+                    {"Stores", @stats.stores, "#{@stats.active_stores} currently live",
+                     "hero-shopping-bag", "bg-info/10 text-info"},
+                    {"Email provider", String.capitalize(@email_settings.provider),
+                     if(@email_settings.enabled, do: "Delivery enabled", else: "Delivery paused"),
+                     "hero-envelope", "bg-warning/10 text-warning"}
+                  ]
+                }
+                class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div class="flex items-start justify-between">
+                  <div>
+                    <p class="text-sm text-base-content/55">{label}</p><p class="mt-2 text-3xl font-bold tracking-tight">
+                      {value}
+                    </p>
+                  </div><span class={[
+                    "flex size-11 items-center justify-center rounded-xl",
+                    color
+                  ]}><.icon name={icon} class="size-5" /></span>
+                </div><p class="mt-3 text-xs text-base-content/40">{note}</p>
+              </div>
+            </div>
+
+            <div class="mt-6 grid gap-6 xl:grid-cols-2">
+              <.panel>
+                <div class="flex items-center justify-between border-b border-base-200 p-5">
+                  <div>
+                    <h3 class="font-semibold">Latest tenants</h3><p class="text-xs text-base-content/40">
+                      Recently created accounts
+                    </p>
+                  </div><.link
+                    navigate="/admin/tenants"
+                    class="text-sm font-semibold text-primary"
+                  >View all</.link>
+                </div><div class="divide-y divide-base-200">
+                  <.link
+                    :for={tenant <- Enum.take(@tenants, 5)}
+                    navigate={"/admin/tenants/#{tenant.id}"}
+                    class="flex items-center justify-between p-4 transition hover:bg-base-200/50"
+                  ><div class="flex min-w-0 items-center gap-3">
+                    <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary">{tenant.name
+                    |> String.first()
+                    |> String.upcase()}</span><div class="min-w-0">
+                      <p class="truncate text-sm font-semibold">{tenant.name}</p><p class="truncate text-xs text-base-content/40">
+                        {tenant.owner_email}
+                      </p>
+                    </div>
+                  </div><.pill tone={status_tone(tenant.status)}>{tenant.status}</.pill></.link>
+                </div>
+              </.panel>
+              <.panel>
+                <div class="flex items-center justify-between border-b border-base-200 p-5">
+                  <div>
+                    <h3 class="font-semibold">Latest stores</h3><p class="text-xs text-base-content/40">
+                      Provisioned storefronts
+                    </p>
+                  </div><.link
+                    navigate="/admin/stores"
+                    class="text-sm font-semibold text-primary"
+                  >View all</.link>
+                </div><div class="divide-y divide-base-200">
+                  <.link
+                    :for={store <- Enum.take(@stores, 5)}
+                    navigate={"/admin/stores/#{store.id}"}
+                    class="flex items-center justify-between p-4 transition hover:bg-base-200/50"
+                  ><div class="min-w-0">
+                    <p class="truncate text-sm font-semibold">{store.name}</p><p class="truncate text-xs text-base-content/40">
+                      {store.slug} · {store.tenant_name}
+                    </p>
+                  </div><.pill tone={status_tone(store.status)}>{store.status}</.pill></.link>
+                </div>
+              </.panel>
+            </div>
+          </section>
+        <% end %>
+
+        <%= if @section in [:tenants, :stores] do %>
+          <% items = if(@section == :tenants, do: @tenants, else: @stores) %>
+          <% statuses =
+            if(@section == :tenants,
+              do: [
+                {"All status", "all"},
+                {"Trial", "trial"},
+                {"Active", "active"},
+                {"Suspended", "suspended"}
+              ],
+              else: [{"All status", "all"}, {"Active", "active"}, {"Inactive", "inactive"}]
+            ) %>
+          <% visible_items = filtered(items, @search, @status) %>
+          <section id={"admin-#{@section}"} class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <div class="min-w-0 overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
+              <div class="flex flex-col gap-4 border-b border-base-200 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 class="text-lg font-bold">{String.capitalize(to_string(@section))}</h2><p class="text-sm text-base-content/40">
+                    {length(visible_items)} of {length(items)} records
+                  </p>
+                </div><div class="flex gap-2">
+                  <.input
+                    id={"#{@section}-search"}
+                    name="search"
+                    type="search"
+                    value={@search}
+                    phx-keyup="search"
+                    phx-debounce="250"
+                    placeholder="Search…"
+                    class="input input-sm w-full sm:w-52"
+                  /><.form for={@filter_form} id={"#{@section}-filter"} phx-change="filter">
+                    <.input
+                      field={@filter_form[:status]}
+                      type="select"
+                      options={statuses}
+                      class="select select-sm w-36"
+                    />
+                  </.form>
+                </div>
+              </div>
+
+              <div :if={visible_items != []} class="overflow-x-auto">
+                <table class="w-full min-w-[760px] text-sm">
+                  <thead class="bg-base-200/60 text-left text-[11px] uppercase tracking-wider text-base-content/40">
+                    <tr>
+                      <th class="px-5 py-3 font-semibold">
+                        {if @section == :tenants, do: "Tenant", else: "Store"}
+                      </th><th class="px-5 py-3 font-semibold">
+                        {if @section == :tenants, do: "Owner", else: "Tenant"}
+                      </th><th class="px-5 py-3 font-semibold">Status</th><th class="px-5 py-3 font-semibold">
+                        Created
+                      </th><th class="px-5 py-3"></th>
+                    </tr>
+                  </thead><tbody class="divide-y divide-base-200">
+                    <tr
+                      :for={item <- visible_items}
+                      id={"#{@section}-#{item.id}"}
+                      class="transition hover:bg-base-200/40"
+                    >
+                      <td class="px-5 py-4">
+                        <p class="font-semibold">{item.name}</p><p
+                          :if={@section == :stores}
+                          class="font-mono text-xs text-base-content/40"
+                        >
+                          {item.slug}
+                        </p>
+                      </td><td class="px-5 py-4 text-base-content/55">
+                        {if @section == :tenants, do: item.owner_email, else: item.tenant_name}
+                      </td><td class="px-5 py-4">
+                        <.pill tone={status_tone(item.status)}>{item.status}</.pill>
+                      </td><td class="px-5 py-4 text-base-content/55">
+                        {short_date(item.inserted_at)}
+                      </td><td class="px-5 py-4 text-right">
+                        <.link
+                          patch={"/admin/#{@section}/#{item.id}"}
+                          class="btn btn-ghost btn-xs"
+                        >Details <.icon name="hero-chevron-right" /></.link>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <.empty_state
+                :if={visible_items == []}
+                icon="hero-magnifying-glass"
+                title="No records found"
+                description="Try changing your search or status filter."
+              />
+            </div>
+
+            <aside class="xl:sticky xl:top-28 xl:self-start">
+              <div
+                :if={!@selected}
+                class="rounded-2xl border border-dashed border-base-300 bg-base-100 p-8 text-center"
+              >
+                <span class="mx-auto flex size-12 items-center justify-center rounded-2xl bg-base-200 text-base-content/40"><.icon
+                  name="hero-cursor-arrow-rays"
+                  class="size-6"
+                /></span><h3 class="mt-4 font-semibold">Select a record</h3><p class="mt-1 text-sm text-base-content/40">
+                  Open details to inspect and manage its status.
+                </p>
+              </div>
+              <div
+                :if={@selected}
+                class="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm"
+              >
+                <div class="border-b border-base-200 bg-base-200/40 p-5">
+                  <div class="flex items-start justify-between">
+                    <div>
+                      <p class="text-xs font-semibold uppercase tracking-wider text-primary">
+                        {if @section == :tenants, do: "Tenant details", else: "Store details"}
+                      </p><h3 class="mt-1 text-xl font-bold">{@selected.name}</h3>
+                    </div><.link
+                      patch={"/admin/#{@section}"}
+                      class="rounded-lg p-2 text-base-content/40 hover:bg-base-200"
+                    ><.icon name="hero-x-mark" /></.link>
+                  </div>
+                </div><div class="space-y-4 p-5">
+                  <div>
+                    <p class="text-xs text-base-content/40">Current status</p><div class="mt-1">
+                      <.pill tone={status_tone(@selected.status)}>{@selected.status}</.pill>
+                    </div>
+                  </div><div>
+                    <p class="text-xs text-base-content/40">
+                      {if @section == :tenants, do: "Owner email", else: "Tenant"}
+                    </p><p class="mt-1 text-sm font-medium">
+                      {if @section == :tenants,
+                        do: @selected.owner_email,
+                        else: @selected.tenant_name}
+                    </p>
+                  </div><div :if={@section == :stores}>
+                    <p class="text-xs text-base-content/40">Storefront</p><a
+                      href={storefront_url(@selected.slug)}
+                      target="_blank"
+                      rel="noreferrer"
+                      class="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-primary"
+                    >{@selected.slug} <.icon name="hero-arrow-top-right-on-square" /></a>
+                  </div><div>
+                    <p class="text-xs text-base-content/40">Created</p><p class="mt-1 text-sm font-medium">
+                      {short_date(@selected.inserted_at)}
+                    </p>
+                  </div>
+                  <div class="border-t border-base-200 pt-4">
+                    <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-base-content/40">
+                      Change status
+                    </p><div :if={@section == :tenants} class="grid grid-cols-3 gap-2">
+                      <button
+                        :for={status <- @tenant_statuses}
+                        id={"tenant-#{status}"}
+                        phx-click="tenant-status"
+                        phx-value-id={@selected.id}
+                        phx-value-status={status}
+                        disabled={@selected.status == status}
+                        class="btn btn-sm disabled:opacity-40"
+                      >{String.capitalize(status)}</button>
+                    </div><div :if={@section == :stores} class="grid grid-cols-2 gap-2">
+                      <button
+                        :for={status <- @store_statuses}
+                        id={"store-#{status}"}
+                        phx-click="store-status"
+                        phx-value-id={@selected.id}
+                        phx-value-tenant-id={@selected.tenant_id}
+                        phx-value-status={status}
+                        disabled={@selected.status == status}
+                        class="btn btn-sm disabled:opacity-40"
+                      >{String.capitalize(status)}</button>
+                    </div><p class="mt-3 text-xs leading-5 text-base-content/40">
+                      Status changes take effect immediately and are limited to platform owners.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </section>
+        <% end %>
+
+        <%= if @section == :email do %>
+          <section id="admin-email" class="mx-auto max-w-5xl space-y-6">
+            <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+              <div>
+                <h2 class="text-2xl font-bold tracking-tight">Email delivery</h2><p class="mt-1 text-sm text-base-content/50">
+                  Manage the SMTP connection used for every transactional message.
+                </p>
+              </div>
+              <.pill tone={if @email_settings.enabled, do: "success", else: "warning"}>
+                {if @email_settings.enabled, do: "Delivery enabled", else: "Delivery paused"}
+              </.pill>
+            </div>
+
+            <div class="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
+              <div class="flex flex-col gap-4 border-b border-base-200 p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-3">
+                  <span class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><.icon
+                    name="hero-key"
+                    class="size-5"
+                  /></span><div>
+                    <h3 class="font-bold">Credentials</h3><p class="text-sm text-base-content/45">
+                      Stored securely in the platform database
+                    </p>
+                  </div>
+                </div>
+                <button
+                  id="reset-email-credentials"
+                  type="button"
+                  phx-click="reset-email-credentials"
+                  data-confirm="Remove the saved SMTP password and provider API key?"
+                  class="btn btn-ghost btn-sm text-error"
+                ><.icon name="hero-arrow-path" /> Reset credentials</button>
+              </div>
+
+              <div class="grid divide-y divide-base-200 sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-3">
+                <div
+                  :for={
+                    {label, value, hint} <- [
+                      {"Host", @email_settings.smtp_host || "Not configured", "SMTP relay"},
+                      {"Port", @email_settings.smtp_port || 587, "25, 465, 587 or 2525"},
+                      {"Username", @email_settings.smtp_username || "Not configured",
+                       "SMTP account"},
+                      {"Password", PlatformEmailSettings.masked_password(@email_settings),
+                       "Encrypted at rest"},
+                      {"Auth", "PLAIN, LOGIN, CRAM-MD5", "Negotiated automatically"},
+                      {"TLS",
+                       if(@email_settings.smtp_tls == "always",
+                         do: "Required",
+                         else:
+                           if(@email_settings.smtp_tls == "never",
+                             do: "Disabled",
+                             else: "Optional"
+                           )
+                       ), "STARTTLS on supported ports"}
+                    ]
+                  }
+                  class="p-5"
+                >
+                  <p class="text-xs font-semibold uppercase tracking-wider text-base-content/40">
+                    {label}
+                  </p><p class="mt-2 break-all font-mono text-sm font-semibold">{value}</p><p class="mt-1 text-xs text-base-content/35">
+                    {hint}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <.form
+              for={@email_form}
+              id="platform-email-form"
+              phx-submit="save-email"
+              class="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm"
+            >
+              <div class="border-b border-base-200 p-6">
+                <h3 class="font-bold">SMTP configuration</h3><p class="mt-1 text-sm text-base-content/45">
+                  Mailtrap works with <span class="font-mono">sandbox.smtp.mailtrap.io</span>
+                  and ports 25, 465, 587, or 2525.
+                </p>
+              </div>
+              <div class="space-y-7 p-6">
+                <div class="grid gap-5 sm:grid-cols-2">
+                  <.input
+                    field={@email_form[:provider]}
+                    type="select"
+                    label="Delivery method"
+                    options={[
+                      {"SMTP", "smtp"},
+                      {"Local mailbox", "local"},
+                      {"Resend API", "resend"}
+                    ]}
+                  /><.input
+                    field={@email_form[:enabled]}
+                    type="checkbox"
+                    label="Enable email delivery"
+                  /><.input
+                    field={@email_form[:smtp_host]}
+                    label="Host"
+                    placeholder="sandbox.smtp.mailtrap.io"
+                  /><.input
+                    field={@email_form[:smtp_port]}
+                    type="number"
+                    label="Port"
+                    placeholder="587"
+                    min="1"
+                    max="65535"
+                  /><.input
+                    field={@email_form[:smtp_username]}
+                    label="Username"
+                    autocomplete="off"
+                  /><.input
+                    field={@email_form[:smtp_password]}
+                    type="password"
+                    label="Password"
+                    placeholder={
+                      if PlatformEmailSettings.configured_password?(@email_settings),
+                        do: "Saved · leave blank to keep",
+                        else: "Enter SMTP password"
+                    }
+                    autocomplete="new-password"
+                  /><.input
+                    field={@email_form[:smtp_auth]}
+                    type="select"
+                    label="Authentication"
+                    options={[
+                      {"Required", "always"},
+                      {"Automatic", "if_available"},
+                      {"None", "never"}
+                    ]}
+                  /><.input
+                    field={@email_form[:smtp_tls]}
+                    type="select"
+                    label="TLS / STARTTLS"
+                    options={[
+                      {"Optional", "if_available"},
+                      {"Required", "always"},
+                      {"Disabled", "never"}
+                    ]}
+                  />
+                </div>
+                <div class="border-t border-base-200 pt-6">
+                  <h4 class="text-sm font-bold">Sender identity</h4><div class="mt-4 grid gap-5 sm:grid-cols-2">
+                    <.input field={@email_form[:from_name]} label="Sender name" required /><.input
+                      field={@email_form[:from_address]}
+                      type="email"
+                      label="Sender email"
+                      required
+                    /><.input field={@email_form[:reply_to]} type="email" label="Reply-to email" /><.input
+                      field={@email_form[:app_url]}
+                      type="url"
+                      label="Application URL"
+                      readonly
+                      required
+                    />
+                  </div>
+                </div>
+                <div
+                  :if={@email_form[:provider].value == "resend"}
+                  class="rounded-xl border border-base-300 bg-base-200/50 p-4"
+                >
+                  <.input
+                    field={@email_form[:api_key]}
+                    type="password"
+                    label="Resend API key"
+                    placeholder={
+                      if PlatformEmailSettings.configured_key?(@email_settings),
+                        do: "Saved · leave blank to keep",
+                        else: "re_…"
+                    }
+                    autocomplete="new-password"
+                  />
+                </div>
+              </div>
+              <div class="flex items-center justify-between border-t border-base-200 bg-base-200/30 px-6 py-4">
+                <p class="hidden text-xs text-base-content/40 sm:block">
+                  <.icon name="hero-lock-closed" class="mr-1 inline size-3.5" />
+                  Passwords are encrypted before storage.
+                </p><button
+                  id="save-email-settings"
+                  type="submit"
+                  class="btn btn-primary"
+                  phx-disable-with="Saving…"
+                ><.icon name="hero-check" /> Save configuration</button>
+              </div>
+            </.form>
+          </section>
+        <% end %>
+      </div>
+    </main>
+  </div>
+</Layouts.app>

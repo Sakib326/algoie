@@ -1,105 +1,70 @@
 defmodule AlgoieWeb.Live.OnDashboardMount do
-  @moduledoc """
-  OnMount hook for dashboard routes.
-  Loads current_user from session, resolves store context, and redirects to sign-in if not authenticated.
+  @moduledoc "Authorizes tenant dashboard access against the slug-resolved store."
 
-  Supports multi-store users via session-stored store list and active store selection.
-  """
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [put_flash: 3, redirect: 2]
 
-  import Phoenix.LiveView, only: [redirect: 2]
-  import Phoenix.Component, only: [assign: 3, assign_new: 3]
-  import Ecto.Query
+  @view_permissions %{
+    AlgoieWeb.ProductLive.Index => "catalog.view",
+    AlgoieWeb.ProductLive.Wizard => "catalog.manage",
+    AlgoieWeb.CategoryLive.Index => "catalog.view",
+    AlgoieWeb.BrandLive.Index => "catalog.view",
+    AlgoieWeb.MediaLive.Index => "catalog.view",
+    AlgoieWeb.InventoryLive.Index => "inventory.view",
+    AlgoieWeb.OrderLive.Index => "orders.view",
+    AlgoieWeb.OrderLive.New => "orders.manage",
+    AlgoieWeb.OrderLive.Show => "orders.view",
+    AlgoieWeb.OrderLive.Invoice => "orders.view",
+    AlgoieWeb.CustomerLive.Index => "customers.view",
+    AlgoieWeb.CustomerLive.New => "customers.manage",
+    AlgoieWeb.CustomerLive.Show => "customers.view",
+    AlgoieWeb.CouponLive.Index => "discounts.view",
+    AlgoieWeb.DeliveryChargeLive.Index => "discounts.view",
+    AlgoieWeb.SalesReportLive => "reports.view",
+    AlgoieWeb.RepeatOrderReportLive => "reports.view",
+    AlgoieWeb.ConversationLive.Index => "engagement.view",
+    AlgoieWeb.CampaignLive.Index => "engagement.view",
+    AlgoieWeb.StoreSettingsLive => "settings.view",
+    AlgoieWeb.StoreEmailSettingsLive => "settings.view",
+    AlgoieWeb.TeamLive.Index => "team.view"
+  }
 
   def on_mount(:default, _params, session, socket) do
-    case socket.assigns[:current_user] do
+    with user when not is_nil(user) <- socket.assigns[:current_user],
+         tenant when is_binary(tenant) <- session["store_tenant"],
+         store_id when is_binary(store_id) <- session["store_id"],
+         {:ok, access} <- Algoie.Accounts.UserContext.find_store_access(user.id, store_id),
+         true <- access.tenant == tenant,
+         true <- allowed_view?(socket.view, access.permissions) do
+      tenant_slugs =
+        Algoie.Accounts.TenantPortal.list_for_user(user.id)
+        |> Map.new(&{&1.tenant, &1.slug})
+
+      stores =
+        Algoie.Accounts.UserContext.load_all_user_stores(user.id)
+        |> Enum.map(&Map.put(&1, :tenant_slug, tenant_slugs[&1.tenant]))
+
+      {:cont,
+       socket
+       |> assign(:tenant, tenant)
+       |> assign(:store_id, store_id)
+       |> assign(:store_name, access.store_name)
+       |> assign(:store_role, Atom.to_string(access.role))
+       |> assign(:store_permissions, access.permissions)
+       |> assign(:user_stores, stores)
+       |> assign(:current_scope, %{user: user})}
+    else
       nil ->
         {:halt, redirect(socket, to: "/sign-in")}
 
-      user ->
-        socket =
-          socket
-          |> assign_new(:user_stores, fn -> session["user_stores"] || [] end)
-          |> assign_new(:tenant, fn -> session["store_tenant"] end)
-          |> assign_new(:store_id, fn -> session["store_id"] end)
-          |> assign_new(:store_name, fn -> session["store_name"] || "Store" end)
-          |> assign_new(:current_scope, fn -> %{user: user} end)
-
-        if socket.assigns.tenant do
-          {:cont, socket}
-        else
-          # No store context — try to load from user's memberships
-          case load_default_store(user) do
-            {:ok, %{tenant: tenant, store_id: store_id, store_name: store_name, stores: stores}} ->
-              socket =
-                socket
-                |> assign(:tenant, tenant)
-                |> assign(:store_id, store_id)
-                |> assign(:store_name, store_name)
-                |> assign(:user_stores, stores)
-
-              {:cont, socket}
-
-            _ ->
-              {:halt, redirect(socket, to: "/register")}
-          end
-        end
+      _ ->
+        {:halt,
+         socket
+         |> put_flash(:error, "You do not have permission to access that area")
+         |> redirect(to: "/dashboard")}
     end
   end
 
-  defp load_default_store(user) do
-    user_id = user.id
-
-    case get_tenants_with_stores(user_id) do
-      [] ->
-        {:error, :no_store}
-
-      [{tenant, store_id, store_name, role} | rest] ->
-        all_stores =
-          [{tenant, store_id, store_name, role} | rest]
-          |> Enum.map(fn {t, sid, sname, r} ->
-            %{store_id: sid, store_name: sname, tenant: t, role: r}
-          end)
-
-        {:ok,
-         %{
-           tenant: tenant,
-           store_id: store_id,
-           store_name: store_name,
-           stores: all_stores
-         }}
-    end
-  end
-
-  defp get_tenants_with_stores(user_id) do
-    case Algoie.Repo.all(
-           from(t in "tenants", prefix: "public", select: fragment("?::text", t.id))
-         ) do
-      [] ->
-        []
-
-      tenant_ids ->
-        Enum.flat_map(tenant_ids, fn tenant_id ->
-          schema = "tenant_#{tenant_id}"
-
-          case Ecto.Adapters.SQL.query(
-                 Algoie.Repo,
-                 """
-                 SELECT ss.store_id::text, s.name, ss.role
-                 FROM "#{schema}".store_staff ss
-                 JOIN "#{schema}".stores s ON s.id = ss.store_id
-                 WHERE ss.user_id::text = $1
-                 """,
-                 [user_id]
-               ) do
-            {:ok, %{rows: rows}} ->
-              Enum.map(rows, fn [store_id, store_name, role] ->
-                {schema, store_id, store_name, role}
-              end)
-
-            _ ->
-              []
-          end
-        end)
-    end
-  end
+  defp allowed_view?(AlgoieWeb.DashboardLive, _permissions), do: true
+  defp allowed_view?(view, permissions), do: Map.get(@view_permissions, view) in permissions
 end

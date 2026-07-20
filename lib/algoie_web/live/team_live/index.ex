@@ -4,6 +4,7 @@ defmodule AlgoieWeb.TeamLive.Index do
   require Ash.Query
 
   alias Algoie.Accounts.{StoreStaff, User}
+  alias Algoie.Accounts.StorePermissions
   alias Algoie.Repo
 
   @impl true
@@ -13,6 +14,7 @@ defmodule AlgoieWeb.TeamLive.Index do
      |> assign(:active, :team)
      |> assign(:page_title, "Team & roles")
      |> assign(:page, 1)
+     |> assign(:permission_options, StorePermissions.all())
      |> assign(:staff_form, staff_form())
      |> load_team()}
   end
@@ -33,7 +35,8 @@ defmodule AlgoieWeb.TeamLive.Index do
         Algoie.Notifications.staff_access(
           to_string(user.email),
           socket.assigns.store_name,
-          temporary_password
+          temporary_password,
+          %{tenant: socket.assigns.tenant, store_id: socket.assigns.store_id}
         )
 
         message =
@@ -73,6 +76,23 @@ defmodule AlgoieWeb.TeamLive.Index do
       true -> {:noreply, put_flash(socket, :error, "You cannot change your own owner role")}
       {:error, message} when is_binary(message) -> {:noreply, put_flash(socket, :error, message)}
       _ -> {:noreply, put_flash(socket, :error, "Role could not be updated")}
+    end
+  end
+
+  def handle_event("change_permissions", params, socket) do
+    permissions = get_in(params, ["access", "permissions"]) || []
+
+    with true <- socket.assigns.owner?,
+         id when is_binary(id) <- params["membership_id"],
+         {:ok, membership} <- membership(socket, id),
+         false <- membership.role == :owner,
+         permissions <- StorePermissions.valid(permissions),
+         {:ok, _} <-
+           Ash.update(membership, %{permissions: permissions}, AlgoieWeb.Scope.opts(socket)) do
+      {:noreply, socket |> load_team() |> put_flash(:info, "Store permissions updated")}
+    else
+      false -> {:noreply, put_flash(socket, :error, "Owner permissions cannot be restricted")}
+      _ -> {:noreply, put_flash(socket, :error, "Permissions could not be updated")}
     end
   end
 

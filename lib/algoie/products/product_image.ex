@@ -53,12 +53,12 @@ defmodule Algoie.Products.ProductImage do
   policies do
     policy action_type([:create, :destroy, :update, :read]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "catalog"})
     end
 
     policy action_type(:destroy) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "catalog"})
     end
   end
 end

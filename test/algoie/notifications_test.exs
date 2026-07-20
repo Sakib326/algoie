@@ -46,4 +46,28 @@ defmodule Algoie.NotificationsTest do
     assert_receive {:email, email}, 1_000
     assert email.subject == "Order ORD-1001: Fulfilled"
   end
+
+  test "sends synchronous payment confirmation through the resolved mailer" do
+    order = %{
+      customer_email: "customer@example.com",
+      order_number: "ORD-1001",
+      payment_status: :paid,
+      total_amount: Decimal.new("125.50")
+    }
+
+    assert {:ok, _metadata} =
+             Algoie.Notifications.payment_status_changed(order, "Acme Store")
+
+    assert_receive {:email, email}
+    assert email.subject == "Payment Paid: ORD-1001"
+    assert email.text_body =~ "confirmed payment of BDT 125.5"
+  end
+
+  test "skips payment email when the order has no customer address" do
+    assert :skipped =
+             Algoie.Notifications.payment_status_changed(
+               %{customer_email: nil, payment_status: :paid},
+               "Acme Store"
+             )
+  end
 end

@@ -28,7 +28,10 @@ defmodule AlgoieWeb.StorefrontCheckoutController do
     with :ok <- validate_checkout(params, cart, rates),
          {:ok, order} <-
            OrderWorkflow.create_order(context.tenant, order_attrs(context, cart, params), nil) do
-      Algoie.Notifications.order_confirmation(order, context.store.name)
+      Algoie.Notifications.order_confirmation(order, context.store.name, %{
+        tenant: context.tenant,
+        store_id: context.store_id
+      })
 
       conn
       |> delete_session(@cart_key)

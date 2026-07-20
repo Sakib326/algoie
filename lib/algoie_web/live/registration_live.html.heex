@@ -103,6 +103,38 @@
                         required
                       />
 
+                      <div>
+                        <.input
+                          field={@form[:workspace_name]}
+                          type="text"
+                          label="Workspace name"
+                          placeholder="my-business"
+                          minlength="3"
+                          maxlength="63"
+                          required
+                        />
+                        <div class="mt-1.5 text-xs">
+                          <%= cond do %>
+                            <% @workspace_available == true -> %>
+                              <span class="flex items-center gap-1 text-success">
+                                <.icon name="hero-check-circle" class="size-4" />
+                                Your admin panel will be at {AlgoieWeb.PublicURL.tenant(
+                                  @form[:workspace_name].value
+                                )}
+                              </span>
+                            <% @workspace_available == false -> %>
+                              <span class="flex items-center gap-1 text-error">
+                                <.icon name="hero-x-circle" class="size-4" />
+                                This workspace name is already taken
+                              </span>
+                            <% true -> %>
+                              <span class="text-base-content/50">
+                                Unique name for your central tenant dashboard
+                              </span>
+                          <% end %>
+                        </div>
+                      </div>
+
                       <.input
                         field={@form[:store_name]}
                         type="text"
@@ -125,7 +157,7 @@
                             <% @slug_available == true -> %>
                               <span class="text-success flex items-center gap-1">
                                 <.icon name="hero-check-circle" class="size-4" />
-                                {@form[:store_slug].value}.localhost:4000 is available
+                                {AlgoieWeb.PublicURL.store(@form[:store_slug].value)} is available
                               </span>
                             <% @slug_available == false -> %>
                               <span class="text-error flex items-center gap-1">
@@ -134,7 +166,9 @@
                               </span>
                             <% true -> %>
                               <span class="text-base-content/50">
-                                Your store will be at {@form[:store_slug].value || "my-store"}.localhost:4000
+                                Your store will be at {AlgoieWeb.PublicURL.store(
+                                  @form[:store_slug].value || "my-store"
+                                )}
                               </span>
                           <% end %>
                         </div>

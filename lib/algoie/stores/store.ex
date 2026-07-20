@@ -73,8 +73,10 @@ defmodule Algoie.Stores.Store do
 
       change(
         after_action(fn _changeset, store, _context ->
-          Algoie.Stores.create_registry_entry(store)
-          {:ok, store}
+          case Algoie.Stores.create_registry_entry(store) do
+            :ok -> {:ok, store}
+            {:error, error} -> {:error, error}
+          end
         end)
       )
     end
@@ -121,8 +123,7 @@ defmodule Algoie.Stores.Store do
 
     policy action_type([:read, :update]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
-      authorize_if(Algoie.Policies.Checks.ActorHasAnyStoreAccess)
-      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "settings"})
     end
 
     policy action_type(:destroy) do

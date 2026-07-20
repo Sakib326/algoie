@@ -22,6 +22,7 @@ config :algoie, AlgoieWeb.Endpoint,
 
 # In test we don't send emails
 config :algoie, Algoie.Mailer, adapter: Swoosh.Adapters.Test
+config :algoie, :load_email_settings_from_db, false
 
 # Phoenix's test connection uses "www.example.com" as the host, so treat that as
 # the apex host in tests to exercise the platform routes.

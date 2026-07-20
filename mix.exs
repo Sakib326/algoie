@@ -21,7 +21,7 @@ defmodule Algoie.MixProject do
   def application do
     [
       mod: {Algoie.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :gen_smtp]
     ]
   end
 
@@ -65,6 +65,7 @@ defmodule Algoie.MixProject do
        compile: false,
        depth: 1},
       {:swoosh, "~> 1.16"},
+      {:gen_smtp, "~> 1.2"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},

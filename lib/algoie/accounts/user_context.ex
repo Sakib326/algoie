@@ -3,7 +3,8 @@ defmodule Algoie.Accounts.UserContext do
   Helper to load the current user's store context from their StoreStaff membership.
   """
 
-  alias Algoie.Accounts.StoreStaff
+  alias Algoie.Accounts.{StorePermissions, StoreStaff}
+  alias Algoie.Repo
   import Ecto.Query
 
   @doc """
@@ -51,7 +52,7 @@ defmodule Algoie.Accounts.UserContext do
           case Ecto.Adapters.SQL.query(
                  Algoie.Repo,
                  """
-                 SELECT ss.store_id::text, s.name, ss.role
+                 SELECT ss.store_id::text, s.name, ss.role, ss.permissions
                  FROM "#{schema}".store_staff ss
                  JOIN "#{schema}".stores s ON s.id = ss.store_id
                  WHERE ss.user_id::text = $1
@@ -59,14 +60,44 @@ defmodule Algoie.Accounts.UserContext do
                  [user_id]
                ) do
             {:ok, %{rows: rows}} ->
-              Enum.map(rows, fn [store_id, store_name, role] ->
-                %{store_id: store_id, store_name: store_name, tenant: schema, role: role}
+              Enum.map(rows, fn [store_id, store_name, role, permissions] ->
+                membership_map(store_id, store_name, schema, role, permissions)
               end)
 
             _ ->
               []
           end
         end)
+    end
+  end
+
+  @doc "Loads one current membership from the database instead of trusting session state."
+  def find_store_access(user_id, store_id) do
+    user_id
+    |> load_all_user_stores()
+    |> Enum.find(&(&1.store_id == to_string(store_id)))
+    |> case do
+      nil -> {:error, :not_a_member}
+      store -> {:ok, store}
+    end
+  end
+
+  @doc "Returns tenants in which the user owns at least one store."
+  def load_owner_tenants(user_id) do
+    owner_tenants =
+      user_id
+      |> load_all_user_stores()
+      |> Enum.filter(&(&1.role == :owner))
+      |> Map.new(&{String.replace_leading(&1.tenant, "tenant_", ""), &1.tenant})
+
+    if map_size(owner_tenants) == 0 do
+      []
+    else
+      Repo.query!(
+        "SELECT id::text, name FROM public.tenants WHERE id::text = ANY($1::text[]) ORDER BY name",
+        [Map.keys(owner_tenants)]
+      ).rows
+      |> Enum.map(fn [id, name] -> %{id: id, tenant: owner_tenants[id], name: name} end)
     end
   end
 
@@ -101,5 +132,17 @@ defmodule Algoie.Accounts.UserContext do
       ids when is_list(ids) -> ids
       _ -> []
     end
+  end
+
+  defp membership_map(store_id, store_name, tenant, role, permissions) do
+    role = String.to_existing_atom(role)
+
+    %{
+      store_id: store_id,
+      store_name: store_name,
+      tenant: tenant,
+      role: role,
+      permissions: StorePermissions.effective(role, permissions)
+    }
   end
 end
