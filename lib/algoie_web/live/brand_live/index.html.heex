@@ -28,8 +28,66 @@
       </h2>
     </div>
     <.form for={@form} id="brand-form" phx-submit="save" class="p-6">
-      <div class="max-w-md">
-        <.input field={@form[:name]} type="text" label="Brand name" placeholder="e.g. Acme Co." />
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div class="space-y-5">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <.input
+              field={@form[:name]}
+              type="text"
+              label="Brand name"
+              placeholder="e.g. Acme Co."
+              required
+            />
+            <.input field={@form[:slug]} type="text" label="URL slug" placeholder="acme-co" />
+          </div>
+          <.input
+            field={@form[:description]}
+            type="textarea"
+            rows="4"
+            label="Description"
+            placeholder="Introduce this brand to shoppers."
+          />
+          <div class="rounded-xl border border-base-200 bg-base-200/25 p-5">
+            <div class="mb-4 flex items-center gap-2">
+              <.icon name="hero-magnifying-glass" class="size-5 text-primary" /><div>
+                <h3 class="text-sm font-semibold">Search engine details</h3><p class="text-xs text-base-content/50">
+                  Recommended: title up to 60 characters and description up to 160.
+                </p>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <.input
+                field={@form[:meta_title]}
+                type="text"
+                label="SEO title"
+                placeholder="Acme Co. products"
+                maxlength="60"
+              />
+              <.input
+                field={@form[:meta_description]}
+                type="textarea"
+                rows="3"
+                label="SEO description"
+                maxlength="160"
+                placeholder="Browse products from Acme Co."
+              />
+            </div>
+          </div>
+        </div>
+        <div>
+          <.live_component
+            module={AlgoieWeb.Components.MediaManagerComponent}
+            id="brand-image"
+            field={@form[:image_url]}
+            multiple={false}
+            max_selected={1}
+            label="Brand image"
+            helper="Use a square logo or brand image."
+            store_id={@store_id}
+            tenant={@tenant}
+            current_user={@current_user}
+          />
+        </div>
       </div>
       <div class="mt-6 flex items-center justify-end gap-3 border-t border-base-200 pt-4">
         <.ui_button navigate={~p"/dashboard/brands"} variant="ghost">Cancel</.ui_button>
@@ -58,7 +116,8 @@
     <table :if={@brands != []} class="w-full text-sm">
       <thead>
         <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
-          <th class="px-6 py-3 font-medium">Name</th>
+          <th class="px-6 py-3 font-medium">Brand</th>
+          <th class="px-6 py-3 font-medium">Slug</th>
           <th class="px-6 py-3 text-right font-medium">Actions</th>
         </tr>
       </thead>
@@ -69,12 +128,27 @@
         >
           <td class="px-6 py-3">
             <div class="flex items-center gap-3">
-              <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning">
-                <.icon name="hero-tag" class="size-5" />
-              </span>
-              <span class="font-medium text-base-content">{brand.name}</span>
+              <img
+                :if={brand.image_url}
+                src={brand.image_url}
+                alt=""
+                class="size-10 shrink-0 rounded-lg border border-base-200 object-cover"
+              />
+              <span
+                :if={is_nil(brand.image_url)}
+                class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning"
+              ><.icon name="hero-tag" class="size-5" /></span>
+              <div>
+                <p class="font-medium text-base-content">{brand.name}</p><p
+                  :if={brand.description}
+                  class="max-w-sm truncate text-xs text-base-content/45"
+                >
+                  {brand.description}
+                </p>
+              </div>
             </div>
           </td>
+          <td class="px-6 py-3 font-mono text-xs text-base-content/55">/{brand.slug}</td>
           <td class="px-6 py-3">
             <div class="flex items-center justify-end gap-1">
               <.ui_button navigate={~p"/dashboard/brands/#{brand}/edit"} variant="ghost" size="sm">

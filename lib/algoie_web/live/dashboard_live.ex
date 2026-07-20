@@ -46,10 +46,10 @@ defmodule AlgoieWeb.DashboardLive do
   end
 
   defp format_money(%Decimal{} = amount) do
-    "$" <> (amount |> Decimal.round(2) |> Decimal.to_string(:normal))
+    "৳" <> (amount |> Decimal.round(2) |> Decimal.to_string(:normal))
   end
 
-  defp format_money(_), do: "$0.00"
+  defp format_money(_), do: "৳0.00"
 
   defp status_tone(:pending), do: "warning"
   defp status_tone(:pre_order), do: "info"

@@ -33,19 +33,33 @@ defmodule AlgoieWeb.Plugs.StoreSlugPlug do
           {:ok, %{tenant_id: tenant_id, store_id: store_id}} ->
             schema_name = "tenant_#{tenant_id}"
 
-            conn
-            |> Ash.PlugHelpers.set_tenant(schema_name)
-            |> Ash.PlugHelpers.set_context(%{store_id: store_id})
-            |> put_session(:store_tenant, schema_name)
-            |> put_session(:store_id, store_id)
+            case Ash.get(Algoie.Stores.Store, store_id,
+                   tenant: schema_name,
+                   authorize?: false
+                 ) do
+              {:ok, %{status: :active} = store} ->
+                conn
+                |> Ash.PlugHelpers.set_tenant(schema_name)
+                |> Ash.PlugHelpers.set_context(%{store_id: store_id})
+                |> assign(:store, store)
+                |> put_session(:store_tenant, schema_name)
+                |> put_session(:store_id, store_id)
+
+              _ ->
+                not_found(conn)
+            end
 
           {:error, :not_found} ->
-            conn
-            |> put_resp_content_type("text/plain")
-            |> send_resp(404, "Store not found")
-            |> halt()
+            not_found(conn)
         end
     end
+  end
+
+  defp not_found(conn) do
+    conn
+    |> put_resp_content_type("text/plain")
+    |> send_resp(404, "Store not found")
+    |> halt()
   end
 
   defp extract_store_slug(conn) do

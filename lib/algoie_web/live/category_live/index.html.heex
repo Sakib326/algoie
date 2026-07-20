@@ -28,8 +28,66 @@
       </h2>
     </div>
     <.form for={@form} id="category-form" phx-submit="save" class="p-6">
-      <div class="max-w-md">
-        <.input field={@form[:name]} type="text" label="Category name" placeholder="e.g. Apparel" />
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div class="space-y-5">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <.input
+              field={@form[:name]}
+              type="text"
+              label="Category name"
+              placeholder="e.g. Apparel"
+              required
+            />
+            <.input field={@form[:slug]} type="text" label="URL slug" placeholder="apparel" />
+          </div>
+          <.input
+            field={@form[:description]}
+            type="textarea"
+            rows="4"
+            label="Description"
+            placeholder="Describe the products shoppers will find here."
+          />
+          <div class="rounded-xl border border-base-200 bg-base-200/25 p-5">
+            <div class="mb-4 flex items-center gap-2">
+              <.icon name="hero-magnifying-glass" class="size-5 text-primary" /><div>
+                <h3 class="text-sm font-semibold">Search engine details</h3><p class="text-xs text-base-content/50">
+                  Recommended: title up to 60 characters and description up to 160.
+                </p>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <.input
+                field={@form[:meta_title]}
+                type="text"
+                label="SEO title"
+                maxlength="60"
+                placeholder="Shop Apparel"
+              />
+              <.input
+                field={@form[:meta_description]}
+                type="textarea"
+                rows="3"
+                label="SEO description"
+                maxlength="160"
+                placeholder="Explore our apparel collection."
+              />
+            </div>
+          </div>
+        </div>
+        <div>
+          <.live_component
+            module={AlgoieWeb.Components.MediaManagerComponent}
+            id="category-image"
+            field={@form[:image_url]}
+            multiple={false}
+            max_selected={1}
+            label="Category image"
+            helper="Shown on category cards and landing pages."
+            store_id={@store_id}
+            tenant={@tenant}
+            current_user={@current_user}
+          />
+        </div>
       </div>
       <div class="mt-6 flex items-center justify-end gap-3 border-t border-base-200 pt-4">
         <.ui_button navigate={~p"/dashboard/categories"} variant="ghost">Cancel</.ui_button>
@@ -58,7 +116,8 @@
     <table :if={@categories != []} class="w-full text-sm">
       <thead>
         <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
-          <th class="px-6 py-3 font-medium">Name</th>
+          <th class="px-6 py-3 font-medium">Category</th>
+          <th class="px-6 py-3 font-medium">Slug</th>
           <th class="px-6 py-3 text-right font-medium">Actions</th>
         </tr>
       </thead>
@@ -69,12 +128,27 @@
         >
           <td class="px-6 py-3">
             <div class="flex items-center gap-3">
-              <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info">
-                <.icon name="hero-folder" class="size-5" />
-              </span>
-              <span class="font-medium text-base-content">{category.name}</span>
+              <img
+                :if={category.image_url}
+                src={category.image_url}
+                alt=""
+                class="size-10 shrink-0 rounded-lg border border-base-200 object-cover"
+              />
+              <span
+                :if={is_nil(category.image_url)}
+                class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info"
+              ><.icon name="hero-folder" class="size-5" /></span>
+              <div>
+                <p class="font-medium text-base-content">{category.name}</p><p
+                  :if={category.description}
+                  class="max-w-sm truncate text-xs text-base-content/45"
+                >
+                  {category.description}
+                </p>
+              </div>
             </div>
           </td>
+          <td class="px-6 py-3 font-mono text-xs text-base-content/55">/{category.slug}</td>
           <td class="px-6 py-3">
             <div class="flex items-center justify-end gap-1">
               <.ui_button

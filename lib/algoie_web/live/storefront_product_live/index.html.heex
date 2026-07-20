@@ -1,4 +1,4 @@
-<Layouts.storefront flash={@flash}>
+<Layouts.storefront flash={@flash} store={@store} current_customer={@current_customer}>
   <div class="mb-8">
     <h1 class="text-3xl font-bold mb-2">All Products</h1>
     <p class="text-base-content/60">Browse our complete collection</p>
@@ -36,7 +36,7 @@
             </p>
             <div class="flex items-center justify-between mt-2">
               <%= if product.min_price do %>
-                <span class="text-primary font-bold">${Decimal.to_string(product.min_price)}</span>
+                <span class="text-primary font-bold">৳{Decimal.to_string(product.min_price)}</span>
               <% else %>
                 <span class="text-base-content/40 text-sm">Price TBD</span>
               <% end %>

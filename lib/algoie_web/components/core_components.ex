@@ -59,8 +59,9 @@ defmodule AlgoieWeb.CoreComponents do
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
       data-flash
+      data-flash-kind={@kind}
       role="alert"
-      class="toast toast-top toast-end z-50"
+      class="pointer-events-auto transition duration-200 ease-out"
       {@rest}
     >
       <div class={[
@@ -75,7 +76,14 @@ defmodule AlgoieWeb.CoreComponents do
           <p>{msg}</p>
         </div>
         <div class="flex-1" />
-        <button type="button" class="group self-start cursor-pointer" aria-label="close">
+        <button
+          type="button"
+          data-flash-close
+          phx-click="lv:clear-flash"
+          phx-value-key={@kind}
+          class="group self-start cursor-pointer"
+          aria-label="Close notification"
+        >
           <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
         </button>
       </div>
@@ -443,6 +451,36 @@ defmodule AlgoieWeb.CoreComponents do
       <div :if={@actions != []} class="flex items-center gap-2 shrink-0">
         {render_slot(@actions)}
       </div>
+    </div>
+    """
+  end
+
+  attr :page, :integer, required: true
+  attr :page_count, :integer, required: true
+  attr :event, :string, default: "page"
+  attr :class, :string, default: nil
+
+  def simple_pager(assigns) do
+    ~H"""
+    <div
+      :if={@page_count > 1}
+      class={["flex items-center justify-between border-t border-base-200 px-5 py-3", @class]}
+    >
+      <button
+        type="button"
+        phx-click={@event}
+        phx-value-page={@page - 1}
+        disabled={@page == 1}
+        class="btn btn-ghost btn-sm"
+      ><.icon name="hero-chevron-left" class="size-4" /> Previous</button>
+      <span class="text-xs text-base-content/50">Page {@page} of {@page_count}</span>
+      <button
+        type="button"
+        phx-click={@event}
+        phx-value-page={@page + 1}
+        disabled={@page == @page_count}
+        class="btn btn-ghost btn-sm"
+      >Next <.icon name="hero-chevron-right" class="size-4" /></button>
     </div>
     """
   end

@@ -4,6 +4,7 @@ defmodule Algoie.Stores do
 
   resources do
     resource(Algoie.Stores.Store)
+    resource(Algoie.Stores.DeliveryCharge)
     resource(Algoie.Stores.StoreRegistry)
   end
 
@@ -46,6 +47,31 @@ defmodule Algoie.Stores do
         where: r.slug == ^store.slug
       )
     )
+  end
+
+  @doc "Keeps the public subdomain registry in sync when a store slug changes."
+  def update_registry_entry(store) do
+    tenant_id = store.__metadata__.tenant |> String.replace_leading("tenant_", "")
+
+    case Algoie.Repo.one(
+           from(r in __MODULE__.StoreRegistry,
+             prefix: "public",
+             where: r.store_id == ^store.id and r.tenant_id == ^tenant_id
+           )
+         ) do
+      nil ->
+        create_registry_entry(store)
+
+      registry ->
+        registry
+        |> Ecto.Changeset.change(slug: store.slug)
+        |> Ecto.Changeset.unique_constraint(:slug)
+        |> Algoie.Repo.update(prefix: "public")
+        |> case do
+          {:ok, _} -> :ok
+          {:error, error} -> {:error, error}
+        end
+    end
   end
 
   @doc """

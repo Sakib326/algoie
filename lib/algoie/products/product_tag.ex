@@ -55,7 +55,5 @@ defmodule Algoie.Products.ProductTag do
     policy action_type(:read) do
       authorize_if(always())
     end
-
-
   end
 end

@@ -20,6 +20,14 @@ defmodule Algoie.Stores.Store do
     attribute(:name, :string, allow_nil?: false)
     attribute(:slug, :string, allow_nil?: false)
     attribute(:custom_domain, :string)
+    attribute(:email, :string)
+    attribute(:phone, :string)
+    attribute(:address, :string)
+    attribute(:city, :string)
+    attribute(:country, :string, allow_nil?: false, default: "Bangladesh")
+    attribute(:currency, :string, allow_nil?: false, default: "BDT")
+    attribute(:logo_url, :string)
+    attribute(:invoice_prefix, :string, allow_nil?: false, default: "INV")
 
     attribute(:status, :atom,
       allow_nil?: false,
@@ -37,6 +45,7 @@ defmodule Algoie.Stores.Store do
 
   relationships do
     has_many :staff_memberships, Algoie.Accounts.StoreStaff
+    has_many :delivery_charges, Algoie.Stores.DeliveryCharge
   end
 
   actions do
@@ -46,7 +55,21 @@ defmodule Algoie.Stores.Store do
 
     create :create do
       primary?(true)
-      accept([:name, :slug, :custom_domain, :status])
+
+      accept([
+        :name,
+        :slug,
+        :custom_domain,
+        :status,
+        :email,
+        :phone,
+        :address,
+        :city,
+        :country,
+        :currency,
+        :logo_url,
+        :invoice_prefix
+      ])
 
       change(
         after_action(fn _changeset, store, _context ->
@@ -57,7 +80,31 @@ defmodule Algoie.Stores.Store do
     end
 
     update :update do
-      accept([:name, :slug, :custom_domain, :status])
+      require_atomic?(false)
+
+      accept([
+        :name,
+        :slug,
+        :custom_domain,
+        :status,
+        :email,
+        :phone,
+        :address,
+        :city,
+        :country,
+        :currency,
+        :logo_url,
+        :invoice_prefix
+      ])
+
+      change(
+        after_action(fn _changeset, store, _context ->
+          case Algoie.Stores.update_registry_entry(store) do
+            :ok -> {:ok, store}
+            {:error, error} -> {:error, error}
+          end
+        end)
+      )
     end
 
     destroy :destroy do

@@ -109,8 +109,8 @@ defmodule AlgoieWeb.OrderLive.Index do
   defp short_id(id), do: id |> to_string() |> String.slice(0, 8)
 
   defp format_money(%Decimal{} = amount) do
-    "$" <> (amount |> Decimal.round(2) |> Decimal.to_string(:normal))
+    "৳" <> (amount |> Decimal.round(2) |> Decimal.to_string(:normal))
   end
 
-  defp format_money(_), do: "$0.00"
+  defp format_money(_), do: "৳0.00"
 end

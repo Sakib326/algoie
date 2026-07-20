@@ -8,14 +8,27 @@ defmodule Cleaner do
   def clean(%Decimal{} = d), do: Decimal.to_float(d)
   def clean(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
   def clean(%{__struct__: Ash.NotLoaded}), do: nil
+
   def clean(%{__struct__: _} = struct) do
-    struct |> Map.from_struct() |> Map.drop([:__meta__, :__metadata__, :aggregates, :calculations, :__lateral_join_source__, :__order__]) |> clean()
+    struct
+    |> Map.from_struct()
+    |> Map.drop([
+      :__meta__,
+      :__metadata__,
+      :aggregates,
+      :calculations,
+      :__lateral_join_source__,
+      :__order__
+    ])
+    |> clean()
   end
+
   def clean(%{} = map) do
     map
     |> Enum.reject(fn {_, v} -> match?(%{__struct__: Ash.NotLoaded}, v) end)
     |> Enum.into(%{}, fn {k, v} -> {k, clean(v)} end)
   end
+
   def clean(other), do: other
 end
 

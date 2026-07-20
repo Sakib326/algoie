@@ -589,7 +589,10 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr :for={{variant, idx} <- Enum.with_index(@generated_variants)} id={"variant-#{idx}"}>
+                    <tr
+                      :for={{variant, idx} <- Enum.with_index(@generated_variants)}
+                      id={"variant-#{idx}"}
+                    >
                       <td class="text-xs text-base-content/60 font-medium">
                         {variant["option_values"]
                         |> Enum.map(fn {k, v} -> "#{k}: #{v}" end)
@@ -940,17 +943,17 @@
                         |> Enum.map(fn {k, v} -> "#{k}: #{v}" end)
                         |> Enum.join(", ")}
                       </span>
-                      — ${variant["price"]}
+                      — ৳{variant["price"]}
                     </p>
                   <% end %>
                 </div>
               <% else %>
-                <p><span class="font-medium">Price:</span> ${@wizard_data["price"]}</p>
+                <p><span class="font-medium">Price:</span> ৳{@wizard_data["price"]}</p>
                 <p :if={@wizard_data["cost_price"] != ""}>
-                  <span class="font-medium">Cost:</span> ${@wizard_data["cost_price"]}
+                  <span class="font-medium">Cost:</span> ৳{@wizard_data["cost_price"]}
                 </p>
                 <p :if={@wizard_data["compare_at_price"] != ""}>
-                  <span class="font-medium">Compare-at:</span> ${@wizard_data["compare_at_price"]}
+                  <span class="font-medium">Compare-at:</span> ৳{@wizard_data["compare_at_price"]}
                 </p>
               <% end %>
               <p>

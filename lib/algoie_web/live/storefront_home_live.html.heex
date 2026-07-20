@@ -1,4 +1,4 @@
-<Layouts.storefront flash={@flash}>
+<Layouts.storefront flash={@flash} store={@store} current_customer={@current_customer}>
   <%!-- Hero Section --%>
   <div class="relative overflow-hidden bg-gradient-to-br from-primary/10 via-base-200 to-secondary/10 rounded-2xl mb-12">
     <div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,oklch(var(--p)/0.08),transparent_60%)]" />
@@ -74,9 +74,9 @@
             class="card bg-base-200 hover:bg-base-300 transition-all group hover:shadow-lg"
           >
             <figure class="aspect-square bg-base-300 rounded-t-xl flex items-center justify-center">
-              <%= if product.images != [] do %>
+              <%= if product.cover_url do %>
                 <img
-                  src={List.first(product.images)}
+                  src={product.cover_url}
                   alt={product.name}
                   class="w-full h-full object-cover"
                 />
@@ -91,7 +91,7 @@
               <div class="flex items-center gap-2 mt-1">
                 <%= if product.min_price do %>
                   <span class="text-primary font-bold text-sm sm:text-base">
-                    ${Decimal.to_string(product.min_price)}
+                    ৳{Decimal.to_string(product.min_price)}
                   </span>
                 <% else %>
                   <span class="text-base-content/40 text-sm">Price TBD</span>

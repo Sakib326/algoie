@@ -1,0 +1,92 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:customers}
+>
+  <.page_header title="Customers">
+    <:subtitle>Customer profiles created from orders and saved delivery information.</:subtitle>
+    <:actions>
+      <.ui_button navigate={~p"/dashboard/customers/new"} variant="primary">
+        <.icon name="hero-user-plus" class="size-4" /> Add customer
+      </.ui_button>
+    </:actions>
+  </.page_header>
+
+  <.panel class="mb-5 p-4">
+    <form id="customer-search" phx-submit="search" class="flex gap-2">
+      <input
+        name="search"
+        value={@search}
+        placeholder="Search name, email, or phone"
+        class="input input-bordered w-full"
+      />
+      <.ui_button type="submit" variant="primary"><.icon
+        name="hero-magnifying-glass"
+        class="size-4"
+      /> Search</.ui_button>
+    </form>
+  </.panel>
+
+  <.panel class="overflow-hidden">
+    <div :if={@customers == []} class="px-6">
+      <.empty_state
+        icon="hero-users"
+        title="No customers found"
+        description="Customers are automatically created when an order is placed with new customer details."
+      />
+    </div>
+    <div :if={@customers != []} class="overflow-x-auto">
+      <table class="w-full min-w-[700px] text-sm">
+        <thead>
+          <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
+            <th class="px-6 py-3 font-medium">Customer</th><th class="px-6 py-3 font-medium">
+              Contact
+            </th><th class="px-6 py-3 text-right font-medium">Orders</th><th class="px-6 py-3 text-right font-medium">
+              Lifetime value
+            </th><th class="px-6 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            :for={customer <- @customers}
+            class="border-b border-base-200 last:border-0 transition hover:bg-base-200/30"
+          >
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-3">
+                <span class="flex size-9 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">{customer.name
+                |> String.first()
+                |> String.upcase()}</span><div>
+                  <p class="font-medium">{customer.name}</p><p class="text-xs text-base-content/45">
+                    Customer since {Calendar.strftime(customer.inserted_at, "%b %Y")}
+                  </p>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-base-content/65">
+              <p>{customer.phone || "—"}</p><p class="text-xs">{customer.email || "—"}</p>
+            </td>
+            <td class="px-6 py-4 text-right font-medium tabular-nums">
+              {stat(@customer_stats, customer.id).orders}
+            </td>
+            <td class="px-6 py-4 text-right font-medium tabular-nums">
+              {format_money(stat(@customer_stats, customer.id).total)}
+            </td>
+            <td class="px-6 py-4 text-right">
+              <.ui_button
+                navigate={~p"/dashboard/customers/#{customer.id}"}
+                variant="ghost"
+                size="sm"
+              >View <.icon name="hero-arrow-right" class="size-4" /></.ui_button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <.simple_pager page={@page} page_count={@page_count} />
+  </.panel>
+</Layouts.dashboard>

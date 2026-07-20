@@ -57,11 +57,20 @@
             navigate={~p"/dashboard/orders"}
             class={
               if @socket.view_module == AlgoieWeb.OrderLive.Index or
+                   @socket.view_module == AlgoieWeb.OrderLive.New or
                    @socket.view_module == AlgoieWeb.OrderLive.Show,
                  do: "active"
             }
           >
             <.icon name="hero-clipboard-document-list" class="size-5" /> Orders
+          </.link>
+        </li>
+        <li>
+          <.link
+            navigate={~p"/dashboard/coupons"}
+            class={if @socket.view_module == AlgoieWeb.CouponLive.Index, do: "active"}
+          >
+            <.icon name="hero-ticket" class="size-5" /> Coupons
           </.link>
         </li>
       </ul>

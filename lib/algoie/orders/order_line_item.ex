@@ -21,6 +21,9 @@ defmodule Algoie.Orders.OrderLineItem do
     attribute(:variant_id, :uuid, allow_nil?: false)
     attribute(:quantity, :integer, allow_nil?: false)
     attribute(:unit_price, :decimal, allow_nil?: false, constraints: [precision: 18, scale: 2])
+    attribute(:product_name, :string, allow_nil?: false)
+    attribute(:variant_name, :string)
+    attribute(:sku, :string, allow_nil?: false)
     create_timestamp(:inserted_at)
     update_timestamp(:updated_at)
   end
@@ -35,7 +38,7 @@ defmodule Algoie.Orders.OrderLineItem do
 
     create :create do
       primary?(true)
-      accept([:order_id, :variant_id, :quantity, :unit_price])
+      accept([:order_id, :variant_id, :quantity, :unit_price, :product_name, :variant_name, :sku])
     end
   end
 

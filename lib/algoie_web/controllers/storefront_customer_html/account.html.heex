@@ -1,0 +1,142 @@
+<Layouts.storefront flash={@flash} store={@store} current_customer={@current_customer}>
+  <div class="mx-auto max-w-6xl">
+    <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+          Customer account
+        </p><h1 class="mt-1 text-3xl font-bold tracking-tight">Hello, {@customer.name}</h1><p class="mt-2 text-sm text-base-content/55">
+          Manage your profile, delivery addresses, and orders.
+        </p>
+      </div>
+      <.link href="/account/sign-out" method="delete" class="btn btn-outline btn-sm"><.icon
+        name="hero-arrow-right-on-rectangle"
+        class="size-4"
+      /> Sign out</.link>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-3">
+      <section class="rounded-3xl border border-base-200 bg-base-100 p-6 shadow-sm">
+        <div class="mb-5 flex items-center gap-3">
+          <span class="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary"><.icon
+            name="hero-user"
+            class="size-5"
+          /></span><h2 class="font-semibold">Profile details</h2>
+        </div>
+        <.form
+          for={@profile_form}
+          action="/account/profile"
+          method="post"
+          id="customer-profile-form"
+          class="space-y-4"
+        >
+          <.input field={@profile_form[:name]} type="text" label="Name" required />
+          <.input field={@profile_form[:phone]} type="tel" label="Phone" />
+          <div>
+            <p class="text-xs font-medium text-base-content/55">Email</p><p class="mt-1 text-sm">
+              {@customer.email}
+            </p>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-full">Save profile</button>
+        </.form>
+      </section>
+
+      <section class="rounded-3xl border border-base-200 bg-base-100 p-6 shadow-sm lg:col-span-2">
+        <div class="mb-5 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary"><.icon
+              name="hero-map-pin"
+              class="size-5"
+            /></span><div>
+              <h2 class="font-semibold">Saved addresses</h2><p class="text-xs text-base-content/50">
+                {@addresses |> length()} saved
+              </p>
+            </div>
+          </div>
+        </div>
+        <div :if={@addresses != []} class="mb-6 grid gap-3 sm:grid-cols-2">
+          <div :for={address <- @addresses} class="rounded-2xl bg-base-200 p-4 text-sm">
+            <div class="flex justify-between gap-2">
+              <strong>{address.label || "Address"}</strong><span
+                :if={address.default?}
+                class="badge badge-primary badge-sm"
+              >Default</span>
+            </div><p class="mt-2 text-base-content/65">
+              {address.recipient_name} · {address.phone}
+            </p><p class="mt-1 text-base-content/55">
+              {address.address_line1}{if(address.area, do: ", #{address.area}", else: "")}, {address.city}
+            </p>
+          </div>
+        </div>
+        <.form
+          for={@address_form}
+          action="/account/addresses"
+          method="post"
+          id="customer-address-form"
+          class="grid gap-3 sm:grid-cols-2"
+        >
+          <.input field={@address_form[:label]} label="Label" placeholder="Home" />
+          <.input
+            field={@address_form[:recipient_name]}
+            label="Recipient name"
+            value={@customer.name}
+            required
+          />
+          <.input
+            field={@address_form[:phone]}
+            type="tel"
+            label="Phone"
+            value={@customer.phone}
+            required
+          />
+          <.input field={@address_form[:city]} label="City" required />
+          <div class="sm:col-span-2">
+            <.input field={@address_form[:address_line1]} label="Address" required />
+          </div>
+          <.input field={@address_form[:area]} label="Area (optional)" />
+          <.input field={@address_form[:postal_code]} label="Postal code (optional)" />
+          <.input field={@address_form[:country]} label="Country" required />
+          <label class="flex items-center gap-2 text-sm"><input
+            type="checkbox"
+            name="address[default?]"
+            value="true"
+            class="checkbox checkbox-primary checkbox-sm"
+          /> Default address</label>
+          <div class="flex justify-end">
+            <button type="submit" class="btn btn-outline btn-sm">Add address</button>
+          </div>
+        </.form>
+      </section>
+    </div>
+
+    <section class="mt-6 overflow-hidden rounded-3xl border border-base-200 bg-base-100 shadow-sm">
+      <div class="border-b border-base-200 p-6">
+        <div class="flex items-center gap-3">
+          <span class="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary"><.icon
+            name="hero-shopping-bag"
+            class="size-5"
+          /></span><div>
+            <h2 class="font-semibold">Order history</h2><p class="text-xs text-base-content/50">
+              {@orders |> length()} orders
+            </p>
+          </div>
+        </div>
+      </div>
+      <div :if={@orders == []} class="p-10 text-center text-sm text-base-content/50">
+        You have not placed any orders yet.
+      </div>
+      <div :if={@orders != []} class="divide-y divide-base-200">
+        <.link
+          :for={order <- @orders}
+          navigate={~p"/account/orders/#{order.id}"}
+          class="grid gap-3 p-5 transition hover:bg-base-200/60 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+        ><div>
+          <p class="font-semibold">{order.order_number}</p><p class="mt-1 text-xs text-base-content/50">
+            {Calendar.strftime(order.inserted_at, "%d %b %Y, %I:%M %p")}
+          </p>
+        </div><span class="badge badge-outline">{order.status}</span><strong class="text-primary">৳{Decimal.to_string(
+          order.total_amount
+        )}</strong></.link>
+      </div>
+    </section>
+  </div>
+</Layouts.storefront>

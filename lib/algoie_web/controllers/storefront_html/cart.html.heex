@@ -1,0 +1,102 @@
+<Layouts.storefront flash={@flash} store={@store} current_customer={@current_customer}>
+  <div class="mx-auto max-w-5xl">
+    <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Your basket</p>
+        <h1 class="mt-1 text-3xl font-bold tracking-tight">Shopping cart</h1>
+        <p class="mt-2 text-sm text-base-content/55">
+          Prices and stock are checked again at checkout.
+        </p>
+      </div>
+      <.link navigate="/products" class="btn btn-ghost btn-sm">
+        <.icon name="hero-arrow-left" class="size-4" /> Continue shopping
+      </.link>
+    </div>
+
+    <%= if @cart.items == [] do %>
+      <div class="rounded-3xl border border-base-200 bg-base-200/50 px-6 py-20 text-center">
+        <.icon name="hero-shopping-cart" class="mx-auto size-14 text-base-content/20" />
+        <h2 class="mt-4 text-xl font-semibold">Your cart is empty</h2>
+        <p class="mt-2 text-sm text-base-content/55">
+          Find something you love in the product catalog.
+        </p>
+        <.link navigate="/products" class="btn btn-primary mt-6">Browse products</.link>
+      </div>
+    <% else %>
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <.form
+          for={Phoenix.Component.to_form(%{}, as: :cart)}
+          action="/cart/update"
+          method="post"
+          id="storefront-cart-form"
+          class="overflow-hidden rounded-3xl border border-base-200 bg-base-100 shadow-sm"
+        >
+          <div
+            :for={item <- @cart.items}
+            class="grid gap-4 border-b border-base-200 p-5 last:border-0 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+          >
+            <div class="min-w-0">
+              <.link
+                navigate={~p"/products/#{item.product}"}
+                class="font-semibold hover:text-primary"
+              >
+                {item.product.name}
+              </.link>
+              <p class="mt-1 text-xs text-base-content/50">
+                {item.variant.sku}
+                <%= if item.variant.option_values != %{} do %>
+                  · {Enum.map_join(item.variant.option_values, ", ", fn {key, value} ->
+                    "#{key}: #{value}"
+                  end)}
+                <% end %>
+              </p>
+              <p class="mt-2 font-semibold text-primary">
+                ৳{Decimal.to_string(item.variant.price)}
+              </p>
+            </div>
+            <label class="flex items-center gap-2 text-sm">
+              <span class="text-base-content/55">Qty</span>
+              <input
+                type="number"
+                name={"items[#{item.variant.id}]"}
+                value={item.quantity}
+                min="0"
+                max={item.available}
+                class="input input-bordered w-20"
+              />
+            </label>
+            <div class="text-right">
+              <p class="font-bold">৳{Decimal.to_string(item.line_total)}</p>
+              <.link
+                href={~p"/cart/items/#{item.variant.id}"}
+                method="delete"
+                class="btn btn-ghost btn-xs mt-1 text-error"
+              >
+                Remove
+              </.link>
+            </div>
+          </div>
+          <div class="flex justify-end border-t border-base-200 bg-base-200/40 p-4">
+            <button type="submit" class="btn btn-outline btn-sm">Update cart</button>
+          </div>
+        </.form>
+
+        <aside class="h-fit rounded-3xl bg-base-200 p-6 lg:sticky lg:top-24">
+          <h2 class="text-lg font-semibold">Order summary</h2>
+          <div class="mt-5 flex justify-between text-sm text-base-content/65">
+            <span>Items ({@cart.count})</span><span>৳{Decimal.to_string(@cart.subtotal)}</span>
+          </div>
+          <div class="mt-4 flex justify-between border-t border-base-300 pt-4 text-lg font-bold">
+            <span>Subtotal</span><span>৳{Decimal.to_string(@cart.subtotal)}</span>
+          </div>
+          <p class="mt-3 text-xs leading-5 text-base-content/50">
+            Delivery and coupon discounts are calculated during checkout.
+          </p>
+          <.link navigate="/checkout" class="btn btn-primary mt-6 w-full">
+            Checkout <.icon name="hero-arrow-right" class="size-4" />
+          </.link>
+        </aside>
+      </div>
+    <% end %>
+  </div>
+</Layouts.storefront>

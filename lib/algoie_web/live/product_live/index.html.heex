@@ -91,7 +91,15 @@
 
   <%!-- List --%>
   <.panel>
-    <div :if={@products == []}>
+    <div :if={@load_error} class="p-6">
+      <div class="rounded-xl border border-error/25 bg-error/10 p-4 text-sm text-error">
+        <div class="flex items-center gap-2">
+          <.icon name="hero-exclamation-triangle" class="size-5" />
+          <p>{@load_error}</p>
+        </div>
+      </div>
+    </div>
+    <div :if={@products == [] && is_nil(@load_error)}>
       <.empty_state
         icon="hero-cube"
         title="No products yet"
@@ -114,6 +122,8 @@
             <th class="px-6 py-3 font-medium">Brand</th>
             <th class="px-6 py-3 font-medium">Status</th>
             <th class="px-6 py-3 font-medium">Type</th>
+            <th class="px-6 py-3 font-medium">Price</th>
+            <th class="px-6 py-3 font-medium">Inventory</th>
             <th class="px-6 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
@@ -159,6 +169,12 @@
             <td class="px-6 py-3 text-base-content/70">
               <.pill tone={if product.product_type == :variable, do: "info", else: "neutral"}>
                 {product.product_type}
+              </.pill>
+            </td>
+            <td class="px-6 py-3 font-medium tabular-nums">{price_summary(product)}</td>
+            <td class="px-6 py-3">
+              <.pill tone={stock_summary(product) |> elem(0) |> to_string()}>
+                {stock_summary(product) |> elem(1)}
               </.pill>
             </td>
             <td class="px-6 py-3">

@@ -3,7 +3,15 @@ defmodule AlgoieWeb.StorefrontHomeLive do
 
   on_mount {AlgoieWeb.Live.OnStoreMount, :default}
 
-  alias Algoie.Products.{Product, Variant, Category, Brand, Collection, CollectionProduct}
+  alias Algoie.Products.{
+    Brand,
+    Category,
+    Collection,
+    CollectionProduct,
+    Product,
+    ProductImage,
+    Variant
+  }
 
   require Ash.Query
 
@@ -51,14 +59,38 @@ defmodule AlgoieWeb.StorefrontHomeLive do
       |> Map.new(fn {pid, vs} ->
         prices = Enum.map(vs, & &1.price) |> Enum.reject(&is_nil/1)
         min_price = if prices != [], do: Enum.min(prices, Decimal, &Decimal.compare/2), else: nil
-        has_stock = Enum.any?(vs, &(&1.stock > 0))
+
+        has_stock =
+          Enum.any?(vs, &(not &1.track_inventory? or &1.stock - &1.reserved_quantity > 0))
+
         {pid, %{min_price: min_price, has_stock: has_stock}}
       end)
+
+    covers_by_product =
+      if product_ids == [] do
+        %{}
+      else
+        ProductImage
+        |> Ash.Query.filter(product_id in ^product_ids and is_nil(variant_id))
+        |> Ash.Query.sort(:position)
+        |> Ash.Query.load(media_asset: :url)
+        |> Ash.read!(tenant: tenant, authorize?: false, page: false)
+        |> Enum.group_by(& &1.product_id)
+        |> Map.new(fn {product_id, images} ->
+          url = images |> List.first() |> then(&(&1 && &1.media_asset.url))
+          {product_id, url}
+        end)
+      end
 
     featured_products =
       Enum.map(products, fn p ->
         price_info = variants_by_product[p.id] || %{min_price: nil, has_stock: false}
-        Map.merge(p, %{min_price: price_info.min_price, in_stock: price_info.has_stock})
+
+        Map.merge(p, %{
+          min_price: price_info.min_price,
+          in_stock: price_info.has_stock,
+          cover_url: covers_by_product[p.id]
+        })
       end)
 
     categories =

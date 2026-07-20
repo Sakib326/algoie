@@ -16,4 +16,6 @@ product =
   |> Ash.read_one!(tenant: tenant, authorize?: false)
 
 # Use inspect since Ash models often have #Ash.NotLoaded structs that break Jason.encode!
-IO.puts(inspect(product, pretty: true, limit: :infinity, printable_limit: :infinity, structs: false))
+IO.puts(
+  inspect(product, pretty: true, limit: :infinity, printable_limit: :infinity, structs: false)
+)

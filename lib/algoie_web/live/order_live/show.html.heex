@@ -18,13 +18,18 @@
           <.icon name="hero-arrow-left" class="size-4" /> Orders
         </.link>
         <div class="mt-1 flex items-center gap-3">
-          <h1 class="text-2xl font-semibold tracking-tight">Order #{short_id(@order.id)}</h1>
+          <h1 class="text-2xl font-semibold tracking-tight">
+            {@order.order_number || "Order ##{short_id(@order.id)}"}
+          </h1>
           <.pill tone={status_tone(@order.status)}>{humanize(@order.status)}</.pill>
         </div>
         <p class="mt-1 text-sm text-base-content/50">
           Placed {Calendar.strftime(@order.inserted_at, "%B %d, %Y at %I:%M %p")}
         </p>
       </div>
+      <.ui_button navigate={~p"/dashboard/orders/#{@order.id}/invoice"} variant="secondary">
+        <.icon name="hero-document-arrow-down" class="size-4" /> Invoice PDF
+      </.ui_button>
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -44,7 +49,7 @@
           <table :if={@line_items != []} class="w-full text-sm">
             <thead>
               <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
-                <th class="px-6 py-3 font-medium">Variant</th>
+                <th class="px-6 py-3 font-medium">Product</th>
                 <th class="px-6 py-3 text-right font-medium">Qty</th>
                 <th class="px-6 py-3 text-right font-medium">Unit price</th>
                 <th class="px-6 py-3 text-right font-medium">Subtotal</th>
@@ -52,8 +57,11 @@
             </thead>
             <tbody>
               <tr :for={item <- @line_items} class="border-b border-base-200 last:border-0">
-                <td class="px-6 py-3 font-mono text-xs text-base-content/60">
-                  {short_id(item.variant_id)}
+                <td class="px-6 py-3">
+                  <p class="font-medium">{item.product_name || short_id(item.variant_id)}</p>
+                  <p class="mt-0.5 text-xs text-base-content/50">
+                    {Enum.reject([item.variant_name, item.sku], &is_nil/1) |> Enum.join(" · ")}
+                  </p>
                 </td>
                 <td class="px-6 py-3 text-right tabular-nums">{item.quantity}</td>
                 <td class="px-6 py-3 text-right tabular-nums">{format_money(item.unit_price)}</td>
@@ -68,14 +76,85 @@
                   colspan="3"
                   class="px-6 py-3 text-right text-sm font-medium text-base-content/60"
                 >
-                  Total
+                  Subtotal
                 </td>
                 <td class="px-6 py-3 text-right text-base font-semibold tabular-nums">
+                  {format_money(@order.subtotal_amount)}
+                </td>
+              </tr>
+              <tr :if={Decimal.positive?(@order.discount_amount)}>
+                <td colspan="3" class="px-6 py-2 text-right text-sm text-success">
+                  Discount {@order.coupon_code && "(#{@order.coupon_code})"}
+                </td>
+                <td class="px-6 py-2 text-right text-sm font-medium text-success">
+                  -{format_money(@order.discount_amount)}
+                </td>
+              </tr>
+              <tr :if={Decimal.positive?(@order.shipping_amount)}>
+                <td colspan="3" class="px-6 py-2 text-right text-sm text-base-content/60">
+                  Delivery
+                </td>
+                <td class="px-6 py-2 text-right text-sm font-medium">
+                  {format_money(@order.shipping_amount)}
+                </td>
+              </tr>
+              <tr class="border-t border-base-200">
+                <td colspan="3" class="px-6 py-3 text-right font-semibold">Total</td>
+                <td class="px-6 py-3 text-right text-lg font-semibold">
                   {format_money(@order.total_amount)}
                 </td>
               </tr>
             </tfoot>
           </table>
+        </.panel>
+
+        <.panel class="p-6">
+          <div class="flex items-center gap-2">
+            <.icon name="hero-map-pin" class="size-5 text-primary" /><h2 class="text-sm font-semibold">
+              Delivery address
+            </h2>
+          </div>
+          <div class="mt-4 text-sm leading-6">
+            <p class="font-medium">
+              {@order.shipping_address[:recipient_name] ||
+                @order.shipping_address["recipient_name"] || @order.customer_name}
+            </p>
+            <p class="text-base-content/60">
+              {@order.shipping_address[:phone] || @order.shipping_address["phone"] ||
+                @order.customer_phone}
+            </p>
+            <p class="mt-2 text-base-content/70">
+              {Enum.reject(
+                [
+                  @order.shipping_address[:address_line1] ||
+                    @order.shipping_address["address_line1"],
+                  @order.shipping_address[:address_line2] ||
+                    @order.shipping_address["address_line2"],
+                  @order.shipping_address[:area] || @order.shipping_address["area"],
+                  @order.shipping_address[:city] || @order.shipping_address["city"],
+                  @order.shipping_address[:postal_code] || @order.shipping_address["postal_code"]
+                ],
+                &is_nil/1
+              )
+              |> Enum.join(", ")}
+            </p>
+          </div>
+        </.panel>
+
+        <.panel class="p-6">
+          <div class="flex items-center gap-2">
+            <.icon name="hero-truck" class="size-5 text-primary" /><h2 class="text-sm font-semibold">
+              Fulfillment
+            </h2>
+          </div>
+          <div class="mt-4 flex items-center justify-between text-sm">
+            <span class="text-base-content/50">Status</span><.pill tone="neutral">
+              {humanize(@order.fulfillment_status)}
+            </.pill>
+          </div>
+          <p class="mt-4 rounded-lg bg-base-200/50 p-3 text-xs text-base-content/55">
+            Ready for a courier adapter: provider, consignment, tracking code, and provider payload are isolated on this order.
+          </p>
         </.panel>
       </div>
 

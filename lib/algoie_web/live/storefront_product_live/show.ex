@@ -12,12 +12,7 @@ defmodule AlgoieWeb.StorefrontProductLive.Show do
     tenant = socket.assigns.tenant
     store_id = socket.assigns.store_id
 
-    product =
-      Product
-      |> Ash.Query.filter(slug == ^slug and store_id == ^store_id and status == :active)
-      |> Ash.Query.limit(1)
-      |> Ash.read!(tenant: tenant, authorize?: false, page: false)
-      |> List.first()
+    product = find_product(tenant, store_id, slug)
 
     {variants, product_images, variant_images} =
       if product do
@@ -71,5 +66,41 @@ defmodule AlgoieWeb.StorefrontProductLive.Show do
      |> assign(:cover_url, cover_url)
      |> assign(:image_urls, image_urls)
      |> assign(:images_by_variant, images_by_variant)}
+  end
+
+  defp find_product(tenant, store_id, slug) do
+    by_slug =
+      Product
+      |> Ash.Query.filter(slug == ^slug and store_id == ^store_id and status == :active)
+      |> Ash.Query.limit(1)
+      |> Ash.read(tenant: tenant, authorize?: false, page: false)
+
+    case by_slug do
+      {:ok, [product | _]} ->
+        product
+
+      {:ok, []} ->
+        find_product_by_id(tenant, store_id, slug)
+
+      {:error, _error} ->
+        nil
+    end
+  end
+
+  defp find_product_by_id(tenant, store_id, value) do
+    case Ecto.UUID.cast(value) do
+      {:ok, id} ->
+        Product
+        |> Ash.Query.filter(id == ^id and store_id == ^store_id and status == :active)
+        |> Ash.Query.limit(1)
+        |> Ash.read(tenant: tenant, authorize?: false, page: false)
+        |> case do
+          {:ok, [product | _]} -> product
+          _ -> nil
+        end
+
+      :error ->
+        nil
+    end
   end
 end

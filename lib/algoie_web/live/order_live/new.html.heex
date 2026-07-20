@@ -1,0 +1,327 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:orders}
+>
+  <div class="mx-auto max-w-6xl">
+    <div class="mb-7 flex items-start justify-between gap-4">
+      <div>
+        <.link
+          navigate={~p"/dashboard/orders"}
+          class="mb-2 inline-flex items-center gap-1 text-sm text-base-content/50 transition hover:text-base-content"
+        >
+          <.icon name="hero-arrow-left" class="size-4" /> Orders
+        </.link>
+        <h1 class="text-2xl font-semibold tracking-tight">Create an order</h1>
+        <p class="mt-1 text-sm text-base-content/55">
+          Add products, customer details, and a delivery address.
+        </p>
+      </div>
+      <div class="hidden rounded-xl bg-primary/10 px-4 py-2 text-right sm:block">
+        <p class="text-xs font-medium uppercase tracking-wide text-primary/70">
+          Current subtotal
+        </p>
+        <p class="text-lg font-semibold text-primary">{format_money(@preview_subtotal)}</p>
+      </div>
+    </div>
+
+    <.form for={@form} id="new-order-form" phx-change="validate" phx-submit="create">
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div class="space-y-6">
+          <.panel class="overflow-hidden">
+            <div class="border-b border-base-200 p-5">
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 class="font-semibold">Add products</h2><p class="mt-0.5 text-xs text-base-content/50">
+                    Search the catalog and enter a quantity. Selections remain while changing pages.
+                  </p>
+                </div>
+                <div class="relative w-full sm:max-w-xs">
+                  <.icon
+                    name="hero-magnifying-glass"
+                    class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-base-content/35"
+                  />
+                  <input
+                    id="order-product-search"
+                    name="order[product_search]"
+                    value={@catalog_search}
+                    phx-debounce="250"
+                    placeholder="Search name, SKU, barcode…"
+                    class="w-full rounded-lg border border-base-300 bg-base-100 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+              <div class="mt-4 flex items-center justify-between text-xs text-base-content/45">
+                <span>{@catalog_total} matching variants</span><span>{length(@selected_variants)} selected</span>
+              </div>
+            </div>
+            <div :if={@variants == []} class="p-6">
+              <div class="rounded-xl border border-warning/30 bg-warning/10 p-4">
+                <div class="flex gap-3">
+                  <.icon
+                    name="hero-exclamation-triangle"
+                    class="mt-0.5 size-5 shrink-0 text-warning"
+                  />
+                  <div>
+                    <p class="text-sm font-semibold">No orderable products</p>
+                    <p class="mt-1 text-xs leading-5 text-base-content/60">
+                      Active products need at least one variant with a selling price, SKU, and inventory settings.
+                    </p>
+                    <p :if={@unavailable_products != []} class="mt-2 text-xs text-base-content/70">
+                      Needs setup: {Enum.map_join(@unavailable_products, ", ", & &1.name)}
+                    </p>
+                    <.ui_button
+                      :if={@unavailable_products != []}
+                      navigate={
+                        ~p"/dashboard/products/#{List.first(@unavailable_products).id}/edit"
+                      }
+                      variant="secondary"
+                      size="sm"
+                      class="mt-3"
+                    >
+                      Fix product pricing & stock
+                    </.ui_button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div :if={@variants != [] && @visible_variants == []} class="p-10 text-center">
+              <.icon name="hero-magnifying-glass" class="mx-auto size-8 text-base-content/25" /><p class="mt-3 text-sm font-medium">
+                No products match your search
+              </p><p class="mt-1 text-xs text-base-content/45">
+                Try a product name, SKU, barcode, or option value.
+              </p>
+            </div>
+            <div class="divide-y divide-base-200">
+              <div
+                :for={variant <- @visible_variants}
+                class={[
+                  "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-5 py-4 transition sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]",
+                  parse_quantity(@form.params["items"][to_string(variant.id)]) > 0 &&
+                    "bg-primary/5",
+                  parse_quantity(@form.params["items"][to_string(variant.id)]) == 0 &&
+                    "hover:bg-base-200/30"
+                ]}
+              >
+                <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-base-200 text-base-content/50">
+                  <.icon name="hero-cube" class="size-5" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium">{variant.product.name}</p>
+                  <p class="mt-0.5 text-xs text-base-content/50">
+                    {variant.sku} · {available_label(variant)}
+                  </p>
+                </div>
+                <p class="text-sm font-semibold tabular-nums">{format_money(variant.price)}</p>
+                <input
+                  id={"order-item-#{variant.id}"}
+                  name={"order[items][#{variant.id}]"}
+                  type="number"
+                  min="0"
+                  max={maximum_quantity(variant)}
+                  value={@form.params["items"][to_string(variant.id)] || "0"}
+                  aria-label={"Quantity for #{variant.product.name}"}
+                  class="col-start-3 w-20 rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-center text-sm tabular-nums outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 sm:col-start-auto"
+                />
+              </div>
+            </div>
+            <div
+              :if={@catalog_page_count > 1}
+              class="flex items-center justify-between border-t border-base-200 px-5 py-3"
+            >
+              <button
+                type="button"
+                phx-click="catalog_page"
+                phx-value-page={@catalog_page - 1}
+                disabled={@catalog_page == 1}
+                class="btn btn-ghost btn-sm"
+              ><.icon name="hero-chevron-left" class="size-4" /> Previous</button>
+              <span class="text-xs text-base-content/50">Page {@catalog_page} of {@catalog_page_count}</span>
+              <button
+                type="button"
+                phx-click="catalog_page"
+                phx-value-page={@catalog_page + 1}
+                disabled={@catalog_page == @catalog_page_count}
+                class="btn btn-ghost btn-sm"
+              >Next <.icon name="hero-chevron-right" class="size-4" /></button>
+            </div>
+          </.panel>
+
+          <.panel class="p-6">
+            <div class="mb-5">
+              <h2 class="font-semibold">Customer</h2>
+              <p class="mt-0.5 text-xs text-base-content/50">
+                Choose an existing customer or create one with this order.
+              </p>
+            </div>
+            <div class="mb-5 grid grid-cols-2 gap-2 rounded-xl bg-base-200 p-1">
+              <label class={[
+                "cursor-pointer rounded-lg px-3 py-2 text-center text-sm font-medium transition",
+                @customer_mode == "new" && "bg-base-100 shadow-sm"
+              ]}>
+                <input
+                  type="radio"
+                  name="order[customer_mode]"
+                  value="new"
+                  checked={@customer_mode == "new"}
+                  class="sr-only"
+                /> New customer
+              </label>
+              <label class={[
+                "cursor-pointer rounded-lg px-3 py-2 text-center text-sm font-medium transition",
+                @customer_mode == "existing" && "bg-base-100 shadow-sm"
+              ]}>
+                <input
+                  type="radio"
+                  name="order[customer_mode]"
+                  value="existing"
+                  checked={@customer_mode == "existing"}
+                  class="sr-only"
+                /> Existing customer
+              </label>
+            </div>
+            <div :if={@customer_mode == "existing"}>
+              <.input
+                field={@form[:customer_id]}
+                type="select"
+                label="Customer"
+                prompt="Select a customer"
+                options={
+                  Enum.map(
+                    @customers,
+                    &{"#{&1.name} · #{&1.phone || &1.email || "No contact"}", &1.id}
+                  )
+                }
+                required
+              />
+            </div>
+            <div :if={@customer_mode == "new"} class="grid gap-4 sm:grid-cols-2">
+              <div class="sm:col-span-2">
+                <.input field={@form[:name]} label="Full name" required />
+              </div>
+              <.input field={@form[:phone]} label="Phone" type="tel" />
+              <.input field={@form[:email]} label="Email" type="email" />
+            </div>
+          </.panel>
+
+          <.panel class="p-6">
+            <div class="mb-5">
+              <h2 class="font-semibold">Delivery address</h2>
+              <p class="mt-0.5 text-xs text-base-content/50">
+                Saved to the customer and copied onto the order as a permanent snapshot.
+              </p>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <.input field={@form[:recipient_name]} label="Recipient name" required />
+              <.input field={@form[:delivery_phone]} label="Delivery phone" type="tel" required />
+              <div class="sm:col-span-2">
+                <.input
+                  field={@form[:address_line1]}
+                  label="Address"
+                  placeholder="House, road, village or building"
+                  required
+                />
+              </div>
+              <div class="sm:col-span-2">
+                <.input field={@form[:address_line2]} label="Address line 2" />
+              </div>
+              <.input field={@form[:area]} label="Area / Thana" />
+              <.input field={@form[:city]} label="City / District" required />
+              <.input field={@form[:postal_code]} label="Postal code" />
+              <.input field={@form[:country]} label="Country" required />
+              <div class="sm:col-span-2">
+                <.input
+                  field={@form[:save_address]}
+                  type="checkbox"
+                  label="Make this the customer's default address"
+                />
+              </div>
+            </div>
+          </.panel>
+        </div>
+
+        <div>
+          <.panel class="sticky top-6 p-6">
+            <h2 class="font-semibold">Order summary</h2>
+            <div
+              :if={@selected_variants != []}
+              class="mt-4 max-h-52 space-y-3 overflow-y-auto pr-1"
+            >
+              <div
+                :for={{variant, quantity} <- @selected_variants}
+                class="flex items-start justify-between gap-3 text-xs"
+              >
+                <div class="min-w-0">
+                  <p class="truncate font-medium">{variant.product.name}</p><p class="truncate text-base-content/45">
+                    {quantity} × {format_money(variant.price)}
+                  </p>
+                </div><p class="shrink-0 font-semibold">
+                  {format_money(Decimal.mult(variant.price, Decimal.new(quantity)))}
+                </p>
+              </div>
+            </div>
+            <div
+              :if={@selected_variants == []}
+              class="mt-4 rounded-lg border border-dashed border-base-300 p-4 text-center text-xs text-base-content/45"
+            >
+              No products selected yet.
+            </div>
+            <dl class="mt-5 space-y-3 text-sm">
+              <div class="flex justify-between">
+                <dt class="text-base-content/55">Items subtotal</dt><dd class="font-medium tabular-nums">
+                  {format_money(@preview_subtotal)}
+                </dd>
+              </div>
+            </dl>
+            <div class="mt-5 space-y-4 border-t border-base-200 pt-5">
+              <.input
+                field={@form[:coupon_code]}
+                label="Coupon code"
+                type="select"
+                prompt="No coupon"
+                options={Enum.map(@coupons, &{&1.code, &1.code})}
+              />
+              <.input
+                field={@form[:delivery_charge_id]}
+                label="Delivery rate"
+                type="select"
+                prompt="No delivery charge"
+                options={
+                  Enum.map(@delivery_rates, &{"#{&1.name} · #{format_money(&1.charge)}", &1.id})
+                }
+              />
+              <.input
+                field={@form[:shipping_amount]}
+                label="Applied delivery charge"
+                type="number"
+                readonly
+              />
+              <.input field={@form[:notes]} label="Order notes" type="textarea" rows="3" />
+            </div>
+            <div class="mt-5 rounded-xl border border-dashed border-base-300 bg-base-200/40 p-4 text-xs text-base-content/55">
+              <div class="flex gap-2">
+                <.icon name="hero-truck" class="mt-0.5 size-4 shrink-0" /><p>
+                  Courier booking will plug into fulfillment after confirmation. Customer and address data are already structured for it.
+                </p>
+              </div>
+            </div>
+            <.ui_button
+              id="create-order-button"
+              type="submit"
+              variant="primary"
+              class="mt-5 w-full"
+              disabled={@variants == []}
+            >
+              Create order <.icon name="hero-arrow-right" class="size-4" />
+            </.ui_button>
+          </.panel>
+        </div>
+      </div>
+    </.form>
+  </div>
+</Layouts.dashboard>

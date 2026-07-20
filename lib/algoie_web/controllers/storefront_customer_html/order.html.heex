@@ -1,0 +1,59 @@
+<Layouts.storefront flash={@flash} store={@store} current_customer={@current_customer}>
+  <div class="mx-auto max-w-4xl">
+    <.link navigate="/account" class="btn btn-ghost btn-sm -ml-3"><.icon
+      name="hero-arrow-left"
+      class="size-4"
+    /> Back to account</.link>
+    <div class="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+          Order details
+        </p><h1 class="mt-1 text-3xl font-bold">{@order.order_number}</h1><p class="mt-2 text-sm text-base-content/50">
+          Placed {Calendar.strftime(@order.inserted_at, "%d %B %Y at %I:%M %p")}
+        </p>
+      </div><div class="flex gap-2">
+        <span class="badge badge-outline">{@order.status}</span><span class="badge badge-outline">Payment: {@order.payment_status}</span>
+      </div>
+    </div>
+    <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <section class="overflow-hidden rounded-3xl border border-base-200 bg-base-100 shadow-sm">
+        <div class="border-b border-base-200 p-5">
+          <h2 class="font-semibold">Items</h2>
+        </div><div class="divide-y divide-base-200">
+          <div :for={item <- @items} class="flex justify-between gap-4 p-5">
+            <div>
+              <p class="font-medium">{item.product_name}</p><p class="mt-1 text-xs text-base-content/50">
+                {item.variant_name || item.sku} · Qty {item.quantity}
+              </p>
+            </div><strong>৳{Decimal.to_string(
+              Decimal.mult(item.unit_price, Decimal.new(item.quantity))
+            )}</strong>
+          </div>
+        </div>
+      </section>
+      <aside class="h-fit rounded-3xl bg-base-200 p-6">
+        <h2 class="font-semibold">Summary</h2><div class="mt-4 space-y-3 text-sm">
+          <div class="flex justify-between">
+            <span>Subtotal</span><span>৳{Decimal.to_string(@order.subtotal_amount)}</span>
+          </div><div class="flex justify-between">
+            <span>Discount</span><span>-৳{Decimal.to_string(@order.discount_amount)}</span>
+          </div><div class="flex justify-between">
+            <span>Delivery</span><span>৳{Decimal.to_string(@order.shipping_amount)}</span>
+          </div><div class="flex justify-between border-t border-base-300 pt-3 text-base font-bold">
+            <span>Total</span><span class="text-primary">৳{Decimal.to_string(@order.total_amount)}</span>
+          </div>
+        </div><div class="mt-6 border-t border-base-300 pt-5">
+          <h3 class="text-sm font-semibold">Delivery to</h3><p class="mt-2 text-sm leading-6 text-base-content/60">
+            {@order.customer_name}<br />{@order.customer_phone}<br />{Map.get(
+              @order.shipping_address,
+              :address_line1
+            ) || Map.get(@order.shipping_address, "address_line1")}<br />{Map.get(
+              @order.shipping_address,
+              :city
+            ) || Map.get(@order.shipping_address, "city")}
+          </p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</Layouts.storefront>

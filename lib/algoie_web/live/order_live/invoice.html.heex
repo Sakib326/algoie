@@ -1,0 +1,143 @@
+<Layouts.app flash={@flash} current_scope={@current_scope} current_user={@current_user} wide>
+  <div id="invoice-document" phx-hook="PrintInvoice" class="invoice-page">
+    <div class="invoice-actions mb-5 flex items-center justify-between gap-3">
+      <.link
+        navigate={if @order, do: ~p"/dashboard/orders/#{@order.id}", else: ~p"/dashboard/orders"}
+        class="inline-flex items-center gap-1 text-sm text-base-content/55 hover:text-base-content"
+      ><.icon name="hero-arrow-left" class="size-4" /> Back to order</.link>
+      <.ui_button
+        :if={@order}
+        id="print-invoice-button"
+        type="button"
+        variant="primary"
+        data-print-invoice
+      ><.icon name="hero-printer" class="size-4" /> Print / Save PDF</.ui_button>
+    </div>
+
+    <article
+      :if={@order}
+      class="mx-auto overflow-hidden rounded-2xl border border-base-300 bg-white text-neutral shadow-sm"
+    >
+      <div class="border-b border-neutral/10 px-8 py-8 sm:px-12">
+        <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-xl font-bold">
+              <img
+                :if={@store.logo_url}
+                src={@store.logo_url}
+                alt=""
+                class="size-10 rounded-lg object-contain"
+              />
+              <span
+                :if={is_nil(@store.logo_url)}
+                class="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-content"
+              ><.icon name="hero-shopping-bag" class="size-5" /></span>{@store.name}
+            </div>
+            <p class="mt-3 text-sm text-neutral/55">
+              {Enum.reject([@store.address, @store.city, @store.country], &is_nil/1)
+              |> Enum.join(", ")}
+            </p>
+            <p class="text-sm text-neutral/55">
+              {Enum.reject([@store.phone, @store.email], &is_nil/1) |> Enum.join(" · ")}
+            </p>
+          </div>
+          <div class="sm:text-right">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-neutral/45">
+              Invoice
+            </p><h1 class="mt-1 text-2xl font-semibold">{invoice_number(@store, @order)}</h1><p class="mt-1 text-sm text-neutral/55">
+              {Calendar.strftime(@order.inserted_at, "%B %d, %Y")}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-8 border-b border-neutral/10 px-8 py-7 sm:grid-cols-2 sm:px-12">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-neutral/40">Bill to</p><p class="mt-3 font-semibold">
+            {@order.customer_name}
+          </p><p class="mt-1 text-sm text-neutral/60">{@order.customer_phone}</p><p class="text-sm text-neutral/60">
+            {@order.customer_email}
+          </p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-neutral/40">Deliver to</p><p class="mt-3 font-semibold">
+            {address_value(@order.shipping_address, :recipient_name) || @order.customer_name}
+          </p><p class="mt-1 text-sm leading-6 text-neutral/60">
+            {invoice_address(@order.shipping_address)}
+          </p><p class="text-sm text-neutral/60">
+            {address_value(@order.shipping_address, :phone)}
+          </p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto px-8 py-7 sm:px-12">
+        <table class="w-full min-w-[580px] text-sm">
+          <thead>
+            <tr class="border-b border-neutral/15 text-left text-xs uppercase tracking-wider text-neutral/45">
+              <th class="py-3 font-medium">Item</th><th class="py-3 font-medium">SKU</th><th class="py-3 text-right font-medium">
+                Qty
+              </th><th class="py-3 text-right font-medium">Price</th><th class="py-3 text-right font-medium">
+                Amount
+              </th>
+            </tr>
+          </thead><tbody>
+            <tr :for={item <- @line_items} class="border-b border-neutral/10">
+              <td class="py-4">
+                <p class="font-medium">{item.product_name}</p><p
+                  :if={item.variant_name}
+                  class="mt-0.5 text-xs text-neutral/50"
+                >
+                  {item.variant_name}
+                </p>
+              </td><td class="py-4 font-mono text-xs text-neutral/55">{item.sku}</td><td class="py-4 text-right">
+                {item.quantity}
+              </td><td class="py-4 text-right">{format_money(item.unit_price)}</td><td class="py-4 text-right font-medium">
+                {format_money(Decimal.mult(item.unit_price, Decimal.new(item.quantity)))}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="ml-auto mt-7 w-full max-w-xs space-y-3 text-sm">
+          <div class="flex justify-between">
+            <span class="text-neutral/55">Subtotal</span><span>{format_money(
+              @order.subtotal_amount
+            )}</span>
+          </div><div
+            :if={Decimal.positive?(@order.discount_amount)}
+            class="flex justify-between text-success"
+          >
+            <span>Discount {@order.coupon_code && "(#{@order.coupon_code})"}</span><span>-{format_money(
+              @order.discount_amount
+            )}</span>
+          </div><div class="flex justify-between">
+            <span class="text-neutral/55">Delivery</span><span>{format_money(
+              @order.shipping_amount
+            )}</span>
+          </div><div class="flex justify-between border-t border-neutral/15 pt-3 text-base font-semibold">
+            <span>Total</span><span>{format_money(@order.total_amount)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        :if={@order.notes}
+        class="border-t border-neutral/10 bg-neutral/5 px-8 py-5 text-sm sm:px-12"
+      >
+        <p class="text-xs font-semibold uppercase tracking-wider text-neutral/40">Notes</p><p class="mt-2 text-neutral/65">
+          {@order.notes}
+        </p>
+      </div>
+      <div class="border-t border-neutral/10 px-8 py-5 text-center text-xs text-neutral/45 sm:px-12">
+        Thank you for your business.
+      </div>
+    </article>
+
+    <.empty_state
+      :if={is_nil(@order)}
+      icon="hero-document-minus"
+      title="Invoice unavailable"
+      description="The order could not be found."
+    />
+  </div>
+</Layouts.app>

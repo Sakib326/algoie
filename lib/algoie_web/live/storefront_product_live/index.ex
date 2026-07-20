@@ -73,7 +73,10 @@ defmodule AlgoieWeb.StorefrontProductLive.Index do
       |> Map.new(fn {pid, vs} ->
         prices = Enum.map(vs, & &1.price) |> Enum.reject(&is_nil/1)
         min_price = if prices != [], do: Enum.min(prices, Decimal, &Decimal.compare/2), else: nil
-        has_stock = Enum.any?(vs, &(&1.stock > 0))
+
+        has_stock =
+          Enum.any?(vs, &(not &1.track_inventory? or &1.stock - &1.reserved_quantity > 0))
+
         {pid, %{min_price: min_price, in_stock: has_stock, variant_count: length(vs)}}
       end)
 

@@ -1,0 +1,136 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:inventory}
+>
+  <.page_header title="Inventory">
+    <:subtitle>Monitor available units, stock value, and products needing attention.</:subtitle>
+  </.page_header>
+
+  <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div class="rounded-xl border border-base-200 bg-base-100 p-4">
+      <p class="text-xs text-base-content/45">Available units</p><p class="mt-1 text-2xl font-semibold">
+        {@summary.units}
+      </p><p class="mt-1 text-xs text-base-content/45">Across tracked variants</p>
+    </div>
+    <div class="rounded-xl border border-base-200 bg-base-100 p-4">
+      <p class="text-xs text-base-content/45">Stock value</p><p class="mt-1 text-2xl font-semibold">
+        {format_money(@summary.value)}
+      </p><p class="mt-1 text-xs text-base-content/45">At cost, falling back to price</p>
+    </div>
+    <div class="rounded-xl border border-warning/25 bg-warning/10 p-4">
+      <p class="text-xs text-warning">Low stock</p><p class="mt-1 text-2xl font-semibold">
+        {@summary.low}
+      </p><p class="mt-1 text-xs text-base-content/45">At or below alert threshold</p>
+    </div>
+    <div class="rounded-xl border border-error/25 bg-error/10 p-4">
+      <p class="text-xs text-error">Out of stock</p><p class="mt-1 text-2xl font-semibold">
+        {@summary.out}
+      </p><p class="mt-1 text-xs text-base-content/45">No available units</p>
+    </div>
+    <div class="rounded-xl border border-info/25 bg-info/10 p-4">
+      <p class="text-xs text-info">Not tracked</p><p class="mt-1 text-2xl font-semibold">
+        {@summary.untracked}
+      </p><p class="mt-1 text-xs text-base-content/45">Always orderable</p>
+    </div>
+  </div>
+
+  <.panel class="mb-5 p-4">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <form id="inventory-search" phx-submit="search" class="flex w-full gap-2 lg:max-w-md">
+        <input
+          name="search"
+          value={@search}
+          placeholder="Search product, SKU, or barcode"
+          class="input input-bordered w-full"
+        /><.ui_button type="submit" variant="primary"><.icon
+          name="hero-magnifying-glass"
+          class="size-4"
+        /></.ui_button>
+      </form><div class="flex flex-wrap gap-1">
+        <button
+          :for={
+            {value, label} <- [
+              {"all", "All"},
+              {"in_stock", "In stock"},
+              {"low", "Low"},
+              {"out", "Out"},
+              {"untracked", "Not tracked"}
+            ]
+          }
+          type="button"
+          phx-click="filter"
+          phx-value-status={value}
+          class={[
+            "rounded-lg px-3 py-2 text-xs font-medium transition",
+            @filter == value && "bg-primary text-primary-content",
+            @filter != value && "hover:bg-base-200"
+          ]}
+        >{label}</button>
+      </div>
+    </div>
+  </.panel>
+
+  <.panel class="overflow-hidden">
+    <div :if={@variants == []} class="px-6">
+      <.empty_state
+        icon="hero-archive-box"
+        title="No matching inventory"
+        description="Try another filter or create product variants."
+      />
+    </div><div :if={@variants != []} class="overflow-x-auto">
+      <table class="w-full min-w-[900px] text-sm">
+        <thead>
+          <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
+            <th class="px-6 py-3">Product / Variant</th><th class="px-6 py-3">SKU</th><th class="px-6 py-3 text-right">
+              On hand
+            </th><th class="px-6 py-3 text-right">Reserved</th><th class="px-6 py-3 text-right">
+              Available
+            </th><th class="px-6 py-3">Alert at</th><th class="px-6 py-3">Update stock</th><th class="px-6 py-3">
+            </th>
+          </tr>
+        </thead><tbody>
+          <tr :for={variant <- @variants} class="border-b border-base-200 last:border-0">
+            <td class="px-6 py-4">
+              <p class="font-medium">{product_name(@products_by_id, variant)}</p><p class="mt-0.5 text-xs text-base-content/45">
+                {option_label(variant.option_values)}
+              </p>
+            </td><td class="px-6 py-4 font-mono text-xs">{variant.sku}</td><td class="px-6 py-4 text-right font-medium">
+              {if variant.track_inventory?, do: variant.stock, else: "—"}
+            </td><td class="px-6 py-4 text-right">
+              {if variant.track_inventory?, do: variant.reserved_quantity, else: "—"}
+            </td><td class="px-6 py-4 text-right font-semibold">
+              {if variant.track_inventory?,
+                do: Variant.available_stock(variant),
+                else: "Unlimited"}
+            </td><td class="px-6 py-4">
+              {if variant.track_inventory?, do: variant.low_stock_threshold, else: "—"}
+            </td><td class="px-6 py-4">
+              <form :if={variant.track_inventory?} phx-submit="set_stock" class="flex gap-1">
+                <input type="hidden" name="variant_id" value={variant.id} /><input
+                  name="stock"
+                  type="number"
+                  min="0"
+                  value={variant.stock}
+                  class="input input-bordered input-sm w-20"
+                /><button class="btn btn-primary btn-sm" type="submit">Save</button>
+              </form><span :if={!variant.track_inventory?} class="text-xs text-base-content/45">Tracking disabled</span>
+            </td><td class="px-6 py-4 text-right">
+              <.ui_button
+                navigate={~p"/dashboard/products/#{variant.product_id}/edit"}
+                variant="ghost"
+                size="sm"
+              >Edit product</.ui_button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <.simple_pager page={@page} page_count={@page_count} />
+  </.panel>
+</Layouts.dashboard>

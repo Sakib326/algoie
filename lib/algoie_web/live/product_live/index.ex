@@ -1,9 +1,10 @@
 defmodule AlgoieWeb.ProductLive.Index do
   use AlgoieWeb, :live_view
 
-  alias Algoie.Products.{Product, ProductImage}
+  alias Algoie.Products.{Product, ProductImage, Variant}
 
   require Ash.Query
+  require Logger
 
   @impl true
   def mount(_params, _session, socket) do
@@ -24,7 +25,8 @@ defmodule AlgoieWeb.ProductLive.Index do
      |> assign(:filter_stock, "")
      |> assign(:page, 1)
      |> assign(:products_page, nil)
-     |> assign(:products, [])}
+     |> assign(:products, [])
+     |> assign(:load_error, nil)}
   end
 
   @impl true
@@ -175,17 +177,52 @@ defmodule AlgoieWeb.ProductLive.Index do
 
     case Ash.read(query, opts) do
       {:ok, page_result} ->
-        products = attach_cover_urls(page_result.results, opts)
+        products =
+          page_result.results
+          |> attach_variants(opts)
+          |> attach_cover_urls(opts)
 
         socket
         |> assign(:products, products)
         |> assign(:products_page, page_result)
+        |> assign(:load_error, nil)
 
-      _ ->
+      {:error, error} ->
+        Logger.error("Product list failed to load: #{inspect(error)}")
+
         socket
         |> assign(:products, [])
         |> assign(:products_page, nil)
+        |> assign(
+          :load_error,
+          "Products could not be loaded. Please refresh or switch stores and try again."
+        )
     end
+  end
+
+  defp attach_variants([], _opts), do: []
+
+  defp attach_variants(products, opts) do
+    product_ids = Enum.map(products, & &1.id)
+    opts = Keyword.put(opts, :page, false)
+
+    variants_by_product =
+      Variant
+      |> Ash.Query.filter(product_id in ^product_ids)
+      |> Ash.Query.sort(position: :asc)
+      |> Ash.read(opts)
+      |> case do
+        {:ok, variants} ->
+          Enum.group_by(variants, & &1.product_id)
+
+        {:error, error} ->
+          Logger.warning("Product inventory summaries failed to load: #{inspect(error)}")
+          %{}
+      end
+
+    Enum.map(products, fn product ->
+      Map.put(product, :variants, Map.get(variants_by_product, product.id, []))
+    end)
   end
 
   defp attach_cover_urls([], _opts), do: []
@@ -243,4 +280,32 @@ defmodule AlgoieWeb.ProductLive.Index do
   defp status_tone(:draft), do: "warning"
   defp status_tone(:archived), do: "neutral"
   defp status_tone(_), do: "neutral"
+
+  defp price_summary(%{variants: []}), do: "Not set"
+
+  defp price_summary(%{variants: variants}) do
+    prices = Enum.map(variants, & &1.price)
+    minimum = Enum.min_by(prices, &Decimal.to_float/1)
+    maximum = Enum.max_by(prices, &Decimal.to_float/1)
+
+    if Decimal.equal?(minimum, maximum) do
+      format_money(minimum)
+    else
+      "#{format_money(minimum)}–#{format_money(maximum)}"
+    end
+  end
+
+  defp stock_summary(%{variants: []}), do: {:error, "Setup required"}
+
+  defp stock_summary(%{variants: variants}) do
+    if Enum.any?(variants, &(!&1.track_inventory?)) do
+      {:success, "Not tracked"}
+    else
+      available = Enum.sum(Enum.map(variants, &max(&1.stock - &1.reserved_quantity, 0)))
+      tone = if available > 0, do: :success, else: :error
+      {tone, "#{available} available"}
+    end
+  end
+
+  defp format_money(amount), do: "৳" <> Decimal.to_string(Decimal.round(amount, 2), :normal)
 end

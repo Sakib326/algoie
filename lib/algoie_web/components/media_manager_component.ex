@@ -259,6 +259,7 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
 
   def handle_event("confirm-selection", _params, socket) do
     notify_parent(socket, socket.assigns.staged)
+
     {:noreply,
      socket
      |> assign(:selected, socket.assigns.staged)

@@ -1,0 +1,113 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:customers}
+>
+  <div class="mx-auto max-w-3xl">
+    <.link
+      navigate={~p"/dashboard/customers"}
+      class="mb-3 inline-flex items-center gap-1 text-sm text-base-content/50 transition hover:text-base-content"
+    >
+      <.icon name="hero-arrow-left" class="size-4" /> Customers
+    </.link>
+    <div class="mb-6">
+      <h1 class="text-2xl font-semibold tracking-tight">Add a new customer</h1>
+      <p class="mt-1 text-sm text-base-content/55">
+        Create a reusable customer profile for future orders.
+      </p>
+    </div>
+
+    <.form
+      for={@form}
+      id="new-customer-form"
+      phx-change="validate"
+      phx-submit="save"
+      class="space-y-6"
+    >
+      <.panel class="p-6">
+        <div class="mb-5 flex items-center gap-3">
+          <span class="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><.icon
+            name="hero-user"
+            class="size-5"
+          /></span>
+          <div>
+            <h2 class="font-semibold">Customer details</h2><p class="text-xs text-base-content/50">
+              A name and at least one contact method are recommended.
+            </p>
+          </div>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <.input field={@form[:name]} label="Full name" required />
+          </div>
+          <.input field={@form[:phone]} label="Phone" type="tel" />
+          <.input field={@form[:email]} label="Email" type="email" />
+        </div>
+      </.panel>
+
+      <.panel class="p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <span class="flex size-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary"><.icon
+              name="hero-map-pin"
+              class="size-5"
+            /></span><div>
+              <h2 class="font-semibold">Delivery address</h2><p class="text-xs text-base-content/50">
+                Optionally save the customer's first address.
+              </p>
+            </div>
+          </div>
+          <label class="relative inline-flex cursor-pointer items-center">
+            <input type="hidden" name="customer[add_address]" value="false" />
+            <input
+              type="checkbox"
+              name="customer[add_address]"
+              value="true"
+              checked={@add_address?}
+              class="toggle toggle-primary"
+            />
+          </label>
+        </div>
+
+        <div
+          :if={@add_address?}
+          class="mt-6 grid gap-4 border-t border-base-200 pt-6 sm:grid-cols-2"
+        >
+          <.input field={@form[:label]} label="Address label" placeholder="Home, Office" />
+          <.input field={@form[:recipient_name]} label="Recipient name" />
+          <.input field={@form[:delivery_phone]} label="Delivery phone" type="tel" required />
+          <.input field={@form[:city]} label="City / District" required />
+          <div class="sm:col-span-2">
+            <.input
+              field={@form[:address_line1]}
+              label="Address"
+              placeholder="House, road, village or building"
+              required
+            />
+          </div>
+          <div class="sm:col-span-2">
+            <.input field={@form[:address_line2]} label="Address line 2" />
+          </div>
+          <.input field={@form[:area]} label="Area / Thana" />
+          <.input field={@form[:postal_code]} label="Postal code" />
+          <div class="sm:col-span-2">
+            <.input field={@form[:country]} label="Country" required />
+          </div>
+        </div>
+      </.panel>
+
+      <div class="flex items-center justify-end gap-3">
+        <.ui_button navigate={~p"/dashboard/customers"} variant="ghost">Cancel</.ui_button>
+        <.ui_button id="save-customer-button" type="submit" variant="primary"><.icon
+          name="hero-user-plus"
+          class="size-4"
+        /> Create customer</.ui_button>
+      </div>
+    </.form>
+  </div>
+</Layouts.dashboard>

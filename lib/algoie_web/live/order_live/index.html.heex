@@ -10,6 +10,15 @@
 >
   <.page_header title="Orders">
     <:subtitle>Track, filter, and fulfill your store's orders.</:subtitle>
+    <:actions>
+      <.ui_button navigate={~p"/dashboard/coupons"} variant="secondary">
+        <.icon name="hero-ticket" class="size-4" /> Manage coupons
+      </.ui_button>
+      <.ui_button navigate={~p"/dashboard/orders/new"} variant="primary"><.icon
+        name="hero-plus"
+        class="size-4"
+      /> Create order</.ui_button>
+    </:actions>
   </.page_header>
 
   <%!-- Status filter tabs --%>
@@ -66,7 +75,7 @@
               navigate={~p"/dashboard/orders/#{order}"}
               class="font-mono text-xs text-primary hover:underline"
             >
-              #{short_id(order.id)}
+              {order.order_number || "##{short_id(order.id)}"}
             </.link>
           </td>
           <td class="px-6 py-3 text-base-content/80">{@customer_map[order.customer_id]}</td>

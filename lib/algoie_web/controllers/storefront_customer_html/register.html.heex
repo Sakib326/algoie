@@ -1,0 +1,45 @@
+<Layouts.storefront flash={@flash} store={@store} current_customer={@current_customer}>
+  <div class="mx-auto max-w-lg py-8">
+    <div class="mb-8 text-center">
+      <div class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <.icon name="hero-user-plus" class="size-7" />
+      </div>
+      <h1 class="mt-4 text-3xl font-bold tracking-tight">Create your account</h1>
+      <p class="mt-2 text-sm text-base-content/55">
+        Track orders, save addresses, and manage your details.
+      </p>
+    </div>
+    <.form
+      for={@form}
+      action="/account/register"
+      method="post"
+      id="customer-registration-form"
+      class="space-y-4 rounded-3xl border border-base-200 bg-base-100 p-6 shadow-sm sm:p-8"
+    >
+      <.input field={@form[:name]} type="text" label="Full name" autocomplete="name" required />
+      <.input field={@form[:email]} type="email" label="Email" autocomplete="email" required />
+      <.input field={@form[:phone]} type="tel" label="Phone (optional)" autocomplete="tel" />
+      <.input
+        field={@form[:password]}
+        type="password"
+        label="Password"
+        minlength="8"
+        autocomplete="new-password"
+        required
+      />
+      <.input
+        field={@form[:password_confirmation]}
+        type="password"
+        label="Confirm password"
+        minlength="8"
+        autocomplete="new-password"
+        required
+      />
+      <button type="submit" class="btn btn-primary w-full">Create account</button>
+      <p class="text-center text-sm text-base-content/55">
+        Already registered?
+        <.link navigate="/account/sign-in" class="font-semibold text-primary hover:underline">Sign in</.link>
+      </p>
+    </.form>
+  </div>
+</Layouts.storefront>

@@ -11,8 +11,6 @@ defmodule Algoie.Accounts.StoreStaff do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
-  import Ash.Policy.Check.Builtins, only: [always: 0]
-
   postgres do
     table("store_staff")
     repo(Algoie.Repo)
@@ -57,14 +55,17 @@ defmodule Algoie.Accounts.StoreStaff do
   policies do
     policy action_type(:create) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :owner})
     end
 
     policy action_type(:read) do
-      authorize_if(always())
+      authorize_if(Algoie.Policies.Checks.ActorIsSystem)
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :staff})
     end
 
     policy action_type([:update, :destroy]) do
-      authorize_if(always())
+      authorize_if(Algoie.Policies.Checks.ActorIsSystem)
+      authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, level: :owner})
     end
   end
 end

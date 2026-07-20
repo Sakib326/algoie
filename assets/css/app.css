@@ -103,3 +103,11 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body > header, body > footer, .invoice-actions, .flash-group { display: none !important; }
+  main { padding: 0 !important; }
+  main > div { max-width: none !important; }
+  .invoice-page article { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+}

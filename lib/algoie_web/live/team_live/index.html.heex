@@ -1,0 +1,176 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:team}
+>
+  <.page_header title="Team & roles">
+    <:subtitle>
+      See who can access this store and understand what each role is allowed to do.
+    </:subtitle>
+    <:actions>
+      <.pill tone={if @owner?, do: "primary", else: "neutral"}>
+        Your role: {@current_role || "unknown"}
+      </.pill>
+    </:actions>
+  </.page_header>
+
+  <div class="mb-6 grid gap-4 lg:grid-cols-2">
+    <div class="rounded-xl border border-primary/20 bg-primary/5 p-5">
+      <div class="flex items-center gap-3">
+        <span class="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><.icon
+          name="hero-key"
+          class="size-5"
+        /></span><div>
+          <h2 class="font-semibold">Owner</h2><p class="text-xs text-base-content/50">
+            Full store control
+          </p>
+        </div>
+      </div><ul class="mt-4 grid gap-2 text-sm text-base-content/70 sm:grid-cols-2">
+        <li>✓ All daily operations</li><li>✓ Team and role management</li><li>
+          ✓ Delete catalog/master data
+        </li><li>✓ Store configuration</li>
+      </ul>
+    </div>
+    <div class="rounded-xl border border-info/20 bg-info/5 p-5">
+      <div class="flex items-center gap-3">
+        <span class="flex size-10 items-center justify-center rounded-xl bg-info/10 text-info"><.icon
+          name="hero-user"
+          class="size-5"
+        /></span><div>
+          <h2 class="font-semibold">Staff</h2><p class="text-xs text-base-content/50">
+            Daily store operations
+          </p>
+        </div>
+      </div><ul class="mt-4 grid gap-2 text-sm text-base-content/70 sm:grid-cols-2">
+        <li>✓ Products and inventory</li><li>✓ Orders and customers</li><li>
+          ✓ Coupons and delivery rates
+        </li><li>— Cannot manage team or destructive deletes</li>
+      </ul>
+    </div>
+  </div>
+
+  <.panel :if={@owner?} class="mb-6 p-5">
+    <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 class="font-semibold">Add team member</h2>
+        <p class="mt-1 text-xs text-base-content/50">
+          Enter their email. Existing accounts are connected automatically; for a new account,
+          also provide a name and initial password.
+        </p>
+      </div>
+      <span class="inline-flex w-fit items-center gap-1 rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
+        <.icon name="hero-key" class="size-3.5" /> Staff access
+      </span>
+    </div>
+    <.form
+      for={@staff_form}
+      id="create-staff-account-form"
+      phx-submit="create_staff"
+      class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(15rem,1fr)_auto] lg:items-end"
+    >
+      <.input field={@staff_form[:name]} type="text" label="Name (new accounts)" />
+      <.input field={@staff_form[:email]} type="email" label="Email" required />
+      <div class="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+        <.input
+          field={@staff_form[:password]}
+          type="text"
+          label="Initial password (new accounts)"
+          minlength="8"
+          autocomplete="new-password"
+        />
+        <.ui_button id="generate-staff-password" type="button" phx-click="generate_password">
+          <.icon name="hero-arrow-path" class="size-4" /> Generate
+        </.ui_button>
+      </div>
+      <.ui_button id="create-staff-account" type="submit" variant="primary">
+        <.icon name="hero-user-plus" class="size-4" /> Add member
+      </.ui_button>
+    </.form>
+  </.panel>
+
+  <.panel class="overflow-hidden">
+    <div class="border-b border-base-200 px-6 py-4">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold">Store members</h2><span class="text-xs text-base-content/45">{length(
+          @all_memberships
+        )} members</span>
+      </div>
+    </div><div :if={@memberships == []} class="px-6">
+      <.empty_state
+        icon="hero-user-group"
+        title="No team members"
+        description="This store does not have any visible memberships."
+      />
+    </div><div :if={@memberships != []} class="overflow-x-auto">
+      <table class="w-full min-w-[680px] text-sm">
+        <thead>
+          <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
+            <th class="px-6 py-3">Member</th><th class="px-6 py-3">Role</th><th class="px-6 py-3">
+              Added
+            </th><th class="px-6 py-3"></th>
+          </tr>
+        </thead><tbody>
+          <tr :for={membership <- @memberships} class="border-b border-base-200 last:border-0">
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-3">
+                <span class="flex size-9 items-center justify-center rounded-full bg-base-200 font-semibold">{user(
+                  @users_by_id,
+                  membership
+                ).email
+                |> String.first()
+                |> String.upcase()}</span><div>
+                  <p class="font-medium">
+                    {user(@users_by_id, membership).name || user(@users_by_id, membership).email}
+                  </p><p class="text-xs text-base-content/45">
+                    {user(@users_by_id, membership).email}{if membership.user_id ==
+                                                                @current_user.id,
+                                                              do: " · You"}
+                  </p>
+                </div>
+              </div>
+            </td><td class="px-6 py-4">
+              <.pill tone={if membership.role == :owner, do: "primary", else: "info"}>
+                {membership.role}
+              </.pill>
+            </td><td class="px-6 py-4 text-base-content/55">
+              {Calendar.strftime(membership.inserted_at, "%b %d, %Y")}
+            </td><td class="px-6 py-4">
+              <div
+                :if={@owner? && membership.user_id != @current_user.id}
+                class="flex justify-end gap-2"
+              >
+                <form phx-change="change_role">
+                  <input type="hidden" name="membership_id" value={membership.id} /><select
+                    name="role"
+                    class="select select-bordered select-sm"
+                  ><option value="staff" selected={membership.role == :staff}>Staff</option><option
+                    value="owner"
+                    selected={membership.role == :owner}
+                  >
+                    Owner
+                  </option></select>
+                </form><button
+                  type="button"
+                  phx-click="remove"
+                  phx-value-id={membership.id}
+                  data-confirm="Remove this person from the store?"
+                  class="btn btn-ghost btn-sm text-error"
+                >Remove</button>
+              </div><span
+                :if={!@owner? || membership.user_id == @current_user.id}
+                class="block text-right text-xs text-base-content/35"
+              >{if membership.user_id == @current_user.id,
+                do: "Current account",
+                else: "Owner access required"}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div><.simple_pager page={@page} page_count={@page_count} />
+  </.panel>
+</Layouts.dashboard>

@@ -1,0 +1,121 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:coupons}
+>
+  <.page_header title="Coupons">
+    <:subtitle>Create controlled discounts for manual and storefront orders.</:subtitle>
+  </.page_header>
+
+  <div class="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
+    <.panel class="h-fit p-6">
+      <h2 class="font-semibold">New coupon</h2>
+      <p class="mt-1 text-xs text-base-content/50">Codes are automatically saved in uppercase.</p>
+      <.form
+        for={@form}
+        id="coupon-form"
+        phx-change="validate"
+        phx-submit="save"
+        class="mt-5 space-y-4"
+      >
+        <.input field={@form[:code]} label="Coupon code" placeholder="WELCOME10" required />
+        <div class="grid grid-cols-2 gap-3">
+          <.input
+            field={@form[:discount_type]}
+            type="select"
+            label="Discount"
+            options={[{"Percentage", "percent"}, {"Fixed amount", "fixed"}]}
+          />
+          <.input
+            field={@form[:discount_value]}
+            type="number"
+            label="Value"
+            min="0.01"
+            step="0.01"
+            required
+          />
+        </div>
+        <.input
+          field={@form[:min_order_value]}
+          type="number"
+          label="Minimum order"
+          min="0"
+          step="0.01"
+        />
+        <.input field={@form[:usage_limit]} type="number" label="Total usage limit" min="1" />
+        <div class="grid grid-cols-2 gap-3">
+          <.input field={@form[:starts_at]} type="datetime-local" label="Starts" />
+          <.input field={@form[:expires_at]} type="datetime-local" label="Expires" />
+        </div>
+        <.ui_button id="save-coupon-button" type="submit" variant="primary" class="w-full"><.icon
+          name="hero-ticket"
+          class="size-4"
+        /> Create coupon</.ui_button>
+      </.form>
+    </.panel>
+
+    <.panel class="overflow-hidden">
+      <div :if={@coupons == []} class="px-6">
+        <.empty_state
+          icon="hero-ticket"
+          title="No coupons yet"
+          description="Create your first promotion using the form."
+        />
+      </div>
+      <div :if={@coupons != []} class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
+              <th class="px-6 py-3 font-medium">Code</th><th class="px-6 py-3 font-medium">
+                Discount
+              </th><th class="px-6 py-3 font-medium">Minimum</th><th class="px-6 py-3 font-medium">
+                Usage
+              </th><th class="px-6 py-3 font-medium">Status</th><th class="px-6 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              :for={coupon <- @coupons}
+              class="border-b border-base-200 last:border-0 hover:bg-base-200/30"
+            >
+              <td class="px-6 py-4">
+                <span class="rounded-lg bg-primary/10 px-2.5 py-1 font-mono font-semibold text-primary">{coupon.code}</span>
+              </td>
+              <td class="px-6 py-4 font-medium">{discount_label(coupon)}</td>
+              <td class="px-6 py-4 text-base-content/60">
+                {format_money(coupon.min_order_value)}
+              </td>
+              <td class="px-6 py-4 tabular-nums">
+                {coupon.times_used} / {coupon.usage_limit || "∞"}
+              </td>
+              <td class="px-6 py-4">
+                <.pill tone={
+                  if Algoie.Customers.coupon_valid_for_use?(coupon),
+                    do: "success",
+                    else: "neutral"
+                }>
+                  {if coupon.active?, do: "Active", else: "Paused"}
+                </.pill>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <button
+                  id={"toggle-coupon-#{coupon.id}"}
+                  type="button"
+                  phx-click="toggle"
+                  phx-value-id={coupon.id}
+                  class="rounded-lg px-3 py-1.5 text-xs font-medium text-base-content/60 transition hover:bg-base-200 hover:text-base-content"
+                >{if coupon.active?, do: "Pause", else: "Activate"}</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <.simple_pager page={@page} page_count={@page_count} />
+    </.panel>
+  </div>
+</Layouts.dashboard>

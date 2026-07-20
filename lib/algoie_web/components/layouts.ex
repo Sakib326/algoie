@@ -181,6 +181,12 @@ defmodule AlgoieWeb.Layouts do
               label="Media Library"
               active={@active == :media}
             />
+            <.nav_item
+              navigate="/dashboard/inventory"
+              icon="hero-archive-box"
+              label="Inventory"
+              active={@active == :inventory}
+            />
           </div>
           <div class="space-y-1">
             <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">
@@ -191,6 +197,24 @@ defmodule AlgoieWeb.Layouts do
               icon="hero-shopping-cart"
               label="Orders"
               active={@active == :orders}
+            />
+            <.nav_item
+              navigate="/dashboard/customers"
+              icon="hero-users"
+              label="Customers"
+              active={@active == :customers}
+            />
+            <.nav_item
+              navigate="/dashboard/coupons"
+              icon="hero-ticket"
+              label="Coupons"
+              active={@active == :coupons}
+            />
+            <.nav_item
+              navigate="/dashboard/delivery-charges"
+              icon="hero-truck"
+              label="Delivery Charges"
+              active={@active == :delivery_charges}
             />
           </div>
           <div class="space-y-1">
@@ -208,6 +232,23 @@ defmodule AlgoieWeb.Layouts do
               icon="hero-megaphone"
               label="Ad Campaigns"
               active={@active == :campaigns}
+            />
+          </div>
+          <div class="space-y-1">
+            <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">
+              Configuration
+            </p>
+            <.nav_item
+              navigate="/dashboard/settings"
+              icon="hero-cog-6-tooth"
+              label="Store Settings"
+              active={@active == :settings}
+            />
+            <.nav_item
+              navigate="/dashboard/team"
+              icon="hero-user-group"
+              label="Team & Roles"
+              active={@active == :team}
             />
           </div>
         </nav>
@@ -288,6 +329,8 @@ defmodule AlgoieWeb.Layouts do
 
   # ── Storefront layout ──
   attr :flash, :map, required: true
+  attr :store, :any, default: nil
+  attr :current_customer, :any, default: nil
   slot :inner_block, required: true
 
   def storefront(assigns) do
@@ -296,17 +339,30 @@ defmodule AlgoieWeb.Layouts do
       <header class="navbar bg-base-100 border-b border-base-200 sticky top-0 z-30 px-4 sm:px-6 lg:px-8">
         <div class="flex-1">
           <.link navigate="/" class="flex items-center gap-2">
-            <.icon name="hero-shopping-bag" class="size-7 text-primary" />
-            <span class="text-xl font-bold">Store</span>
+            <%= if @store && @store.logo_url do %>
+              <img src={@store.logo_url} alt={@store.name} class="size-9 rounded-xl object-cover" />
+            <% else %>
+              <.icon name="hero-shopping-bag" class="size-7 text-primary" />
+            <% end %>
+            <span class="text-xl font-bold">{if(@store, do: @store.name, else: "Store")}</span>
           </.link>
         </div>
         <div class="flex-none">
           <ul class="menu menu-horizontal gap-1 items-center">
             <li><.link navigate="/" class="text-sm">Home</.link></li>
             <li><.link navigate="/products" class="text-sm">Products</.link></li>
+            <li :if={@current_customer}>
+              <.link navigate="/account" class="text-sm">My account</.link>
+            </li>
+            <li :if={!@current_customer}>
+              <.link navigate="/account/sign-in" class="text-sm">Sign in</.link>
+            </li>
+            <li :if={@current_customer}>
+              <.link href="/account/sign-out" method="delete" class="text-sm">Sign out</.link>
+            </li>
             <li>
-              <.link navigate="/products" class="btn btn-primary btn-sm">
-                <.icon name="hero-shopping-bag" class="size-4" /> Shop
+              <.link navigate="/cart" class="btn btn-primary btn-sm">
+                <.icon name="hero-shopping-cart" class="size-4" /> Cart
               </.link>
             </li>
           </ul>
@@ -324,10 +380,13 @@ defmodule AlgoieWeb.Layouts do
             <div>
               <div class="flex items-center gap-2 mb-4">
                 <.icon name="hero-shopping-bag" class="size-6 text-primary" />
-                <span class="text-lg font-bold">Store</span>
+                <span class="text-lg font-bold">{if(@store, do: @store.name, else: "Store")}</span>
               </div>
               <p class="text-sm text-base-content/60">
-                Your one-stop shop for quality products.
+                {if(@store && @store.address,
+                  do: @store.address,
+                  else: "Your one-stop shop for quality products."
+                )}
               </p>
             </div>
             <div>
@@ -337,17 +396,33 @@ defmodule AlgoieWeb.Layouts do
                 <li>
                   <.link navigate="/products" class="link link-hover text-base-content/60">Products</.link>
                 </li>
+                <li>
+                  <.link navigate="/cart" class="link link-hover text-base-content/60">Cart</.link>
+                </li>
+                <li>
+                  <.link navigate="/account" class="link link-hover text-base-content/60">My account</.link>
+                </li>
               </ul>
             </div>
             <div>
               <h3 class="font-semibold mb-3">Support</h3>
               <ul class="space-y-2 text-sm">
-                <li><span class="text-base-content/60">Contact us anytime</span></li>
+                <li :if={@store && @store.phone}>
+                  <a href={"tel:#{@store.phone}"} class="link link-hover text-base-content/60">{@store.phone}</a>
+                </li>
+                <li :if={@store && @store.email}>
+                  <a href={"mailto:#{@store.email}"} class="link link-hover text-base-content/60">{@store.email}</a>
+                </li>
+                <li :if={!@store || (!@store.phone && !@store.email)}>
+                  <span class="text-base-content/60">Contact us anytime</span>
+                </li>
               </ul>
             </div>
           </div>
           <div class="border-t border-base-300 mt-8 pt-8 text-center text-sm text-base-content/40">
-            <p>&copy; {DateTime.utc_now().year} Store. Powered by Algoie.</p>
+            <p>
+              &copy; {DateTime.utc_now().year} {if(@store, do: @store.name, else: "Store")}. Powered by Algoie.
+            </p>
           </div>
         </div>
       </footer>
@@ -358,7 +433,12 @@ defmodule AlgoieWeb.Layouts do
   # ── Flash group ──
   def flash_group(assigns) do
     ~H"""
-    <div id={assigns[:id] || "flash-group"} aria-live="polite">
+    <div
+      id={assigns[:id] || "flash-group"}
+      class="toast toast-top toast-end z-50 gap-3"
+      aria-live="polite"
+      aria-atomic="false"
+    >
       <.flash kind={:info} flash={@flash} />
       <.flash kind={:error} flash={@flash} />
     </div>

@@ -80,12 +80,22 @@ defmodule Algoie.Products.Variant do
         stock = Ash.Changeset.get_attribute(changeset, :stock)
         reserved = Ash.Changeset.get_attribute(changeset, :reserved_quantity)
 
-        if stock && reserved && reserved > stock do
-          {:error, "reserved_quantity cannot exceed stock"}
-        else
-          :ok
+        cond do
+          stock && stock < 0 ->
+            {:error, "stock cannot be negative"}
+
+          reserved && reserved < 0 ->
+            {:error, "reserved quantity cannot be negative"}
+
+          stock && reserved && reserved > stock ->
+            {:error, "reserved_quantity cannot exceed stock"}
+
+          true ->
+            :ok
         end
       end)
+
+      validate(&validate_prices/2)
     end
 
     update :update do
@@ -121,12 +131,22 @@ defmodule Algoie.Products.Variant do
         stock = Ash.Changeset.get_attribute(changeset, :stock)
         reserved = Ash.Changeset.get_attribute(changeset, :reserved_quantity)
 
-        if stock && reserved && reserved > stock do
-          {:error, "reserved_quantity cannot exceed stock"}
-        else
-          :ok
+        cond do
+          stock && stock < 0 ->
+            {:error, "stock cannot be negative"}
+
+          reserved && reserved < 0 ->
+            {:error, "reserved quantity cannot be negative"}
+
+          stock && reserved && reserved > stock ->
+            {:error, "reserved_quantity cannot exceed stock"}
+
+          true ->
+            :ok
         end
       end)
+
+      validate(&validate_prices/2)
     end
 
     destroy :destroy do
@@ -163,6 +183,22 @@ defmodule Algoie.Products.Variant do
 
   def available_stock(%{stock: stock}) when is_integer(stock), do: stock
   def available_stock(_), do: 0
+
+  defp validate_prices(changeset, _context) do
+    price = Ash.Changeset.get_attribute(changeset, :price)
+    cost = Ash.Changeset.get_attribute(changeset, :cost_price)
+
+    cond do
+      price && Decimal.compare(price, Decimal.new(0)) != :gt ->
+        {:error, "price must be greater than zero"}
+
+      cost && Decimal.negative?(cost) ->
+        {:error, "cost price cannot be negative"}
+
+      true ->
+        :ok
+    end
+  end
 
   policies do
     policy action_type(:create) do

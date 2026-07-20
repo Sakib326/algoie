@@ -26,6 +26,7 @@ defmodule AlgoieWeb.Router do
 
   pipeline :store do
     plug AlgoieWeb.Plugs.StoreSlugPlug, require_subdomain: true
+    plug AlgoieWeb.Plugs.LoadStorefrontCustomer
   end
 
   # ═══════════════════════════════════════════════════════════
@@ -72,10 +73,20 @@ defmodule AlgoieWeb.Router do
       live "/dashboard/brands/new", BrandLive.Index, :new
       live "/dashboard/brands/:id/edit", BrandLive.Index, :edit
       live "/dashboard/media", MediaLive.Index, :index
+      live "/dashboard/inventory", InventoryLive.Index, :index
       live "/dashboard/orders", OrderLive.Index, :index
+      live "/dashboard/orders/new", OrderLive.New, :new
+      live "/dashboard/orders/:id/invoice", OrderLive.Invoice, :show
       live "/dashboard/orders/:id", OrderLive.Show, :show
+      live "/dashboard/coupons", CouponLive.Index, :index
+      live "/dashboard/delivery-charges", DeliveryChargeLive.Index, :index
+      live "/dashboard/customers", CustomerLive.Index, :index
+      live "/dashboard/customers/new", CustomerLive.New, :new
+      live "/dashboard/customers/:id", CustomerLive.Show, :show
       live "/dashboard/conversations", ConversationLive.Index, :index
       live "/dashboard/campaigns", CampaignLive.Index, :index
+      live "/dashboard/settings", StoreSettingsLive, :edit
+      live "/dashboard/team", TeamLive.Index, :index
       live "/store-select", StoreSelectorLive, :index
     end
   end
@@ -93,6 +104,22 @@ defmodule AlgoieWeb.Router do
     live "/store", StorefrontHomeLive, :index
     live "/products", StorefrontProductLive.Index, :index
     live "/products/:slug", StorefrontProductLive.Show, :show
+    get "/cart", StorefrontCartController, :show
+    post "/cart/items", StorefrontCartController, :add
+    post "/cart/update", StorefrontCartController, :update
+    delete "/cart/items/:variant_id", StorefrontCartController, :remove
+    get "/checkout", StorefrontCheckoutController, :new
+    post "/checkout", StorefrontCheckoutController, :create
+    get "/order-confirmation/:id", StorefrontCheckoutController, :confirmation
+    get "/account/register", StorefrontCustomerController, :register
+    post "/account/register", StorefrontCustomerController, :create_account
+    get "/account/sign-in", StorefrontCustomerController, :sign_in
+    post "/account/sign-in", StorefrontCustomerController, :authenticate
+    delete "/account/sign-out", StorefrontCustomerController, :sign_out
+    get "/account", StorefrontCustomerController, :show
+    post "/account/profile", StorefrontCustomerController, :update_profile
+    post "/account/addresses", StorefrontCustomerController, :create_address
+    get "/account/orders/:id", StorefrontCustomerController, :order
   end
 
   # ═══════════════════════════════════════════════════════════

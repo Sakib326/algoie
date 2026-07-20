@@ -1,4 +1,4 @@
-<Layouts.storefront flash={@flash}>
+<Layouts.storefront flash={@flash} store={@store} current_customer={@current_customer}>
   <div :if={@product}>
     <.link navigate="/products" class="btn btn-ghost btn-sm mb-4">
       <.icon name="hero-arrow-left" class="size-4" /> Back to Products
@@ -35,11 +35,11 @@
             <%= cond do %>
               <% min_price && max_price && Decimal.compare(min_price, max_price) != :eq -> %>
                 <span class="text-3xl font-bold text-primary">
-                  ${Decimal.to_string(min_price)} — ${Decimal.to_string(max_price)}
+                  ৳{Decimal.to_string(min_price)} — ৳{Decimal.to_string(max_price)}
                 </span>
               <% min_price -> %>
                 <span class="text-3xl font-bold text-primary">
-                  ${Decimal.to_string(min_price)}
+                  ৳{Decimal.to_string(min_price)}
                 </span>
               <% true -> %>
             <% end %>
@@ -50,11 +50,12 @@
             <h2 class="font-semibold text-lg">Available Options</h2>
             <div class="divide-y divide-base-300 border border-base-300 rounded-xl overflow-hidden">
               <%= for variant <- @variants do %>
-                <div class="flex items-center justify-between p-4 bg-base-200 hover:bg-base-300 transition-colors">
+                <% variant_images = Map.get(@images_by_variant, variant.id, []) %>
+                <div class="flex flex-col gap-4 p-4 bg-base-200 hover:bg-base-300 transition-colors sm:flex-row sm:items-center sm:justify-between">
                   <div class="flex items-center gap-3">
-                    <%= if @images_by_variant[variant.id] != [] do %>
+                    <%= if variant_images != [] do %>
                       <img
-                        src={List.first(@images_by_variant[variant.id])}
+                        src={List.first(variant_images)}
                         alt={variant.sku}
                         class="size-12 rounded-lg object-cover"
                       />
@@ -70,20 +71,42 @@
                       <% end %>
                     </div>
                   </div>
-                  <div class="text-right">
-                    <p class="font-bold text-primary">${Decimal.to_string(variant.price)}</p>
-                    <%= if variant.compare_at_price && Decimal.compare(variant.compare_at_price, variant.price) == :gt do %>
-                      <p class="text-xs text-base-content/40 line-through">
-                        ${Decimal.to_string(variant.compare_at_price)}
-                      </p>
-                    <% end %>
-                    <p class="text-xs mt-0.5">
-                      <%= if variant.stock > 0 do %>
-                        <span class="text-success">{variant.stock} in stock</span>
-                      <% else %>
-                        <span class="text-base-content/40">Out of stock</span>
+                  <div class="flex items-center justify-between gap-4 sm:justify-end">
+                    <div class="text-right">
+                      <p class="font-bold text-primary">৳{Decimal.to_string(variant.price)}</p>
+                      <%= if variant.compare_at_price && Decimal.compare(variant.compare_at_price, variant.price) == :gt do %>
+                        <p class="text-xs text-base-content/40 line-through">
+                          ৳{Decimal.to_string(variant.compare_at_price)}
+                        </p>
                       <% end %>
-                    </p>
+                      <p class="text-xs mt-0.5">
+                        <%= if !variant.track_inventory? || variant.stock - variant.reserved_quantity > 0 do %>
+                          <span class="text-success">
+                            {if(variant.track_inventory?,
+                              do: "#{variant.stock - variant.reserved_quantity} in stock",
+                              else: "Available"
+                            )}
+                          </span>
+                        <% else %>
+                          <span class="text-base-content/40">Out of stock</span>
+                        <% end %>
+                      </p>
+                    </div>
+                    <.form
+                      :if={
+                        !variant.track_inventory? || variant.stock - variant.reserved_quantity > 0
+                      }
+                      for={Phoenix.Component.to_form(%{}, as: :cart)}
+                      action="/cart/items"
+                      method="post"
+                      id={"add-variant-#{variant.id}"}
+                    >
+                      <input type="hidden" name="variant_id" value={variant.id} />
+                      <input type="hidden" name="quantity" value="1" />
+                      <button type="submit" class="btn btn-primary btn-sm whitespace-nowrap">
+                        <.icon name="hero-shopping-cart" class="size-4" /> Add
+                      </button>
+                    </.form>
                   </div>
                 </div>
               <% end %>

@@ -1,0 +1,141 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:delivery_charges}
+>
+  <.page_header title="Delivery charges">
+    <:subtitle>
+      Master delivery zones, prices, free-delivery thresholds, and estimated times.
+    </:subtitle>
+  </.page_header>
+  <div class="grid gap-6 lg:grid-cols-[23rem_minmax(0,1fr)]">
+    <.panel class="h-fit p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold">
+            {if @editing, do: "Edit delivery rate", else: "New delivery rate"}
+          </h2><p class="mt-1 text-xs text-base-content/50">
+            Leave city and area blank for a general rate.
+          </p>
+        </div><button
+          :if={@editing}
+          type="button"
+          phx-click="cancel_edit"
+          class="btn btn-ghost btn-sm"
+        >Cancel</button>
+      </div><.form
+        for={@form}
+        id="delivery-rate-form"
+        phx-change="validate"
+        phx-submit="save"
+        class="mt-5 space-y-4"
+      >
+        <.input field={@form[:name]} label="Rate name" placeholder="Inside Dhaka" required /><div class="grid grid-cols-2 gap-3">
+          <.input field={@form[:city]} label="City / District" /><.input
+            field={@form[:area]}
+            label="Area / Thana"
+          />
+        </div><div class="grid grid-cols-2 gap-3">
+          <.input
+            field={@form[:charge]}
+            type="number"
+            min="0"
+            step="0.01"
+            label="Charge (৳)"
+            required
+          /><.input
+            field={@form[:free_delivery_threshold]}
+            type="number"
+            min="0"
+            step="0.01"
+            label="Free above (৳)"
+          />
+        </div><div class="grid grid-cols-2 gap-3">
+          <.input field={@form[:estimated_days_min]} type="number" min="0" label="Minimum days" /><.input
+            field={@form[:estimated_days_max]}
+            type="number"
+            min="0"
+            label="Maximum days"
+          />
+        </div><.input field={@form[:priority]} type="number" label="Priority" /><.ui_button
+          id="save-delivery-rate"
+          type="submit"
+          variant="primary"
+          class="w-full"
+        ><.icon name="hero-truck" class="size-4" /> {if @editing,
+          do: "Update rate",
+          else: "Add rate"}</.ui_button>
+      </.form>
+    </.panel>
+    <.panel class="overflow-hidden">
+      <div :if={@rates == []} class="px-6">
+        <.empty_state
+          icon="hero-truck"
+          title="No delivery rates"
+          description="Add a general rate or specific city and area rates."
+        />
+      </div><div :if={@rates != []} class="overflow-x-auto">
+        <table class="w-full min-w-[720px] text-sm">
+          <thead>
+            <tr class="border-b border-base-200 text-left text-xs uppercase tracking-wider text-base-content/50">
+              <th class="px-6 py-3">Rate</th><th class="px-6 py-3">Coverage</th><th class="px-6 py-3 text-right">
+                Charge
+              </th><th class="px-6 py-3">ETA</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">
+              </th>
+            </tr>
+          </thead><tbody>
+            <tr :for={rate <- @rates} class="border-b border-base-200 last:border-0">
+              <td class="px-6 py-4">
+                <p class="font-medium">{rate.name}</p><p
+                  :if={rate.free_delivery_threshold}
+                  class="text-xs text-success"
+                >
+                  Free above {format_money(rate.free_delivery_threshold)}
+                </p>
+              </td><td class="px-6 py-4 text-base-content/60">
+                {Enum.reject([rate.area, rate.city], &is_nil/1)
+                |> Enum.join(", ")
+                |> case do
+                  "" -> "All locations"
+                  value -> value
+                end}
+              </td><td class="px-6 py-4 text-right font-semibold">{format_money(rate.charge)}</td><td class="px-6 py-4">
+                {rate.estimated_days_min}–{rate.estimated_days_max} days
+              </td><td class="px-6 py-4">
+                <.pill tone={if rate.active?, do: "success", else: "neutral"}>
+                  {if rate.active?, do: "Active", else: "Paused"}
+                </.pill>
+              </td><td class="px-6 py-4">
+                <div class="flex justify-end gap-1">
+                  <button
+                    type="button"
+                    phx-click="edit"
+                    phx-value-id={rate.id}
+                    class="btn btn-ghost btn-sm"
+                  >Edit</button><button
+                    type="button"
+                    phx-click="toggle"
+                    phx-value-id={rate.id}
+                    class="btn btn-ghost btn-sm"
+                  >{if rate.active?, do: "Pause", else: "Activate"}</button><button
+                    type="button"
+                    phx-click="delete"
+                    phx-value-id={rate.id}
+                    data-confirm="Delete this delivery rate?"
+                    class="btn btn-ghost btn-sm text-error"
+                  >Delete</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <.simple_pager page={@page} page_count={@page_count} />
+    </.panel>
+  </div>
+</Layouts.dashboard>

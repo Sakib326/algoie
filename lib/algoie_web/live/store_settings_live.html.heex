@@ -1,0 +1,98 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:settings}
+>
+  <div class="mx-auto max-w-5xl">
+    <.page_header title="Store settings">
+      <:subtitle>
+        Manage store identity, contact details, invoice preferences, and localization.
+      </:subtitle>
+    </.page_header>
+    <.form :if={@store} for={@form} id="store-settings-form" phx-submit="save">
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div class="space-y-6">
+          <.panel class="p-6">
+            <div class="mb-5">
+              <h2 class="font-semibold">Store identity</h2><p class="mt-1 text-xs text-base-content/50">
+                Used throughout the dashboard, storefront, and invoices.
+              </p>
+            </div><div class="grid gap-4 sm:grid-cols-2">
+              <div class="sm:col-span-2">
+                <.input field={@form[:name]} label="Store name" required />
+              </div>
+              <.input field={@form[:slug]} label="Storefront subdomain" required />
+              <.input
+                field={@form[:status]}
+                type="select"
+                label="Storefront status"
+                options={[{"Open", "active"}, {"Closed", "inactive"}]}
+              />
+              <div class="sm:col-span-2 rounded-xl bg-base-200 px-4 py-3 text-sm">
+                <span class="text-base-content/50">Storefront URL:</span>
+                <span class="ml-1 font-medium">{(@form[:slug].value || "your-store") <>
+                  "." <> Application.get_env(:algoie, :apex_host, "localhost")}</span>
+              </div>
+              <.input
+                field={@form[:invoice_prefix]}
+                label="Invoice prefix"
+                placeholder="INV"
+                required
+              /><.input field={@form[:currency]} label="Currency" value="BDT" disabled />
+            </div>
+          </.panel>
+          <.panel class="p-6">
+            <div class="mb-5">
+              <h2 class="font-semibold">Contact and address</h2><p class="mt-1 text-xs text-base-content/50">
+                Shown on customer-facing documents and used for courier setup later.
+              </p>
+            </div><div class="grid gap-4 sm:grid-cols-2">
+              <.input field={@form[:email]} type="email" label="Store email" /><.input
+                field={@form[:phone]}
+                type="tel"
+                label="Store phone"
+              /><div class="sm:col-span-2">
+                <.input field={@form[:address]} type="textarea" rows="3" label="Address" />
+              </div><.input field={@form[:city]} label="City / District" /><.input
+                field={@form[:country]}
+                label="Country"
+                required
+              />
+            </div>
+          </.panel>
+          <div class="flex justify-end">
+            <.ui_button id="save-store-settings" type="submit" variant="primary"><.icon
+              name="hero-check"
+              class="size-4"
+            /> Save settings</.ui_button>
+          </div>
+        </div>
+        <.panel class="h-fit p-6">
+          <.live_component
+            module={AlgoieWeb.Components.MediaManagerComponent}
+            id="store-logo"
+            field={@form[:logo_url]}
+            multiple={false}
+            max_selected={1}
+            label="Store logo"
+            helper="Used on invoices and storefront branding."
+            store_id={@store_id}
+            tenant={@tenant}
+            current_user={@current_user}
+          />
+        </.panel>
+      </div>
+    </.form>
+    <.empty_state
+      :if={is_nil(@store)}
+      icon="hero-exclamation-triangle"
+      title="Store unavailable"
+      description="The active store could not be loaded."
+    />
+  </div>
+</Layouts.dashboard>
