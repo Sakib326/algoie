@@ -21,6 +21,7 @@ defmodule Algoie.Accounts.StorePermissions do
     {"reports.view", "View and export reports"},
     {"engagement.view", "View conversations and campaigns"},
     {"engagement.manage", "Manage conversations and campaigns"},
+    {"ai.use", "Use the AI assistant"},
     {"settings.view", "View store settings"},
     {"settings.manage", "Manage store settings"},
     {"team.view", "View team members"},

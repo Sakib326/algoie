@@ -11,6 +11,12 @@ config :algoie,
   ecto_repos: [Algoie.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+config :algoie, :ai_tools, [
+  Algoie.AI.Tools.ListProducts,
+  Algoie.AI.Tools.ListOrders,
+  Algoie.AI.Tools.CheckInventory
+]
+
 app_url = System.get_env("APP_URL", "http://localhost:4000")
 app_uri = URI.parse(app_url)
 

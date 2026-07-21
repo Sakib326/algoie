@@ -72,6 +72,7 @@ defmodule AlgoieWeb.Router do
       live "/admin/stores", PlatformAdminLive, :stores
       live "/admin/stores/:id", PlatformAdminLive, :store
       live "/admin/email", PlatformAdminLive, :email
+      live "/admin/ai", PlatformAdminLive, :ai
     end
 
     ash_authentication_live_session :store_selection,
@@ -125,6 +126,7 @@ defmodule AlgoieWeb.Router do
       live "/dashboard/customers/:id", CustomerLive.Show, :show
       live "/dashboard/conversations", ConversationLive.Index, :index
       live "/dashboard/campaigns", CampaignLive.Index, :index
+      live "/dashboard/assistant", AiAssistantLive, :index
       live "/dashboard/settings", StoreSettingsLive, :edit
       live "/dashboard/settings/email", StoreEmailSettingsLive, :edit
       live "/dashboard/team", TeamLive.Index, :index

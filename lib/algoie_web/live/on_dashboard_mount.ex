@@ -24,6 +24,7 @@ defmodule AlgoieWeb.Live.OnDashboardMount do
     AlgoieWeb.RepeatOrderReportLive => "reports.view",
     AlgoieWeb.ConversationLive.Index => "engagement.view",
     AlgoieWeb.CampaignLive.Index => "engagement.view",
+    AlgoieWeb.AiAssistantLive => "ai.use",
     AlgoieWeb.StoreSettingsLive => "settings.view",
     AlgoieWeb.StoreEmailSettingsLive => "settings.view",
     AlgoieWeb.TeamLive.Index => "team.view"

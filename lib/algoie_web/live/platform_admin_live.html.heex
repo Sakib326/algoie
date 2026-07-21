@@ -28,7 +28,8 @@
               {"Overview", "/admin", "hero-home", :overview},
               {"Tenants", "/admin/tenants", "hero-building-office-2", :tenants},
               {"Stores", "/admin/stores", "hero-shopping-bag", :stores},
-              {"Email", "/admin/email", "hero-envelope", :email}
+              {"Email", "/admin/email", "hero-envelope", :email},
+              {"AI", "/admin/ai", "hero-sparkles", :ai}
             ]
           }
           navigate={path}
@@ -533,6 +534,89 @@
                   class="btn btn-primary"
                   phx-disable-with="Saving…"
                 ><.icon name="hero-check" /> Save configuration</button>
+              </div>
+            </.form>
+          </section>
+        <% end %>
+
+        <%= if @section == :ai do %>
+          <section id="admin-ai" class="mx-auto max-w-4xl space-y-6">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight">AI gateway</h2>
+              <p class="mt-1 text-sm text-base-content/50">
+                OpenRouter is managed centrally. Store users never receive this credential.
+              </p>
+            </div>
+            <.form
+              for={@ai_form}
+              id="platform-ai-form"
+              phx-submit="save-ai"
+              class="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm"
+            >
+              <div class="space-y-5 p-6">
+                <div class="rounded-xl border border-warning/20 bg-warning/10 p-4 text-sm text-base-content/70">
+                  Enable AI only after adding the models this platform is permitted to use. Tools remain action-backed and approval-gated.
+                </div>
+                <div class="grid gap-5 sm:grid-cols-2">
+                  <.input field={@ai_form[:enabled]} type="checkbox" label="Enable AI platform" />
+                  <.input
+                    field={@ai_form[:max_run_cost_cents]}
+                    type="number"
+                    label="Maximum estimated cost per run (cents)"
+                    min="1"
+                  />
+                  <.input
+                    field={@ai_form[:default_model]}
+                    label="Default OpenRouter model"
+                    placeholder="provider/model"
+                  />
+                  <.input
+                    field={@ai_form[:fallback_model]}
+                    label="Fallback model (optional)"
+                    placeholder="provider/model"
+                  />
+                  <.input
+                    field={@ai_form[:monthly_budget_cents]}
+                    type="number"
+                    label="Monthly platform budget (cents, optional)"
+                    min="1"
+                  />
+                  <.input
+                    field={@ai_form[:openrouter_api_key]}
+                    type="password"
+                    label="OpenRouter API key"
+                    placeholder={
+                      if PlatformAISettings.configured_key?(@ai_settings),
+                        do: "Saved · leave blank to keep",
+                        else: "sk-or-v1-…"
+                    }
+                    autocomplete="new-password"
+                  />
+                </div>
+                <div>
+                  <.input
+                    field={@ai_form[:allowed_models_text]}
+                    type="textarea"
+                    label="Allowed models"
+                    placeholder="provider/model\nprovider/fallback-model"
+                  />
+                  <p class="mt-1 text-xs text-base-content/45">
+                    One model per line. The default and fallback must appear here.
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center justify-between border-t border-base-200 bg-base-200/30 px-6 py-4">
+                <p class="text-xs text-base-content/45">
+                  <.icon name="hero-lock-closed" class="mr-1 inline size-3.5" /> {PlatformAISettings.masked_key(
+                    @ai_settings
+                  )}
+                </p>
+                <button
+                  id="save-ai-settings"
+                  type="submit"
+                  class="btn btn-primary"
+                  phx-disable-with="Saving…"
+                ><.icon name="hero-check" /> Save AI configuration</button>
               </div>
             </.form>
           </section>

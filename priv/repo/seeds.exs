@@ -45,22 +45,25 @@ IO.puts("  Store: #{store.name} (#{store.slug})")
 IO.puts("  Owner: #{owner.email}")
 
 # Create a separate account for the apex SaaS administration portal. This user
-# is intentionally not attached to a tenant store.
+# is intentionally not attached to a tenant store. Configure matching
+# PLATFORM_ADMIN_EMAILS in non-development environments.
 IO.puts("Creating SaaS owner...")
 
-{:ok, saas_owner} =
-  Ash.create(
-    User,
-    %{
-      email: "saas-owner@algoie.local",
-      name: "SaaS Owner",
-      password: "saasowner123"
-    },
-    action: :register_with_password,
-    actor: :system
-  )
+saas_owner_email = System.get_env("SEED_SAAS_OWNER_EMAIL", "saas-owner@algoie.local")
+saas_owner_password = System.get_env("SEED_SAAS_OWNER_PASSWORD", "saasowner123")
 
-IO.puts("  SaaS owner: #{saas_owner.email}")
+case Ash.create(
+       User,
+       %{email: saas_owner_email, name: "SaaS Owner", password: saas_owner_password},
+       action: :register_with_password,
+       actor: :system
+     ) do
+  {:ok, saas_owner} ->
+    IO.puts("  SaaS owner: #{saas_owner.email}")
+
+  {:error, _error} ->
+    IO.puts("  SaaS owner already exists: #{saas_owner_email}")
+end
 
 # Create staff user
 IO.puts("Creating staff user...")

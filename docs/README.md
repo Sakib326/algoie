@@ -41,6 +41,7 @@ mix phx.server
 |----------|---------|
 | [AGENT_CONTEXT.md](AGENT_CONTEXT.md) | **Read this first.** Project state, architecture, rules for agents |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Deep architectural reference with diagrams |
+| [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md) | MVP-first AI platform architecture (Ash tools + OpenRouter) |
 | [DATABASE.md](DATABASE.md) | Schema design, tables, relationships, migrations |
 | [SECURITY.md](SECURITY.md) | Authentication, authorization, threat model |
 | [TESTING.md](TESTING.md) | Test strategy and verification |

@@ -278,6 +278,13 @@ defmodule AlgoieWeb.Layouts do
               label="Ad Campaigns"
               active={@active == :campaigns}
             />
+            <.nav_item
+              :if={allowed?(@store_permissions, "ai.use")}
+              navigate="/dashboard/assistant"
+              icon="hero-sparkles"
+              label="AI Assistant"
+              active={@active == :assistant}
+            />
           </div>
           <div class="space-y-1">
             <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-base-content/40">
