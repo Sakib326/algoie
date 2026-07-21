@@ -55,7 +55,7 @@ defmodule Algoie.AI.ToolRegistryTest do
     assert [] = ToolRegistry.provider_schemas([])
   end
 
-  test "requires a scoped execution context and approval for writes" do
+  test "executes ordinary writes but requires approval for destructive writes" do
     context = %{
       actor: %{id: "user"},
       tenant: "tenant_1",
@@ -66,8 +66,15 @@ defmodule Algoie.AI.ToolRegistryTest do
     assert {:ok, %{query: "revenue", store_id: "store_1"}} =
              ToolExecutor.execute("test.read", %{"query" => "revenue"}, context)
 
+    assert {:ok, %{}} = ToolExecutor.execute("test.write", %{}, context)
+
     assert {:approval_required, %{tool_id: "test.write", risk: :write}} =
-             ToolExecutor.execute("test.write", %{}, context)
+             ToolExecutor.execute("test.write", %{"operation" => "delete"}, context)
+
+    assert {:ok, %{}} = ToolExecutor.execute_approved("test.write", %{}, context)
+
+    assert {:error, :not_authorized} =
+             ToolExecutor.execute_approved("test.write", %{}, %{context | permissions: []})
 
     assert {:error, :invalid_execution_context} =
              ToolExecutor.execute("test.read", %{"query" => "revenue"}, %{})

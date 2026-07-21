@@ -105,6 +105,7 @@ defmodule AlgoieWeb.Layouts do
   attr :user_stores, :list, default: []
   attr :page_title, :string, default: "Dashboard"
   attr :active, :atom, default: nil
+  attr :full_bleed, :boolean, default: false
   slot :inner_block, required: true
 
   def dashboard(assigns) do
@@ -355,8 +356,8 @@ defmodule AlgoieWeb.Layouts do
           </div>
         </header>
 
-        <main class="p-4 sm:p-6 lg:p-8">
-          <div class="mx-auto max-w-7xl">
+        <main class={if(@full_bleed, do: "p-0", else: "p-4 sm:p-6 lg:p-8")}>
+          <div class={if(@full_bleed, do: "w-full", else: "mx-auto max-w-7xl")}>
             {render_slot(@inner_block)}
           </div>
         </main>

@@ -14,7 +14,9 @@ config :algoie,
 config :algoie, :ai_tools, [
   Algoie.AI.Tools.ListProducts,
   Algoie.AI.Tools.ListOrders,
-  Algoie.AI.Tools.CheckInventory
+  Algoie.AI.Tools.CheckInventory,
+  Algoie.AI.Tools.QuerySalesReports,
+  Algoie.AI.Tools.StoreResources
 ]
 
 app_url = System.get_env("APP_URL", "http://localhost:4000")

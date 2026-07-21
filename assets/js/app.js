@@ -65,6 +65,66 @@ Hooks.PrintInvoice = {
   },
 }
 
+Hooks.AssistantChat = {
+  mounted() {
+    this.loadingOlder = false
+    this.requestingOlder = false
+    this.scrollToLatest(false)
+    this.observeHistorySentinel()
+    this.textarea = document.querySelector("#assistant-form textarea")
+    this.form = document.querySelector("#assistant-form")
+    this.onKeydown = (event) => {
+      if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+        event.preventDefault()
+        if (!this.textarea.disabled && this.textarea.value.trim()) this.form?.requestSubmit()
+      }
+    }
+    this.textarea?.addEventListener("keydown", this.onKeydown)
+  },
+  updated() {
+    if (this.loadingOlder) {
+      window.requestAnimationFrame(() => {
+        this.el.scrollTop += this.el.scrollHeight - this.previousScrollHeight
+        this.loadingOlder = false
+        this.requestingOlder = false
+        this.observeHistorySentinel()
+      })
+    } else {
+      this.scrollToLatest(true)
+      this.observeHistorySentinel()
+    }
+    this.textarea = document.querySelector("#assistant-form textarea")
+    this.form = document.querySelector("#assistant-form")
+    this.textarea?.removeEventListener("keydown", this.onKeydown)
+    this.textarea?.addEventListener("keydown", this.onKeydown)
+  },
+  destroyed() {
+    this.textarea?.removeEventListener("keydown", this.onKeydown)
+    this.historyObserver?.disconnect()
+  },
+  scrollToLatest(smooth) {
+    window.requestAnimationFrame(() => {
+      this.el.scrollTo({top: this.el.scrollHeight, behavior: smooth ? "smooth" : "auto"})
+    })
+  },
+  observeHistorySentinel() {
+    this.historyObserver?.disconnect()
+    const sentinel = this.el.querySelector("[data-history-sentinel]")
+    if (!sentinel || this.el.dataset.hasMore !== "true") return
+
+    this.historyObserver = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting) || this.requestingOlder) return
+
+      this.requestingOlder = true
+      this.loadingOlder = true
+      this.previousScrollHeight = this.el.scrollHeight
+      this.pushEvent("load_older_messages", {})
+    }, {root: this.el, rootMargin: "160px 0px 0px", threshold: 0})
+
+    this.historyObserver.observe(sentinel)
+  },
+}
+
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},

@@ -8,7 +8,8 @@ defmodule Algoie.AI.Tools.CheckInventory do
     %{
       id: "check_inventory",
       version: 1,
-      description: "Check stock levels for product variants. Shows SKU, price, stock, and low-stock warnings.",
+      description:
+        "Check stock levels for product variants. Shows SKU, price, stock, and low-stock warnings.",
       risk: :read_only,
       permissions: ["inventory.view"],
       input_schema: %{

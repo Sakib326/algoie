@@ -8,7 +8,8 @@ defmodule Algoie.AI.Tools.ListProducts do
     %{
       id: "list_products",
       version: 1,
-      description: "List products in the store. Returns name, status, SKU, price, and stock for each.",
+      description:
+        "List products in the store. Returns name, status, SKU, price, and stock for each.",
       risk: :read_only,
       permissions: ["catalog.view"],
       input_schema: %{
@@ -40,7 +41,7 @@ defmodule Algoie.AI.Tools.ListProducts do
       |> filter(store_id == ^context.store_id)
       |> then(fn q -> if status, do: filter(q, status == ^status), else: q end)
       |> limit(limit)
-      |> load([:brand, :category, variants: []])
+      |> load([:brand, :category, :tags, variants: []])
 
     case Ash.read(query,
            actor: context.actor,
@@ -57,6 +58,7 @@ defmodule Algoie.AI.Tools.ListProducts do
                  name: p.name,
                  status: p.status,
                  description: p.description,
+                 tags: Enum.map(p.tags || [], &%{id: &1.id, name: &1.name, slug: &1.slug}),
                  variants:
                    Enum.map(p.variants || [], fn v ->
                      %{sku: v.sku, price: Decimal.to_string(v.price), stock: v.stock}

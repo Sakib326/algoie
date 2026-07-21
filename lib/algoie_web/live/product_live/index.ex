@@ -1,7 +1,7 @@
 defmodule AlgoieWeb.ProductLive.Index do
   use AlgoieWeb, :live_view
 
-  alias Algoie.Products.{Product, ProductImage, Variant}
+  alias Algoie.Products.{Product, ProductImage, ProductTag, Variant}
 
   require Ash.Query
   require Logger
@@ -179,6 +179,7 @@ defmodule AlgoieWeb.ProductLive.Index do
       {:ok, page_result} ->
         products =
           page_result.results
+          |> attach_tags(opts)
           |> attach_variants(opts)
           |> attach_cover_urls(opts)
 
@@ -198,6 +199,40 @@ defmodule AlgoieWeb.ProductLive.Index do
           "Products could not be loaded. Please refresh or switch stores and try again."
         )
     end
+  end
+
+  defp attach_tags([], _opts), do: []
+
+  defp attach_tags(products, opts) do
+    product_ids = Enum.map(products, & &1.id)
+    opts = Keyword.put(opts, :page, false)
+    policy_context = Keyword.fetch!(opts, :context)
+
+    tag_query =
+      Algoie.Products.Tag
+      |> Ash.Query.set_context(policy_context)
+
+    tags_by_product =
+      ProductTag
+      |> Ash.Query.filter(product_id in ^product_ids)
+      |> Ash.Query.load(tag: tag_query)
+      |> Ash.read(opts)
+      |> case do
+        {:ok, product_tags} ->
+          product_tags
+          |> Enum.group_by(& &1.product_id, & &1.tag)
+          |> Map.new(fn {product_id, tags} ->
+            {product_id, Enum.sort_by(tags, &String.downcase(&1.name))}
+          end)
+
+        {:error, error} ->
+          Logger.warning("Product tags failed to load: #{inspect(error)}")
+          %{}
+      end
+
+    Enum.map(products, fn product ->
+      Map.put(product, :tags, Map.get(tags_by_product, product.id, []))
+    end)
   end
 
   defp attach_variants([], _opts), do: []

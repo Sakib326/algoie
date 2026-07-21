@@ -7,111 +7,350 @@
   user_stores={@user_stores}
   page_title={@page_title}
   active={@active}
+  full_bleed
 >
-  <.page_header title="AI Assistant">
-    <:subtitle>
-      Ask for drafts, analysis, or guidance. Business changes will require registered Ash tools and approval.
-    </:subtitle>
-    <:actions>
-      <span class={[
-        "rounded-full px-3 py-1.5 text-xs font-semibold",
-        if(@ai_enabled, do: "bg-success/10 text-success", else: "bg-warning/10 text-warning")
-      ]}>
-        {if @ai_enabled, do: "Gateway ready", else: "Gateway needs setup"}
-      </span>
-    </:actions>
-  </.page_header>
-
-  <div class="mx-auto grid max-w-4xl gap-5">
-    <div class="rounded-2xl border border-info/20 bg-info/5 p-4 text-sm leading-6 text-base-content/70">
-      <.icon name="hero-shield-check" class="mr-1 inline size-4 text-info" />
-      This assistant can call registered tools to read store data and draft changes. Write operations require approval. No passwords, tokens, or payment details.
-    </div>
-
-    <section
-      id="assistant-conversation"
-      class="min-h-[24rem] overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm"
-    >
-      <div class="border-b border-base-200 px-5 py-4">
-        <h2 class="font-semibold">Conversation</h2>
-        <p class="mt-1 text-xs text-base-content/45">
-          Scoped to {@store_name}; do not paste passwords, tokens, or payment details.
-        </p>
-      </div>
-      <div
-        :if={@messages == []}
-        class="flex min-h-72 flex-col items-center justify-center px-6 text-center"
-      >
-        <span class="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><.icon
-          name="hero-sparkles"
-          class="size-6"
-        /></span>
-        <h3 class="mt-4 font-semibold">What can I help you draft?</h3>
-        <p class="mt-1 max-w-md text-sm text-base-content/50">
-          Try: “Write a concise product description for a wireless keyboard.”
-        </p>
-      </div>
-      <div :if={@messages != [] or @loading} class="space-y-4 p-5">
-        <article
-          :for={message <- @messages}
-          class={[
-            "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6",
-            if(message.role == :user,
-              do: "ml-auto bg-primary text-primary-content",
-              else: "bg-base-200 text-base-content"
-            )
-          ]}
-        >
-          <p class="mb-1 text-[11px] font-semibold uppercase tracking-wider opacity-60">
-            {if message.role == :user, do: "You", else: "Algoie AI"}
-          </p>
-          <%= if message.role == :user do %>
-            <p class="whitespace-pre-wrap">{message.content}</p>
-          <% else %>
-            <div class="ai-markdown">
-              {raw(MDEx.to_html!(message.content))}
-            </div>
-          <% end %>
-        </article>
-        <article
-          :if={@loading}
-          class="max-w-[85%] rounded-2xl bg-base-200 px-4 py-3 text-sm leading-6"
-        >
-          <p class="mb-1 text-[11px] font-semibold uppercase tracking-wider opacity-60">
-            Algoie AI
-          </p>
+  <div class="h-[calc(100dvh-4rem)] overflow-hidden">
+    <div class="grid h-full min-h-0 overflow-hidden border-base-300/80 bg-base-100 lg:grid-cols-[210px_minmax(0,1fr)] lg:border-t 2xl:grid-cols-[210px_minmax(0,1fr)_220px]">
+      <aside class="hidden min-h-0 border-r border-base-200 bg-base-200/25 p-2 lg:flex lg:flex-col">
+        <div class="flex items-center justify-between px-2 py-1.5">
           <div class="flex items-center gap-1.5">
-            <span class="size-1.5 animate-pulse rounded-full bg-base-content/40"></span>
-            <span class="size-1.5 animate-pulse rounded-full bg-base-content/40 [animation-delay:150ms]"></span>
-            <span class="size-1.5 animate-pulse rounded-full bg-base-content/40 [animation-delay:300ms]"></span>
+            <p class="text-xs font-bold uppercase tracking-widest text-base-content/45">
+              History
+            </p>
+            <span class="rounded-full bg-base-200 px-1.5 py-0.5 text-[9px] font-bold text-base-content/50">{length(
+              @conversations
+            )}</span>
           </div>
-        </article>
-      </div>
-    </section>
+          <button
+            id="assistant-new-chat"
+            type="button"
+            phx-click="new_chat"
+            aria-label="New conversation"
+            class="flex size-7 items-center justify-center rounded-lg bg-base-content text-base-100 transition hover:scale-105"
+          >
+            <.icon name="hero-plus" class="size-3.5" />
+          </button>
+        </div>
+        <div
+          id="assistant-history"
+          class="hover-scrollbar mt-1 flex-1 space-y-0.5 overflow-y-auto"
+        >
+          <p
+            :if={@conversations == []}
+            class="px-2 py-8 text-center text-xs leading-5 text-base-content/40"
+          >
+            Your conversations for this store will appear here.
+          </p>
+          <div :for={conversation <- @conversations} class="group relative">
+            <button
+              id={"assistant-chat-#{conversation.id}"}
+              type="button"
+              phx-click="open_chat"
+              phx-value-id={conversation.id}
+              class={[
+                "w-full rounded-lg py-2 pl-2.5 pr-8 text-left transition",
+                if(@conversation_id == conversation.id,
+                  do: "bg-base-100 text-base-content shadow-sm ring-1 ring-base-300/80",
+                  else: "text-base-content/60 hover:bg-base-200/70 hover:text-base-content"
+                )
+              ]}
+            >
+              <span class="block truncate text-sm font-medium">{conversation.title}</span>
+              <span class="mt-0.5 block text-[10px] text-base-content/35">
+                {Calendar.strftime(conversation.updated_at, "%b %d · %H:%M")}
+              </span>
+            </button>
+            <button
+              id={"assistant-delete-#{conversation.id}"}
+              type="button"
+              phx-click="delete_chat"
+              phx-value-id={conversation.id}
+              data-confirm="Delete this conversation?"
+              aria-label="Delete conversation"
+              class="absolute right-1.5 top-1.5 rounded-lg p-1.5 text-base-content/30 opacity-0 transition hover:bg-error/10 hover:text-error group-hover:opacity-100 focus:opacity-100"
+            >
+              <.icon name="hero-trash" class="size-3.5" />
+            </button>
+          </div>
+        </div>
+        <div class="mt-2 rounded-xl border border-primary/10 bg-primary/5 px-2.5 py-2">
+          <div class="flex items-center gap-2 text-xs font-semibold text-primary">
+            <.icon name="hero-shield-check" class="size-4" /> Safe by design
+          </div>
+          <p class="mt-0.5 text-[10px] leading-4 text-base-content/50">
+            Store-scoped · permission checked
+          </p>
+        </div>
+      </aside>
 
-    <.form
-      for={@form}
-      id="assistant-form"
-      phx-submit="ask"
-      class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm"
-    >
-      <.input
-        field={@form[:instruction]}
-        type="textarea"
-        label="Instruction"
-        placeholder="Ask Algoie AI…"
-        rows="3"
-        disabled={@loading}
-      />
-      <div class="mt-3 flex justify-end">
-        <button
-          id="assistant-send"
-          type="submit"
-          class="btn btn-primary"
-          disabled={!@ai_enabled or @loading}
-          phx-disable-with="Thinking…"
-        ><.icon name="hero-paper-airplane" class="size-4" /> Ask assistant</button>
-      </div>
-    </.form>
+      <main class="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.06),transparent_34%)]">
+        <div class="flex h-10 shrink-0 items-center justify-between border-b border-base-200 px-3 lg:hidden">
+          <div class="flex min-w-0 items-center gap-2 text-xs font-semibold">
+            <span class={[
+              "size-1.5 rounded-full",
+              if(@ai_enabled, do: "bg-emerald-500", else: "bg-amber-500")
+            ]}></span>
+            <span class="truncate">{@store_name}</span>
+          </div>
+          <button
+            id="assistant-new-chat-mobile"
+            type="button"
+            phx-click="new_chat"
+            class="inline-flex h-7 items-center gap-1 rounded-lg bg-base-content px-2.5 text-[11px] font-semibold text-base-100"
+          >
+            <.icon name="hero-plus" class="size-3.5" /> New chat
+          </button>
+        </div>
+        <div
+          id="assistant-conversation"
+          phx-hook="AssistantChat"
+          data-has-more={to_string(@messages_has_more?)}
+          class="hover-scrollbar min-h-0 flex-1 overscroll-contain overflow-y-auto px-3 py-3 sm:px-5 sm:py-4 lg:px-6"
+        >
+          <div
+            :if={@messages == []}
+            class="mx-auto flex h-full max-w-xl flex-col items-center justify-center py-6 text-center"
+          >
+            <span class="flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-500 text-white shadow-lg shadow-primary/20">
+              <.icon name="hero-sparkles" class="size-5" />
+            </span>
+            <h2 class="mt-3 text-lg font-bold tracking-tight">What should we get done?</h2>
+            <p class="mt-1 max-w-md text-xs leading-5 text-base-content/50">
+              Ask about real store data, draft content, investigate operations, or plan your next move.
+            </p>
+            <div class="mt-4 grid w-full gap-1.5 sm:grid-cols-2">
+              <button
+                :for={
+                  prompt <- [
+                    "Which products are low in stock?",
+                    "Summarize my latest orders",
+                    "Show active products and their prices",
+                    "What can I do with my current permissions?"
+                  ]
+                }
+                type="button"
+                phx-click="use_prompt"
+                phx-value-prompt={prompt}
+                class="group flex items-center justify-between rounded-xl border border-base-300 bg-base-100 px-3 py-2.5 text-left text-xs font-medium transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+              >
+                {prompt}<.icon
+                  name="hero-arrow-up-right"
+                  class="size-4 text-base-content/25 transition group-hover:text-primary"
+                />
+              </button>
+            </div>
+          </div>
+
+          <div :if={@messages != [] or @loading} class="mx-auto max-w-4xl space-y-4">
+            <div
+              :if={@messages_has_more?}
+              id="assistant-history-sentinel"
+              data-history-sentinel
+              class="flex min-h-10 items-center justify-center pb-1 text-xs font-medium text-base-content/40"
+            >
+              <span class="inline-flex items-center gap-2 rounded-full border border-base-200 bg-base-100/90 px-3 py-1.5 shadow-sm backdrop-blur">
+                <.icon name="hero-arrow-path" class="size-3.5 animate-spin" />
+                Loading earlier messages…
+              </span>
+            </div>
+            <article
+              :for={message <- @messages}
+              class={["flex gap-2.5", message.role == :user && "flex-row-reverse"]}
+            >
+              <span class={[
+                "mt-1 flex size-7 shrink-0 items-center justify-center rounded-lg",
+                if(message.role == :user,
+                  do: "bg-base-content text-base-100",
+                  else: "bg-primary text-white"
+                )
+              ]}>
+                <.icon
+                  name={if(message.role == :user, do: "hero-user", else: "hero-sparkles")}
+                  class="size-3.5"
+                />
+              </span>
+              <div class={[
+                "min-w-0",
+                if(message.role == :user,
+                  do: "max-w-[85%] text-right",
+                  else: "max-w-[94%] sm:max-w-[90%]"
+                )
+              ]}>
+                <p class="mb-1 text-[9px] font-bold uppercase tracking-widest text-base-content/35">
+                  {if message.role == :user, do: "You", else: "Algoie"}
+                </p>
+                <div class={[
+                  "rounded-xl px-3.5 py-2.5 text-left text-sm leading-5.5",
+                  if(message.role == :user,
+                    do: "rounded-tr-sm bg-base-content text-base-100",
+                    else: "rounded-tl-sm border border-base-200 bg-base-100 shadow-sm"
+                  )
+                ]}>
+                  <p :if={message.role == :user} class="whitespace-pre-wrap">{message.content}</p>
+                  <div :if={message.role == :assistant} class="ai-markdown">
+                    {raw(AlgoieWeb.AssistantMarkdown.to_html(message.content))}
+                  </div>
+                </div>
+              </div>
+            </article>
+            <article :if={@loading} class="flex gap-3">
+              <span class="mt-1 flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary text-white"><.icon
+                name="hero-sparkles"
+                class="size-4"
+              /></span>
+              <div class="rounded-2xl rounded-tl-sm border border-base-200 bg-base-100 px-4 py-3 shadow-sm">
+                <p class="mb-2 text-xs font-medium text-base-content/55">{@activity}</p>
+                <div class="flex gap-1.5">
+                  <span
+                    :for={delay <- ["0ms", "140ms", "280ms"]}
+                    style={"animation-delay: #{delay}"}
+                    class="size-1.5 animate-bounce rounded-full bg-primary/60"
+                  ></span>
+                </div>
+              </div>
+            </article>
+            <section
+              :if={@pending_approvals != []}
+              id="assistant-approval"
+              class="ml-11 overflow-hidden rounded-2xl border border-amber-300/60 bg-amber-50 shadow-sm"
+            >
+              <div class="flex items-start gap-3 border-b border-amber-200/70 px-4 py-3.5">
+                <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/20 text-amber-700">
+                  <.icon name="hero-shield-exclamation" class="size-5" />
+                </span>
+                <div>
+                  <h3 class="text-sm font-bold text-amber-950">Your approval is required</h3>
+                  <p class="mt-0.5 text-xs leading-5 text-amber-900/65">
+                    Review the exact operation. Your permissions will be checked again when it runs.
+                  </p>
+                </div>
+              </div>
+              <dl class="grid gap-3 px-4 py-4 text-xs sm:grid-cols-2">
+                <div>
+                  <dt class="font-semibold uppercase tracking-wider text-amber-900/45">Tool</dt>
+                  <dd class="mt-1 font-mono font-semibold text-amber-950">
+                    {hd(@pending_approvals).tool_id}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="font-semibold uppercase tracking-wider text-amber-900/45">Risk</dt>
+                  <dd class="mt-1 font-semibold capitalize text-amber-950">
+                    {hd(@pending_approvals).preview["risk"]}
+                  </dd>
+                </div>
+                <div class="sm:col-span-2">
+                  <dt class="font-semibold uppercase tracking-wider text-amber-900/45">
+                    Arguments
+                  </dt>
+                  <dd class="mt-2 grid gap-2 sm:grid-cols-2">
+                    <div
+                      :for={{label, value} <- approval_fields(hd(@pending_approvals).arguments)}
+                      class="rounded-xl border border-amber-200/70 bg-white/60 px-3 py-2"
+                    >
+                      <span class="block text-[10px] font-bold uppercase tracking-wider text-amber-900/40">{label}</span>
+                      <span class="mt-0.5 block break-words font-medium text-amber-950">{value}</span>
+                    </div>
+                  </dd>
+                </div>
+              </dl>
+              <div class="flex justify-end gap-2 border-t border-amber-200/70 bg-white/35 px-4 py-3">
+                <button
+                  id="assistant-reject-action"
+                  type="button"
+                  phx-click="reject_action"
+                  class="rounded-xl px-4 py-2 text-xs font-bold text-amber-950/65 transition hover:bg-amber-200/50"
+                >
+                  Cancel
+                </button>
+                <button
+                  id="assistant-approve-action"
+                  type="button"
+                  phx-click="approve_action"
+                  class="inline-flex items-center gap-2 rounded-xl bg-amber-900 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-amber-950"
+                >
+                  <.icon name="hero-check" class="size-4" /> Approve & run
+                  <span :if={length(@pending_approvals) > 1} class="opacity-70">
+                    1/{length(@pending_approvals)}
+                  </span>
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="shrink-0 border-t border-base-200 bg-base-100/90 p-2 backdrop-blur sm:px-4 sm:py-2.5">
+          <.form for={@form} id="assistant-form" phx-submit="ask" class="mx-auto max-w-4xl">
+            <div class="rounded-xl border border-base-300 bg-base-100 p-1.5 shadow-sm transition focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/5">
+              <.input
+                field={@form[:instruction]}
+                type="textarea"
+                label="Message"
+                placeholder="Ask about your store…"
+                rows="1"
+                disabled={@loading}
+                class="min-h-10 w-full resize-none border-0 bg-transparent px-2.5 py-2 text-sm outline-none focus:ring-0"
+              />
+              <div class="flex items-center justify-between gap-3 px-1.5 pb-0.5">
+                <p class="hidden text-[10px] text-base-content/35 sm:block">
+                  AI can make mistakes. Review important changes.
+                </p>
+                <button
+                  id="assistant-send"
+                  type="submit"
+                  disabled={!@ai_enabled or @loading}
+                  phx-disable-with="Thinking…"
+                  class="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-content shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Send <.icon name="hero-arrow-up" class="size-4" />
+                </button>
+              </div>
+            </div>
+          </.form>
+        </div>
+      </main>
+
+      <aside class="hover-scrollbar hidden min-h-0 overflow-y-auto border-l border-base-200 bg-base-200/20 p-3 2xl:block">
+        <div class="flex items-center gap-2">
+          <.icon name="hero-key" class="size-4 text-primary" /><h2 class="text-sm font-bold">
+            Your access
+          </h2>
+        </div>
+        <p class="mt-1.5 text-xs leading-5 text-base-content/45">
+          The copilot inherits your
+          <span class="font-semibold capitalize text-base-content/65">{@store_role}</span>
+          role. It cannot exceed it.
+        </p>
+        <div class="mt-3 space-y-1">
+          <div
+            :for={capability <- @capabilities}
+            class="flex items-center gap-2 rounded-lg px-1.5 py-1.5"
+          >
+            <span class={[
+              "flex size-5 items-center justify-center rounded-md",
+              if(capability.allowed?,
+                do: "bg-emerald-500/10 text-emerald-600",
+                else: "bg-base-200 text-base-content/25"
+              )
+            ]}>
+              <.icon
+                name={if(capability.allowed?, do: "hero-check", else: "hero-lock-closed")}
+                class="size-3"
+              />
+            </span>
+            <span class={[
+              "text-xs font-medium",
+              if(capability.allowed?, do: "text-base-content/70", else: "text-base-content/35")
+            ]}>{capability.label}</span>
+          </div>
+        </div>
+        <div class="mt-3 rounded-xl bg-base-content p-3 text-base-100">
+          <.icon name="hero-light-bulb" class="size-5 text-amber-300" />
+          <p class="mt-2 text-xs font-semibold">Good prompts include context</p>
+          <p class="mt-1 text-[11px] leading-4 text-base-100/55">
+            Try a timeframe, status, product name, or the outcome you want.
+          </p>
+        </div>
+      </aside>
+    </div>
   </div>
 </Layouts.dashboard>

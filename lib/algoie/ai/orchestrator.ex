@@ -1,6 +1,6 @@
 defmodule Algoie.AI.Orchestrator do
   @moduledoc """
-  Bounded MVP chat orchestrator.
+  Permission-aware store operations chat orchestrator.
 
   It sends registered AI tools to the provider so the model can request
   structured actions. Tool calls are executed locally via ToolExecutor
@@ -13,24 +13,34 @@ defmodule Algoie.AI.Orchestrator do
   @max_tool_rounds 5
 
   @base_prompt """
-  You are Algoie Assistant, a supervised ecommerce operations assistant.
-  Be concise and helpful. Answer questions about store operations, best practices,
-  and provide guidance. You cannot directly access or modify store data.
+  You are Algoie, the signed-in user's ecommerce operations copilot.
+  Be concise, practical, and action-oriented. Use only the tools provided in this request;
+  they are already filtered to the user's current store permissions. Never imply that the
+  user has a permission or capability that is not present. Never invent store data.
+  If no provided tool can complete an operation, explain the limitation plainly and give
+  the shortest safe path to finish it in the dashboard.
+
+  RESPONSE FORMAT:
+  - Present tool results for people, never as raw JSON or inspected structs.
+  - Use short paragraphs, bullets, or a table only when a table materially improves comparison.
+  - Every Markdown table row MUST be on its own line, with a valid separator row on its own line.
+    Add a blank line before and after a table. Never emit an entire table on one line.
+  - Keep tables compact (normally no more than 5 columns) and summarize the important finding.
   """
 
   @tools_prompt """
 
-  AVAILABLE TOOLS — you MUST use them when the user asks about store data:
-  - list_products: search/filter products by status. Use when asked about products.
-  - list_orders: search/filter orders by status. Use when asked about orders.
-  - check_inventory: check stock levels, optionally filter low stock. Use when asked about stock/inventory/availability.
-
   RULES:
-  - ALWAYS call a tool when the user asks about products, orders, inventory, or stock.
-  - NEVER say "I cannot access" or "I don't have access" — you DO have tools.
+  - ALWAYS call the relevant tool when the user asks about live store data.
   - NEVER make up data. Always call a tool to get real data.
   - You may call multiple tools in sequence if needed.
   - Only call tools that are provided to you in the function list.
+  - A missing tool may mean the user's role lacks permission. Do not suggest bypassing it.
+  - Call create or update tools only when the user explicitly instructs you to make that change.
+    Questions, analysis requests, and suggestions are never permission to mutate data.
+  - Clear imperative instructions such as "create", "update", "do it", or "fix it" are authorization
+    for ordinary reversible writes. Destructive, external-effect, and financial tools will be gated
+    by the application and must not be described as completed until their tool result confirms it.
   """
 
   def respond(instruction, context) when is_binary(instruction) and is_map(context) do
@@ -55,7 +65,8 @@ defmodule Algoie.AI.Orchestrator do
     end
   end
 
-  defp chat_with_tools(messages, tools, context, round, _settings) when round >= @max_tool_rounds do
+  defp chat_with_tools(messages, tools, context, round, _settings)
+       when round >= @max_tool_rounds do
     case OpenRouterClient.chat(messages, tools: tools) do
       {:ok, response} ->
         track_usage(response, context)
@@ -67,6 +78,8 @@ defmodule Algoie.AI.Orchestrator do
   end
 
   defp chat_with_tools(messages, tools, context, round, settings) do
+    notify_progress(context, "Reviewing the latest store data and planning the next step…")
+
     case OpenRouterClient.chat(messages, tools: tools) do
       {:ok, response} ->
         track_usage(response, context)
@@ -91,11 +104,13 @@ defmodule Algoie.AI.Orchestrator do
     tool_context = build_tool_context(context)
     require Logger
 
-    tool_results =
+    executions =
       Enum.map(message["tool_calls"], fn tool_call ->
         id = tool_call["id"]
         name = get_in(tool_call, ["function", "name"])
         args = decode_tool_args(tool_call)
+
+        notify_progress(context, tool_activity(name))
 
         Logger.debug("Tool call: #{name}(#{inspect(args)})")
 
@@ -103,7 +118,7 @@ defmodule Algoie.AI.Orchestrator do
           case ToolExecutor.execute(name, args, tool_context) do
             {:ok, result} ->
               Logger.debug("Tool #{name} OK: #{inspect(result) |> String.slice(0, 200)}")
-              %{result: Jason.encode!(result)}
+              %{result: encode_tool_result(result)}
 
             {:error, reason} ->
               Logger.debug("Tool #{name} ERROR: #{inspect(reason)}")
@@ -114,20 +129,73 @@ defmodule Algoie.AI.Orchestrator do
               %{approval_required: preview}
           end
 
-        %{
-          role: "tool",
-          tool_call_id: id,
-          content: Jason.encode!(result)
-        }
+        %{id: id, name: name, args: args, result: result}
       end)
 
-    updated_messages =
-      messages ++
-        [%{role: "assistant", content: message["content"], tool_calls: message["tool_calls"]}] ++
-        tool_results
+    pending = Enum.filter(executions, &Map.has_key?(&1.result, :approval_required))
 
-    chat_with_tools(updated_messages, tools, context, round + 1, settings)
+    case pending do
+      [] ->
+        tool_results =
+          Enum.map(executions, fn execution ->
+            %{
+              role: "tool",
+              tool_call_id: execution.id,
+              content: Jason.encode!(execution.result)
+            }
+          end)
+
+        updated_messages =
+          messages ++
+            [%{role: "assistant", content: message["content"], tool_calls: message["tool_calls"]}] ++
+            tool_results
+
+        chat_with_tools(updated_messages, tools, context, round + 1, settings)
+
+      pending ->
+        approvals =
+          Enum.map(pending, fn execution ->
+            %{
+              tool_id: execution.name,
+              arguments: execution.args,
+              preview: execution.result.approval_required
+            }
+          end)
+
+        preview = hd(approvals).preview
+
+        {:ok,
+         %{
+           content: approval_message(preview, length(approvals)),
+           approvals: approvals
+         }}
+    end
   end
+
+  defp approval_message(preview, count) do
+    operation = get_in(preview, [:arguments, "operation"]) || "perform this action"
+    resource = get_in(preview, [:arguments, "resource"])
+    target = if resource, do: " #{resource}", else: ""
+
+    suffix = if count > 1, do: " There are #{count} actions to review in this step.", else: ""
+
+    "I’m ready to **#{String.replace(operation, "_", " ")}#{target}**. Please review and approve the action below before I change store data.#{suffix}"
+  end
+
+  defp notify_progress(%{progress_pid: pid}, message) when is_pid(pid),
+    do: send(pid, {:assistant_activity, message})
+
+  defp notify_progress(_context, _message), do: :ok
+
+  defp tool_activity("list_products"), do: "Reading products and variants…"
+  defp tool_activity("list_orders"), do: "Checking orders…"
+  defp tool_activity("check_inventory"), do: "Checking live inventory…"
+  defp tool_activity("query_catalog"), do: "Inspecting the catalog…"
+  defp tool_activity("query_customers"), do: "Looking up customers…"
+  defp tool_activity("query_discounts"), do: "Checking discounts and delivery rates…"
+  defp tool_activity("manage_" <> _rest), do: "Preparing a reviewed store change…"
+  defp tool_activity("create_order"), do: "Validating the order and stock…"
+  defp tool_activity(_name), do: "Working with live store data…"
 
   defp decode_tool_args(tool_call) do
     case get_in(tool_call, ["function", "arguments"]) || tool_call["function"]["arguments"] do
@@ -145,6 +213,19 @@ defmodule Algoie.AI.Orchestrator do
     end
   end
 
+  defp encode_tool_result(result) do
+    case Jason.encode(result) do
+      {:ok, encoded} ->
+        encoded
+
+      {:error, reason} ->
+        Jason.encode!(%{
+          error: "Tool returned an invalid result",
+          detail: Exception.message(reason)
+        })
+    end
+  end
+
   defp extract_message(%{"choices" => [%{"message" => msg} | _]}), do: {:ok, msg}
   defp extract_message(_), do: {:error, :invalid_provider_response}
 
@@ -153,6 +234,7 @@ defmodule Algoie.AI.Orchestrator do
       actor: Map.get(context, :actor),
       tenant: Map.get(context, :tenant),
       store_id: Map.get(context, :store_id),
+      role: Map.get(context, :role),
       permissions: Map.get(context, :permissions, [])
     }
   end
@@ -171,6 +253,7 @@ defmodule Algoie.AI.Orchestrator do
   defp scoped_instruction(instruction, context) do
     """
     Current store: #{context.store_name}. The signed-in role is #{context.role}.
+    Effective permissions: #{Enum.join(Map.get(context, :permissions, []), ", ")}.
     User instruction: #{instruction}
     """
   end

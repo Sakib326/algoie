@@ -154,6 +154,20 @@
                   >
                     {product.description}
                   </p>
+                  <div :if={product.tags != []} class="mt-1.5 flex max-w-xs flex-wrap gap-1">
+                    <span
+                      :for={tag <- Enum.take(product.tags, 3)}
+                      class="rounded-full border border-primary/15 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary"
+                    >
+                      {tag.name}
+                    </span>
+                    <span
+                      :if={length(product.tags) > 3}
+                      class="rounded-full bg-base-200 px-2 py-0.5 text-[10px] font-medium text-base-content/45"
+                    >
+                      +{length(product.tags) - 3}
+                    </span>
+                  </div>
                 </div>
               </div>
             </td>

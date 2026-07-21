@@ -143,9 +143,16 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   end
 
   defp load_tags(socket, product) do
+    tag_query =
+      Tag
+      |> Ash.Query.set_context(%{
+        store_id: socket.assigns.store_id,
+        tenant: socket.assigns.tenant
+      })
+
     ProductTag
     |> Ash.Query.filter(product_id == ^product.id)
-    |> Ash.Query.load(:tag)
+    |> Ash.Query.load(tag: tag_query)
     |> Ash.read(AlgoieWeb.Scope.opts(socket))
     |> case do
       {:ok, product_tags} -> Enum.map(product_tags, & &1.tag.name)
@@ -553,11 +560,11 @@ defmodule AlgoieWeb.ProductLive.Wizard do
     result =
       Algoie.Repo.transaction(fn ->
         with {:ok, product} <- Ash.create(Product, product_attrs, opts),
-             {created_variants, []} <- create_variants(product, socket, data) do
-          create_tags(product, socket, data)
-          create_categories(product, socket, data)
+             {created_variants, []} <- create_variants(product, socket, data),
+             {:ok, tag_notifications} <- create_tags(product, socket, data),
+             {:ok, category_notifications} <- create_categories(product, socket, data) do
           create_images(product, socket, data, created_variants)
-          product
+          {product, tag_notifications ++ category_notifications}
         else
           {_variants, errors} when is_list(errors) ->
             Algoie.Repo.rollback({:variant_errors, errors})
@@ -568,7 +575,9 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       end)
 
     case result do
-      {:ok, _product} ->
+      {:ok, {_product, notifications}} ->
+        Ash.Notifier.notify(notifications)
+
         {:noreply,
          socket
          |> put_flash(:info, "Product and inventory created successfully")
@@ -586,11 +595,11 @@ defmodule AlgoieWeb.ProductLive.Wizard do
     result =
       Algoie.Repo.transaction(fn ->
         with {:ok, product} <- Ash.update(socket.assigns.product, product_attrs, opts),
-             {_updated, []} <- update_variants(socket, data, opts) do
-          sync_tags(product, socket, data, opts)
-          sync_categories(product, socket, data, opts)
+             {_updated, []} <- update_variants(socket, data, opts),
+             {:ok, tag_notifications} <- sync_tags(product, socket, data, opts),
+             {:ok, category_notifications} <- sync_categories(product, socket, data, opts) do
           sync_images(product, socket, data, opts)
-          product
+          {product, tag_notifications ++ category_notifications}
         else
           {_variants, errors} when is_list(errors) ->
             Algoie.Repo.rollback({:variant_errors, errors})
@@ -601,7 +610,9 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       end)
 
     case result do
-      {:ok, _product} ->
+      {:ok, {_product, notifications}} ->
+        Ash.Notifier.notify(notifications)
+
         {:noreply,
          socket
          |> put_flash(:info, "Product, pricing, and inventory updated successfully")
@@ -850,15 +861,12 @@ defmodule AlgoieWeb.ProductLive.Wizard do
   end
 
   defp sync_tags(product, socket, data, opts) do
-    ProductTag
-    |> Ash.Query.filter(product_id == ^product.id)
-    |> Ash.read(opts)
-    |> case do
-      {:ok, product_tags} -> Enum.each(product_tags, &Ash.destroy(&1, opts))
-      _ -> :ok
+    with {:ok, product_tags} <-
+           ProductTag |> Ash.Query.filter(product_id == ^product.id) |> Ash.read(opts),
+         {:ok, destroy_notifications} <- destroy_with_notifications(product_tags, opts),
+         {:ok, create_notifications} <- create_tags(product, socket, data) do
+      {:ok, destroy_notifications ++ create_notifications}
     end
-
-    create_tags(product, socket, data)
   end
 
   defp create_tags(product, socket, data) do
@@ -870,27 +878,19 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       |> Enum.map(&String.trim/1)
       |> Enum.uniq()
 
-    Enum.each(tags, fn tag_name ->
+    Enum.reduce_while(tags, {:ok, []}, fn tag_name, {:ok, notifications} ->
       slug = Slug.slugify(tag_name)
 
-      tag =
-        case Ash.get(Tag, [slug: slug, store_id: socket.assigns.store_id], opts) do
-          {:ok, tag} ->
-            tag
-
-          _ ->
-            case Ash.create(
-                   Tag,
-                   %{name: tag_name, slug: slug, store_id: socket.assigns.store_id},
-                   opts
-                 ) do
-              {:ok, tag} -> tag
-              _ -> nil
-            end
-        end
-
-      if tag do
-        Ash.create(ProductTag, %{product_id: product.id, tag_id: tag.id}, opts)
+      with {:ok, tag, tag_notifications} <- find_or_create_tag(tag_name, slug, socket, opts),
+           {:ok, _join, join_notifications} <-
+             Ash.create(
+               ProductTag,
+               %{product_id: product.id, tag_id: tag.id},
+               Keyword.put(opts, :return_notifications?, true)
+             ) do
+        {:cont, {:ok, notifications ++ tag_notifications ++ join_notifications}}
+      else
+        {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
   end
@@ -903,21 +903,51 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       |> Enum.reject(&(&1 == ""))
       |> Enum.uniq()
 
-    Enum.each(category_ids, fn category_id ->
-      Ash.create(ProductCategory, %{product_id: product.id, category_id: category_id}, opts)
+    Enum.reduce_while(category_ids, {:ok, []}, fn category_id, {:ok, notifications} ->
+      case Ash.create(
+             ProductCategory,
+             %{product_id: product.id, category_id: category_id},
+             Keyword.put(opts, :return_notifications?, true)
+           ) do
+        {:ok, _join, new_notifications} ->
+          {:cont, {:ok, notifications ++ new_notifications}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
     end)
   end
 
   defp sync_categories(product, socket, data, opts) do
-    ProductCategory
-    |> Ash.Query.filter(product_id == ^product.id)
-    |> Ash.read(opts)
-    |> case do
-      {:ok, product_categories} -> Enum.each(product_categories, &Ash.destroy(&1, opts))
-      _ -> :ok
+    with {:ok, product_categories} <-
+           ProductCategory |> Ash.Query.filter(product_id == ^product.id) |> Ash.read(opts),
+         {:ok, destroy_notifications} <- destroy_with_notifications(product_categories, opts),
+         {:ok, create_notifications} <- create_categories(product, socket, data) do
+      {:ok, destroy_notifications ++ create_notifications}
     end
+  end
 
-    create_categories(product, socket, data)
+  defp find_or_create_tag(tag_name, slug, socket, opts) do
+    case Ash.get(Tag, [slug: slug, store_id: socket.assigns.store_id], opts) do
+      {:ok, tag} ->
+        {:ok, tag, []}
+
+      _ ->
+        Ash.create(
+          Tag,
+          %{name: tag_name, slug: slug, store_id: socket.assigns.store_id},
+          Keyword.put(opts, :return_notifications?, true)
+        )
+    end
+  end
+
+  defp destroy_with_notifications(records, opts) do
+    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, notifications} ->
+      case Ash.destroy(record, Keyword.put(opts, :return_notifications?, true)) do
+        {:ok, new_notifications} -> {:cont, {:ok, notifications ++ new_notifications}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
   end
 
   defp create_images(product, socket, data, created_variants) do

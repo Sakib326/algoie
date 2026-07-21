@@ -5,7 +5,7 @@ defmodule Algoie.AI.ToolRegistry do
 
   def tools do
     Application.get_env(:algoie, :ai_tools, [])
-    |> Enum.map(& &1.definition())
+    |> Enum.flat_map(fn module -> List.wrap(module.definition()) end)
     |> Enum.map(&validate!/1)
   end
 

@@ -123,9 +123,48 @@
 .ai-markdown pre { background: oklch(92% 0.004 286.32); padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; }
 .ai-markdown pre code { background: none; padding: 0; }
 .ai-markdown blockquote { border-left: 3px solid oklch(70% 0.213 47.604); padding-left: 0.75rem; margin: 0.5rem 0; opacity: 0.8; }
-.ai-markdown table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.8125rem; }
-.ai-markdown th, .ai-markdown td { border: 1px solid oklch(92% 0.004 286.32); padding: 0.375rem 0.5rem; text-align: left; }
-.ai-markdown th { font-weight: 600; background: oklch(96% 0.001 286.375); }
+.ai-markdown { overflow-x: auto; }
+.ai-markdown table { width: 100%; min-width: 32rem; border-collapse: separate; border-spacing: 0; margin: 0.625rem 0; overflow: hidden; border: 1px solid color-mix(in oklab, currentColor 12%, transparent); border-radius: 0.625rem; font-size: 0.75rem; line-height: 1.25rem; }
+.ai-markdown th, .ai-markdown td { padding: 0.5rem 0.625rem; text-align: left; vertical-align: middle; border-bottom: 1px solid color-mix(in oklab, currentColor 9%, transparent); }
+.ai-markdown th { white-space: nowrap; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; background: color-mix(in oklab, currentColor 6%, transparent); }
+.ai-markdown tbody tr:nth-child(even) { background: color-mix(in oklab, currentColor 2.5%, transparent); }
+.ai-markdown tbody tr:last-child td { border-bottom: 0; }
+.ai-markdown td:first-child { font-weight: 600; }
 .ai-markdown strong { font-weight: 600; }
 .ai-markdown a { color: oklch(70% 0.213 47.604); text-decoration: underline; }
 .ai-markdown hr { border: none; border-top: 1px solid oklch(92% 0.004 286.32); margin: 0.75rem 0; }
+
+.hover-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.hover-scrollbar:hover {
+  scrollbar-color: color-mix(in oklab, currentColor 28%, transparent) transparent;
+}
+
+.hover-scrollbar::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.hover-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hover-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, currentColor 28%, transparent);
+  background-clip: padding-box;
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, currentColor 45%, transparent);
+  background-clip: padding-box;
+}
