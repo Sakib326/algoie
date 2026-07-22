@@ -100,16 +100,35 @@ defmodule Algoie.Media do
 
   @doc """
   Destroys a media asset and removes the underlying file from disk.
+
+  Product image links are references to the asset rather than independent
+  media records. Remove those links first so an asset can still be deleted
+  when it is currently used by a product. Missing backing files are harmless:
+  storage cleanup is best-effort.
   """
   def delete_asset(%Algoie.Media.MediaAsset{} = asset, opts) do
-    case Ash.destroy(asset, opts) do
-      :ok ->
-        Algoie.Media.Storage.delete(asset.url)
-        :ok
+    product_images =
+      Algoie.Products.ProductImage
+      |> Ash.Query.filter(media_asset_id == ^asset.id)
+      |> Ash.read(opts)
 
-      {:error, error} ->
-        {:error, error}
+    with {:ok, images} <- product_images,
+         :ok <- destroy_product_images(images, opts),
+         :ok <- Ash.destroy(asset, opts) do
+      Algoie.Media.Storage.delete(asset.url)
+      :ok
+    else
+      {:error, error} -> {:error, error}
     end
+  end
+
+  defp destroy_product_images(images, opts) do
+    Enum.reduce_while(images, :ok, fn image, :ok ->
+      case Ash.destroy(image, opts) do
+        :ok -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
   end
 
   def get_asset(id, opts) do
