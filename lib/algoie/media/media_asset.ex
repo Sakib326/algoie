@@ -2,7 +2,8 @@ defmodule Algoie.Media.MediaAsset do
   @moduledoc """
   A stored media file (image) belonging to a store's media library.
 
-  Assets are uploaded to local disk (see `Algoie.Media.Storage`) and tracked
+  Assets are uploaded through `Algoie.Media.Storage` to local disk or the
+  platform's configured S3-compatible bucket and tracked
   here so they can be searched, reused across forms (products, brands,
   categories, ...), and deleted safely (removing both the DB row and the
   underlying file).

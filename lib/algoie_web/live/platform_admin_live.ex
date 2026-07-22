@@ -1,7 +1,7 @@
 defmodule AlgoieWeb.PlatformAdminLive do
   use AlgoieWeb, :live_view
 
-  alias Algoie.{PlatformAISettings, PlatformEmailSettings}
+  alias Algoie.{PlatformAISettings, PlatformEmailSettings, PlatformStorageSettings}
   alias Algoie.Repo
 
   @tenant_statuses ~w(trial active suspended)
@@ -19,7 +19,8 @@ defmodule AlgoieWeb.PlatformAdminLive do
      |> assign(:store_statuses, @store_statuses)
      |> refresh_data()
      |> load_email_form()
-     |> load_ai_form()}
+     |> load_ai_form()
+     |> load_storage_form()}
   end
 
   @impl true
@@ -142,6 +143,25 @@ defmodule AlgoieWeb.PlatformAdminLive do
     end
   end
 
+  def handle_event("save-storage", %{"storage" => attrs}, socket) do
+    case PlatformStorageSettings.save(attrs) do
+      {:ok, _settings} ->
+        {:noreply,
+         socket
+         |> load_storage_form()
+         |> put_flash(:info, "Media storage configuration saved. New uploads use it immediately.")}
+
+      {:error, changeset} ->
+        {:noreply,
+         socket
+         |> assign(:storage_form, to_form(changeset, as: :storage))
+         |> put_flash(
+           :error,
+           "Storage configuration was not saved. Check the highlighted fields."
+         )}
+    end
+  end
+
   defp refresh_data(socket) do
     tenants = load_tenants()
     stores = load_stores(tenants)
@@ -248,10 +268,22 @@ defmodule AlgoieWeb.PlatformAdminLive do
     |> assign(:ai_form, to_form(PlatformAISettings.changeset(form_settings, %{}), as: :ai))
   end
 
+  defp load_storage_form(socket) do
+    settings = PlatformStorageSettings.get()
+
+    socket
+    |> assign(:storage_settings, settings)
+    |> assign(
+      :storage_form,
+      to_form(PlatformStorageSettings.changeset(settings, %{}), as: :storage)
+    )
+  end
+
   defp section_for(action) when action in [:tenants, :tenant], do: :tenants
   defp section_for(action) when action in [:stores, :store], do: :stores
   defp section_for(:email), do: :email
   defp section_for(:ai), do: :ai
+  defp section_for(:storage), do: :storage
   defp section_for(_), do: :overview
 
   defp selected_record(:tenants, id, assigns) when is_binary(id),
@@ -266,6 +298,7 @@ defmodule AlgoieWeb.PlatformAdminLive do
   defp page_title(:stores), do: "Stores · SaaS admin"
   defp page_title(:email), do: "Email settings · SaaS admin"
   defp page_title(:ai), do: "AI gateway · SaaS admin"
+  defp page_title(:storage), do: "Media storage · SaaS admin"
   defp page_title(_), do: "Overview · SaaS admin"
 
   defp filtered(items, search, status) do

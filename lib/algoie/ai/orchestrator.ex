@@ -67,7 +67,7 @@ defmodule Algoie.AI.Orchestrator do
 
   defp chat_with_tools(messages, tools, context, round, _settings)
        when round >= @max_tool_rounds do
-    case OpenRouterClient.chat(messages, tools: tools) do
+    case model_chat(messages, tools, context) do
       {:ok, response} ->
         track_usage(response, context)
         response_content(response)
@@ -80,7 +80,7 @@ defmodule Algoie.AI.Orchestrator do
   defp chat_with_tools(messages, tools, context, round, settings) do
     notify_progress(context, "Reviewing the latest store data and planning the next step…")
 
-    case OpenRouterClient.chat(messages, tools: tools) do
+    case model_chat(messages, tools, context) do
       {:ok, response} ->
         track_usage(response, context)
 
@@ -118,6 +118,7 @@ defmodule Algoie.AI.Orchestrator do
           case ToolExecutor.execute(name, args, tool_context) do
             {:ok, result} ->
               Logger.debug("Tool #{name} OK: #{inspect(result) |> String.slice(0, 200)}")
+              notify_progress(context, tool_result_activity(name, result))
               %{result: encode_tool_result(result)}
 
             {:error, reason} ->
@@ -187,6 +188,21 @@ defmodule Algoie.AI.Orchestrator do
 
   defp notify_progress(_context, _message), do: :ok
 
+  defp notify_delta(%{progress_pid: pid}, delta) when is_pid(pid),
+    do: send(pid, {:assistant_delta, delta})
+
+  defp notify_delta(_context, _delta), do: :ok
+
+  defp reset_stream(%{progress_pid: pid}) when is_pid(pid),
+    do: send(pid, :assistant_stream_reset)
+
+  defp reset_stream(_context), do: :ok
+
+  defp model_chat(messages, tools, context) do
+    reset_stream(context)
+    OpenRouterClient.chat_stream(messages, tools: tools, on_delta: &notify_delta(context, &1))
+  end
+
   defp tool_activity("list_products"), do: "Reading products and variants…"
   defp tool_activity("list_orders"), do: "Checking orders…"
   defp tool_activity("check_inventory"), do: "Checking live inventory…"
@@ -196,6 +212,14 @@ defmodule Algoie.AI.Orchestrator do
   defp tool_activity("manage_" <> _rest), do: "Preparing a reviewed store change…"
   defp tool_activity("create_order"), do: "Validating the order and stock…"
   defp tool_activity(_name), do: "Working with live store data…"
+
+  defp tool_result_activity("list_products", %{count: count}),
+    do: "Found #{count} products. Preparing the answer…"
+
+  defp tool_result_activity(_name, %{count: count}),
+    do: "Found #{count} records. Preparing the answer…"
+
+  defp tool_result_activity(_name, _result), do: "Store data received. Preparing the answer…"
 
   defp decode_tool_args(tool_call) do
     case get_in(tool_call, ["function", "arguments"]) || tool_call["function"]["arguments"] do

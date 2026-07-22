@@ -29,6 +29,7 @@
               {"Tenants", "/admin/tenants", "hero-building-office-2", :tenants},
               {"Stores", "/admin/stores", "hero-shopping-bag", :stores},
               {"Email", "/admin/email", "hero-envelope", :email},
+              {"Storage", "/admin/storage", "hero-circle-stack", :storage},
               {"AI", "/admin/ai", "hero-sparkles", :ai}
             ]
           }
@@ -617,6 +618,117 @@
                   class="btn btn-primary"
                   phx-disable-with="Saving…"
                 ><.icon name="hero-check" /> Save AI configuration</button>
+              </div>
+            </.form>
+          </section>
+        <% end %>
+
+        <%= if @section == :storage do %>
+          <section id="admin-storage" class="mx-auto max-w-5xl space-y-6">
+            <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+              <div>
+                <h2 class="text-2xl font-bold tracking-tight">Media storage</h2>
+                <p class="mt-1 text-sm text-base-content/50">
+                  Choose where every store's new media uploads are kept. Existing files retain their current URLs.
+                </p>
+              </div>
+              <.pill tone={if @storage_settings.backend == "s3", do: "success", else: "warning"}>
+                {if @storage_settings.backend == "s3", do: "S3 compatible", else: "Local disk"}
+              </.pill>
+            </div>
+
+            <.form
+              for={@storage_form}
+              id="platform-storage-form"
+              phx-submit="save-storage"
+              class="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm"
+            >
+              <div class="border-b border-base-200 p-6">
+                <div class="flex items-center gap-3">
+                  <span class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <.icon name="hero-cloud-arrow-up" class="size-5" />
+                  </span>
+                  <div>
+                    <h3 class="font-bold">Storage backend</h3>
+                    <p class="text-sm text-base-content/45">
+                      Works with AWS S3, Cloudflare R2, MinIO, DigitalOcean Spaces, and compatible services.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-6 p-6">
+                <div class="grid gap-5 sm:grid-cols-2">
+                  <.input
+                    field={@storage_form[:backend]}
+                    type="select"
+                    label="Storage backend"
+                    options={[{"Local disk", "local"}, {"S3 compatible", "s3"}]}
+                  />
+                  <.input
+                    field={@storage_form[:path_style]}
+                    type="checkbox"
+                    label="Use path-style bucket URLs"
+                  />
+                </div>
+
+                <div :if={@storage_form[:backend].value == "s3"} class="space-y-5">
+                  <div class="rounded-xl border border-info/20 bg-info/10 p-4 text-sm leading-6 text-base-content/65">
+                    Add a <strong>Public base URL</strong> for direct CDN delivery. If left blank,
+                    Algoie securely proxies private bucket objects so previews and storefront images still work.
+                  </div>
+                  <div class="grid gap-5 sm:grid-cols-2">
+                    <.input
+                      field={@storage_form[:endpoint]}
+                      type="url"
+                      label="S3 endpoint"
+                      placeholder="https://s3.amazonaws.com"
+                    />
+                    <.input field={@storage_form[:region]} label="Region" placeholder="us-east-1" />
+                    <.input
+                      field={@storage_form[:bucket]}
+                      label="Bucket"
+                      placeholder="algoie-media"
+                    />
+                    <.input
+                      field={@storage_form[:public_base_url]}
+                      type="url"
+                      label="Public base URL (optional)"
+                      placeholder="https://cdn.example.com"
+                    />
+                    <.input
+                      field={@storage_form[:access_key_id]}
+                      label="Access key ID"
+                      autocomplete="off"
+                    />
+                    <.input
+                      field={@storage_form[:secret_access_key]}
+                      type="password"
+                      label="Secret access key"
+                      placeholder={
+                        if PlatformStorageSettings.configured_secret?(@storage_settings),
+                          do: "Saved · leave blank to keep",
+                          else: "Enter secret access key"
+                      }
+                      autocomplete="new-password"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between border-t border-base-200 bg-base-200/30 px-6 py-4">
+                <p class="text-xs text-base-content/45">
+                  <.icon name="hero-lock-closed" class="mr-1 inline size-3.5" />
+                  {PlatformStorageSettings.masked_secret(@storage_settings)}
+                </p>
+                <button
+                  id="save-storage-settings"
+                  type="submit"
+                  class="btn btn-primary"
+                  phx-disable-with="Saving…"
+                >
+                  <.icon name="hero-check" /> Save storage configuration
+                </button>
               </div>
             </.form>
           </section>

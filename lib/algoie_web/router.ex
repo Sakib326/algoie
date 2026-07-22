@@ -48,6 +48,7 @@ defmodule AlgoieWeb.Router do
   scope "/", AlgoieWeb do
     pipe_through :browser
 
+    get "/media/s3/*key", MediaObjectController, :show
     live "/sign-in", LoginLive, :index
     live "/forgot-password", ForgotPasswordLive, :index
     sign_out_route(AuthController, "/sign-out")
@@ -73,6 +74,7 @@ defmodule AlgoieWeb.Router do
       live "/admin/stores/:id", PlatformAdminLive, :store
       live "/admin/email", PlatformAdminLive, :email
       live "/admin/ai", PlatformAdminLive, :ai
+      live "/admin/storage", PlatformAdminLive, :storage
     end
 
     ash_authentication_live_session :store_selection,

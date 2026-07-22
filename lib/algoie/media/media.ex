@@ -56,6 +56,34 @@ defmodule Algoie.Media do
     Ash.create(Algoie.Media.MediaAsset, attrs, opts)
   end
 
+  @doc "Stores an uploaded file and creates its asset record, rolling storage back on DB failure."
+  def store_upload(tenant, source_path, upload, attrs, opts) do
+    with {:ok, info} <-
+           Algoie.Media.Storage.put(
+             tenant,
+             source_path,
+             upload.client_name,
+             upload.client_type
+           ) do
+      asset_attrs =
+        Map.merge(attrs, %{
+          url: info.url,
+          filename: info.filename,
+          content_type: upload.client_type,
+          size: info.size
+        })
+
+      case create_asset(asset_attrs, opts) do
+        {:ok, asset} ->
+          {:ok, asset}
+
+        {:error, reason} ->
+          Algoie.Media.Storage.delete(info.url)
+          {:error, reason}
+      end
+    end
+  end
+
   @doc """
   Moves an asset into `folder_id` (`nil` to unfile it).
   """

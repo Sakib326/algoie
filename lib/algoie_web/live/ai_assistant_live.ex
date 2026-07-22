@@ -19,6 +19,8 @@ defmodule AlgoieWeb.AiAssistantLive do
      |> assign(:conversations, [])
      |> assign(:loading, false)
      |> assign(:activity, nil)
+     |> assign(:activities, [])
+     |> assign(:streaming_response, "")
      |> assign(:pending_approvals, [])
      |> assign(:ai_enabled, PlatformAISettings.configured?(PlatformAISettings.get()))
      |> assign(:capabilities, capabilities(socket.assigns.store_permissions))
@@ -209,6 +211,8 @@ defmodule AlgoieWeb.AiAssistantLive do
           |> assign(:messages, messages)
           |> assign(:loading, true)
           |> assign(:activity, "Understanding your request and checking live store data…")
+          |> assign(:activities, ["Understanding your request and checking live store data…"])
+          |> assign(:streaming_response, "")
           |> assign(:form, to_form(%{"instruction" => ""}, as: :assistant))
 
         {:ok, access} =
@@ -255,6 +259,7 @@ defmodule AlgoieWeb.AiAssistantLive do
      |> assign(:pending_approvals, approvals)
      |> assign(:loading, false)
      |> assign(:activity, nil)
+     |> assign(:streaming_response, "")
      |> load_conversations()
      |> push_patch(to: "/dashboard/assistant?conversation=#{conversation_id}")}
   end
@@ -271,6 +276,7 @@ defmodule AlgoieWeb.AiAssistantLive do
      socket
      |> assign(:loading, false)
      |> assign(:activity, nil)
+     |> assign(:streaming_response, "")
      |> put_flash(:error, message)}
   end
 
@@ -279,6 +285,7 @@ defmodule AlgoieWeb.AiAssistantLive do
      socket
      |> assign(:loading, false)
      |> assign(:activity, nil)
+     |> assign(:streaming_response, "")
      |> put_flash(:error, "The assistant stopped unexpectedly. Please try again.")}
   end
 
@@ -299,6 +306,7 @@ defmodule AlgoieWeb.AiAssistantLive do
      |> assign(:pending_approvals, approvals)
      |> assign(:loading, false)
      |> assign(:activity, nil)
+     |> assign(:streaming_response, "")
      |> load_conversations()}
   end
 
@@ -307,6 +315,7 @@ defmodule AlgoieWeb.AiAssistantLive do
      socket
      |> assign(:loading, false)
      |> assign(:activity, nil)
+     |> assign(:streaming_response, "")
      |> put_flash(
        :error,
        "The action succeeded, but the assistant could not continue the remaining steps."
@@ -315,7 +324,20 @@ defmodule AlgoieWeb.AiAssistantLive do
 
   @impl true
   def handle_info({:assistant_activity, activity}, socket) do
-    {:noreply, assign(socket, :activity, activity)}
+    activities =
+      (socket.assigns.activities ++ [activity])
+      |> Enum.dedup()
+      |> Enum.take(-8)
+
+    {:noreply, socket |> assign(:activity, activity) |> assign(:activities, activities)}
+  end
+
+  def handle_info(:assistant_stream_reset, socket) do
+    {:noreply, assign(socket, :streaming_response, "")}
+  end
+
+  def handle_info({:assistant_delta, delta}, socket) do
+    {:noreply, update(socket, :streaming_response, &(&1 <> delta))}
   end
 
   defp load_conversations(socket) do
@@ -347,6 +369,8 @@ defmodule AlgoieWeb.AiAssistantLive do
       socket
       |> assign(:loading, true)
       |> assign(:activity, "Continuing the remaining steps…")
+      |> assign(:activities, ["Continuing the remaining steps…"])
+      |> assign(:streaming_response, "")
 
     {:noreply,
      start_async(socket, :assistant_continuation, fn ->

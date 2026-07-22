@@ -198,9 +198,33 @@
                 name="hero-sparkles"
                 class="size-4"
               /></span>
-              <div class="rounded-2xl rounded-tl-sm border border-base-200 bg-base-100 px-4 py-3 shadow-sm">
-                <p class="mb-2 text-xs font-medium text-base-content/55">{@activity}</p>
-                <div class="flex gap-1.5">
+              <div class="min-w-0 max-w-[94%] rounded-2xl rounded-tl-sm border border-base-200 bg-base-100 px-4 py-3 shadow-sm sm:max-w-[90%]">
+                <details
+                  id="assistant-activity"
+                  class="group mb-2"
+                  open={@streaming_response == ""}
+                >
+                  <summary class="cursor-pointer list-none text-xs font-medium text-base-content/55">
+                    <span class="inline-flex items-center gap-1.5">
+                      <.icon
+                        name="hero-cog-6-tooth"
+                        class="size-3.5 transition group-open:rotate-90"
+                      />
+                      {@activity}
+                    </span>
+                  </summary>
+                  <ol class="mt-2 space-y-1 border-l border-base-200 pl-3 text-[11px] text-base-content/45">
+                    <li :for={activity <- @activities}>{activity}</li>
+                  </ol>
+                </details>
+                <p
+                  :if={@streaming_response != ""}
+                  id="assistant-streaming-response"
+                  class="whitespace-pre-wrap text-sm leading-5.5"
+                >
+                  {@streaming_response}<span class="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary align-middle"></span>
+                </p>
+                <div :if={@streaming_response == ""} class="flex gap-1.5">
                   <span
                     :for={delay <- ["0ms", "140ms", "280ms"]}
                     style={"animation-delay: #{delay}"}

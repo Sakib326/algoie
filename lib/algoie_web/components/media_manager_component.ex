@@ -311,17 +311,12 @@ defmodule AlgoieWeb.Components.MediaManagerComponent do
 
       result =
         consume_uploaded_entry(socket, entry, fn %{path: path} ->
-          with {:ok, info} <- Storage.put(tenant, path, entry.client_name),
-               {:ok, asset} <-
-                 Media.create_asset(
-                   %{
-                     store_id: socket.assigns.store_id,
-                     folder_id: folder_id,
-                     url: info.url,
-                     filename: info.filename,
-                     content_type: entry.client_type,
-                     size: info.size
-                   },
+          with {:ok, asset} <-
+                 Media.store_upload(
+                   tenant,
+                   path,
+                   entry,
+                   %{store_id: socket.assigns.store_id, folder_id: folder_id},
                    socket_opts(socket.assigns)
                  ) do
             {:ok, {:ok, asset}}

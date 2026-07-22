@@ -1,13 +1,9 @@
 defmodule Algoie.Media.Storage do
   @moduledoc """
-  Local-disk storage backend for uploaded media.
+  Storage facade for local disk and SaaS-admin-configured S3-compatible storage.
 
-  Files are written to `priv/static/uploads/<tenant>/<random>-<filename>` and
-  served back at the public path `/uploads/<tenant>/<random>-<filename>` via
-  `Plug.Static` (see `AlgoieWeb.static_paths/0`).
-
-  Kept as a single small module so swapping to an object store (S3, GCS, ...)
-  later only requires changing `put/3` and `delete/1`.
+  Local files are written beneath `priv/static/uploads`; S3 objects use a
+  tenant-prefixed key and AWS Signature V4 authentication.
   """
 
   @max_file_size 10_000_000
@@ -20,11 +16,27 @@ defmodule Algoie.Media.Storage do
   Copies a temporary upload file into permanent storage for `tenant` and
   returns `{:ok, %{url:, filename:, size:}}`.
   """
-  def put(tenant, source_path, original_filename) do
+  def put(tenant, source_path, original_filename, content_type \\ "application/octet-stream") do
     ext = original_filename |> Path.extname() |> String.downcase()
     safe_name = slugify_filename(original_filename)
     filename = "#{Ecto.UUID.generate()}-#{safe_name}"
 
+    settings = Algoie.PlatformStorageSettings.get()
+
+    case settings.backend do
+      "s3" ->
+        if Algoie.PlatformStorageSettings.s3?(settings) do
+          put_s3(settings, tenant, source_path, original_filename, filename, ext, content_type)
+        else
+          {:error, :s3_not_configured}
+        end
+
+      _local ->
+        put_local(tenant, source_path, original_filename, filename, ext)
+    end
+  end
+
+  defp put_local(tenant, source_path, original_filename, filename, ext) do
     dest_dir = upload_dir(tenant)
     File.mkdir_p!(dest_dir)
 
@@ -51,12 +63,33 @@ defmodule Algoie.Media.Storage do
   def delete(nil), do: :ok
 
   def delete(url) do
-    case public_path_for(url) do
-      nil -> :ok
-      path -> File.rm(path)
+    settings = Algoie.PlatformStorageSettings.get()
+
+    case {public_path_for(url), Algoie.Media.S3.object_key(settings, url)} do
+      {path, _key} when is_binary(path) ->
+        File.rm(path)
+
+      {nil, key} when is_binary(key) ->
+        if Algoie.PlatformStorageSettings.s3?(settings),
+          do: Algoie.Media.S3.delete(settings, key),
+          else: :ok
+
+        Algoie.Media.S3.delete(settings, key)
+
+      _ ->
+        :ok
     end
 
     :ok
+  end
+
+  defp put_s3(settings, tenant, source_path, original_filename, filename, ext, content_type) do
+    key = "#{tenant}/#{filename}"
+
+    with {:ok, body} <- File.read(source_path),
+         {:ok, url} <- Algoie.Media.S3.put(settings, key, body, content_type) do
+      {:ok, %{url: url, filename: original_filename, extension: ext, size: byte_size(body)}}
+    end
   end
 
   defp public_path_for("/uploads/" <> _rest = url) do
