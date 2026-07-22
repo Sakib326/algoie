@@ -72,6 +72,12 @@ defmodule Algoie.Policies.Checks.ActorHasStoreAccess do
   defp store_filter(Algoie.Products.CollectionProduct, store_id),
     do: expr(product.store_id == ^store_id and collection.store_id == ^store_id)
 
+  defp store_filter(Algoie.SocialPublishing.SocialProfile, store_id),
+    do: expr(store_id == ^store_id)
+
+  defp store_filter(Algoie.SocialPublishing.SocialAccount, store_id),
+    do: expr(social_profile.store_id == ^store_id)
+
   defp store_filter(Algoie.Orders.OrderLineItem, store_id),
     do: expr(order.store_id == ^store_id and variant.store_id == ^store_id)
 

@@ -73,6 +73,14 @@
             <.icon name="hero-ticket" class="size-5" /> Coupons
           </.link>
         </li>
+        <li>
+          <.link
+            navigate={~p"/dashboard/social"}
+            class={if @socket.view_module == AlgoieWeb.SocialPublishingLive, do: "active"}
+          >
+            <.icon name="hero-share" class="size-5" /> Social
+          </.link>
+        </li>
       </ul>
 
       <!-- User section -->

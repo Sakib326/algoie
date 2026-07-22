@@ -30,7 +30,8 @@
               {"Stores", "/admin/stores", "hero-shopping-bag", :stores},
               {"Email", "/admin/email", "hero-envelope", :email},
               {"Storage", "/admin/storage", "hero-circle-stack", :storage},
-              {"AI", "/admin/ai", "hero-sparkles", :ai}
+              {"AI", "/admin/ai", "hero-sparkles", :ai},
+              {"Social", "/admin/social", "hero-share", :social}
             ]
           }
           navigate={path}
@@ -75,6 +76,50 @@
       </header>
 
       <div class="mx-auto max-w-[1500px] p-4 sm:p-8">
+        <section
+          :if={@section == :social}
+          id="admin-social-publishing"
+          class="mb-8 rounded-3xl border border-base-300 bg-base-100 p-6 shadow-sm sm:p-8"
+        >
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-primary">
+                Integrations
+              </p>
+              <h2 class="mt-1 text-xl font-bold tracking-tight">Social publishing provider</h2>
+              <p class="mt-2 max-w-2xl text-sm text-base-content/55">
+                Configure the platform-wide provider used by every store. The API key is encrypted before it is stored.
+              </p>
+            </div>
+            <span class="rounded-full bg-base-200 px-3 py-1 text-xs font-semibold">
+              {SocialPublishingSetting.masked_key(@social_publishing_settings)}
+            </span>
+          </div>
+          <.form
+            for={@social_publishing_form}
+            id="social-publishing-settings-form"
+            phx-submit="save-social-publishing"
+            class="mt-6 grid gap-4 md:grid-cols-[16rem_minmax(0,1fr)_auto] md:items-end"
+          >
+            <.input
+              field={@social_publishing_form[:active_adapter]}
+              type="select"
+              label="Active adapter"
+              options={[{"Zernio", "zernio"}]}
+            />
+            <.input
+              field={@social_publishing_form[:api_key]}
+              type="password"
+              label="Zernio API key"
+              placeholder={SocialPublishingSetting.masked_key(@social_publishing_settings)}
+              autocomplete="new-password"
+            />
+            <.ui_button id="save-social-publishing-settings" type="submit" variant="primary"><.icon
+              name="hero-check"
+              class="size-4"
+            /> Save provider</.ui_button>
+          </.form>
+        </section>
         <%= if @section == :overview do %>
           <section id="admin-overview">
             <div class="relative overflow-hidden rounded-3xl border border-base-300 bg-base-100 p-6 shadow-sm sm:p-8">

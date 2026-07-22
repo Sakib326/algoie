@@ -24,6 +24,8 @@ defmodule Algoie.Accounts.StorePermissions do
     {"ai.use", "Use the AI assistant"},
     {"settings.view", "View store settings"},
     {"settings.manage", "Manage store settings"},
+    {"social.view", "View social publishing"},
+    {"social.manage", "Manage social publishing"},
     {"team.view", "View team members"},
     {"team.manage", "Manage team members and access"}
   ]

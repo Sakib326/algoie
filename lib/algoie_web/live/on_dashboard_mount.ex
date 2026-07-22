@@ -26,6 +26,7 @@ defmodule AlgoieWeb.Live.OnDashboardMount do
     AlgoieWeb.CampaignLive.Index => "engagement.view",
     AlgoieWeb.AiAssistantLive => "ai.use",
     AlgoieWeb.StoreSettingsLive => "settings.view",
+    AlgoieWeb.SocialPublishingLive => "social.view",
     AlgoieWeb.StoreEmailSettingsLive => "settings.view",
     AlgoieWeb.TeamLive.Index => "team.view"
   }
@@ -67,5 +68,11 @@ defmodule AlgoieWeb.Live.OnDashboardMount do
   end
 
   defp allowed_view?(AlgoieWeb.DashboardLive, _permissions), do: true
+
+  defp allowed_view?(AlgoieWeb.SocialPublishingLive, permissions) do
+    "social.view" in permissions or "settings.view" in permissions or
+      "settings.manage" in permissions
+  end
+
   defp allowed_view?(view, permissions), do: Map.get(@view_permissions, view) in permissions
 end

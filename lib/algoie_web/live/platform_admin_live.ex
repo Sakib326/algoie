@@ -1,7 +1,13 @@
 defmodule AlgoieWeb.PlatformAdminLive do
   use AlgoieWeb, :live_view
 
-  alias Algoie.{PlatformAISettings, PlatformEmailSettings, PlatformStorageSettings}
+  alias Algoie.{
+    PlatformAISettings,
+    PlatformEmailSettings,
+    PlatformStorageSettings,
+    SocialPublishingSetting
+  }
+
   alias Algoie.Repo
 
   @tenant_statuses ~w(trial active suspended)
@@ -20,7 +26,8 @@ defmodule AlgoieWeb.PlatformAdminLive do
      |> refresh_data()
      |> load_email_form()
      |> load_ai_form()
-     |> load_storage_form()}
+     |> load_storage_form()
+     |> load_social_publishing_form()}
   end
 
   @impl true
@@ -162,6 +169,25 @@ defmodule AlgoieWeb.PlatformAdminLive do
     end
   end
 
+  def handle_event("save-social-publishing", %{"social_publishing" => attrs}, socket) do
+    case SocialPublishingSetting.save(attrs) do
+      {:ok, _settings} ->
+        {:noreply,
+         socket
+         |> load_social_publishing_form()
+         |> put_flash(
+           :info,
+           "Social publishing configuration saved. New requests use it immediately."
+         )}
+
+      {:error, changeset} ->
+        {:noreply,
+         socket
+         |> assign(:social_publishing_form, to_form(changeset, as: :social_publishing))
+         |> put_flash(:error, "Social publishing configuration was not saved.")}
+    end
+  end
+
   defp refresh_data(socket) do
     tenants = load_tenants()
     stores = load_stores(tenants)
@@ -279,11 +305,23 @@ defmodule AlgoieWeb.PlatformAdminLive do
     )
   end
 
+  defp load_social_publishing_form(socket) do
+    settings = SocialPublishingSetting.get()
+
+    socket
+    |> assign(:social_publishing_settings, settings)
+    |> assign(
+      :social_publishing_form,
+      to_form(SocialPublishingSetting.changeset(settings, %{}), as: :social_publishing)
+    )
+  end
+
   defp section_for(action) when action in [:tenants, :tenant], do: :tenants
   defp section_for(action) when action in [:stores, :store], do: :stores
   defp section_for(:email), do: :email
   defp section_for(:ai), do: :ai
   defp section_for(:storage), do: :storage
+  defp section_for(:social), do: :social
   defp section_for(_), do: :overview
 
   defp selected_record(:tenants, id, assigns) when is_binary(id),
@@ -299,6 +337,7 @@ defmodule AlgoieWeb.PlatformAdminLive do
   defp page_title(:email), do: "Email settings · SaaS admin"
   defp page_title(:ai), do: "AI gateway · SaaS admin"
   defp page_title(:storage), do: "Media storage · SaaS admin"
+  defp page_title(:social), do: "Social publishing · SaaS admin"
   defp page_title(_), do: "Overview · SaaS admin"
 
   defp filtered(items, search, status) do

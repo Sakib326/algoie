@@ -292,6 +292,16 @@ defmodule AlgoieWeb.Layouts do
               Configuration
             </p>
             <.nav_item
+              :if={
+                allowed?(@store_permissions, "social.view") or
+                  allowed?(@store_permissions, "settings.view")
+              }
+              navigate="/dashboard/social"
+              icon="hero-share"
+              label="Social Publishing"
+              active={@active == :social}
+            />
+            <.nav_item
               :if={allowed?(@store_permissions, "settings.view")}
               navigate="/dashboard/settings"
               icon="hero-cog-6-tooth"

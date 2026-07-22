@@ -49,7 +49,8 @@ config :algoie, :ash_domains, [
   Algoie.Products,
   Algoie.Customers,
   Algoie.Orders,
-  Algoie.Media
+  Algoie.Media,
+  Algoie.SocialPublishing.Domain
 ]
 
 platform_admin_emails =

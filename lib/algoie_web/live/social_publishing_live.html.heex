@@ -1,0 +1,84 @@
+<Layouts.dashboard
+  flash={@flash}
+  current_user={@current_user}
+  tenant={@tenant}
+  store_id={@store_id}
+  store_name={@store_name}
+  user_stores={@user_stores}
+  page_title={@page_title}
+  active={:social}
+>
+  <div class="mx-auto max-w-6xl space-y-8">
+    <div class="relative overflow-hidden rounded-3xl border border-base-300 bg-gradient-to-br from-primary/10 via-base-100 to-base-100 p-7 shadow-sm sm:p-10">
+      <div class="relative z-10 max-w-2xl">
+        <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary">Social workspace</p><h1 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+          Connect your social presence
+        </h1><p class="mt-3 text-base-content/60">
+          Bring your channels together so publishing, conversations, and campaign workflows can run from Algoie.
+        </p>
+      </div><.icon
+        name="hero-share"
+        class="absolute -right-5 -top-7 size-48 rotate-12 text-primary/10"
+      />
+    </div>
+    <section class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-sm sm:p-8">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold">Connected accounts</h2><p class="mt-1 text-sm text-base-content/50">
+            Accounts connected to this store profile.
+          </p>
+        </div><span class="rounded-full bg-base-200 px-3 py-1 text-xs font-semibold">{length(
+          @social_accounts
+        )} connected</span>
+      </div><div
+        :if={@social_accounts == []}
+        class="mt-7 rounded-2xl border border-dashed border-base-300 p-10 text-center"
+      >
+        <.icon name="hero-link" class="mx-auto size-8 text-base-content/25" /><p class="mt-3 font-medium">
+          No accounts connected yet
+        </p><p class="mt-1 text-sm text-base-content/50">
+          Choose a platform below to get started.
+        </p>
+      </div><div
+        :if={@social_accounts != []}
+        class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        <div
+          :for={account <- @social_accounts}
+          id={"social-account-#{account.id}"}
+          class="rounded-2xl border border-base-300 p-4"
+        >
+          <div class="flex items-center gap-3">
+            <span class="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><.icon
+              name="hero-share"
+              class="size-5"
+            /></span><div>
+              <p class="font-semibold capitalize">{account.platform}</p><p class="text-xs text-success">
+                Connected
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-sm sm:p-8">
+      <h2 class="text-xl font-bold">Add a channel</h2><p class="mt-1 text-sm text-base-content/50">
+        The provider handles authorization and any required page or organization selection.
+      </p><div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <button
+          :for={platform <- @platforms}
+          id={"connect-#{platform}"}
+          type="button"
+          phx-click="connect"
+          phx-value-platform={platform}
+          class="group rounded-2xl border border-base-300 p-4 text-left transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10"
+        ><.icon
+          name="hero-plus-circle"
+          class="size-5 text-primary transition group-hover:rotate-90"
+        /><p class="mt-3 text-sm font-semibold capitalize">{platform}</p></button>
+      </div><p class="mt-5 text-xs text-base-content/45">
+        Bluesky and Telegram use non-OAuth credential flows and will be added separately.
+      </p>
+    </section>
+  </div>
+</Layouts.dashboard>
