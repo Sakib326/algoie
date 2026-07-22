@@ -22,12 +22,31 @@
   </.page_header>
 
   <.panel :if={@live_action in [:new, :edit]} class="mb-6">
-    <div class="border-b border-base-200 px-6 py-4">
+    <div class="flex items-center justify-between gap-3 border-b border-base-200 px-6 py-4">
       <h2 class="text-base font-semibold">
         {if @live_action == :new, do: "New brand", else: "Edit brand"}
       </h2>
+      <button
+        :if={@live_action == :edit && @ai_enabled}
+        id="brand-ai-suggest"
+        type="button"
+        phx-click="suggest_fields"
+        disabled={@ai_loading}
+        class="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-bold text-primary transition hover:-translate-y-0.5 hover:bg-primary/15 disabled:opacity-50"
+      >
+        <.icon name="hero-sparkles" class="size-4" />
+        {if @ai_loading, do: "Generating…", else: "Suggest with AI"}
+      </button>
     </div>
-    <.form for={@form} id="brand-form" phx-change="validate" phx-submit="save" class="p-6">
+    <.form
+      for={@form}
+      id="brand-form"
+      phx-change="validate"
+      phx-submit="save"
+      phx-hook="AISuggestions"
+      data-ai-suggestions={Jason.encode!(@ai_suggestions)}
+      class="p-6"
+    >
       <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div class="space-y-5">
           <div class="grid gap-4 sm:grid-cols-2">
@@ -37,6 +56,7 @@
               label="Brand name"
               placeholder="e.g. Acme Co."
               required
+              data-ai-field="name"
             />
             <.input
               field={@form[:slug]}
@@ -45,6 +65,7 @@
               placeholder="acme-co"
               pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
               title="Use lowercase letters, numbers, and single hyphens only"
+              data-ai-field="slug"
             />
           </div>
           <.input
@@ -53,6 +74,7 @@
             rows="4"
             label="Description"
             placeholder="Introduce this brand to shoppers."
+            data-ai-field="description"
           />
           <div class="rounded-xl border border-base-200 bg-base-200/25 p-5">
             <div class="mb-4 flex items-center gap-2">
@@ -69,6 +91,7 @@
                 label="SEO title"
                 placeholder="Acme Co. products"
                 maxlength="60"
+                data-ai-field="meta_title"
               />
               <.input
                 field={@form[:meta_description]}
@@ -77,6 +100,7 @@
                 label="SEO description"
                 maxlength="160"
                 placeholder="Browse products from Acme Co."
+                data-ai-field="meta_description"
               />
             </div>
           </div>

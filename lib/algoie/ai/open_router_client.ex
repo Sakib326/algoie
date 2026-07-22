@@ -45,7 +45,13 @@ defmodule Algoie.AI.OpenRouterClient do
 
   defp request(key, model, messages, tools, opts) do
     body =
-      %{model: model, messages: messages, temperature: 0.2, max_tokens: 800}
+      %{
+        model: model,
+        messages: messages,
+        temperature: Keyword.get(opts, :temperature, 0.2),
+        max_tokens: Keyword.get(opts, :max_tokens, 800)
+      }
+      |> maybe_put_response_format(opts)
       |> then(fn body ->
         if tools != [], do: Map.put(body, :tools, tools), else: body
       end)
@@ -70,7 +76,13 @@ defmodule Algoie.AI.OpenRouterClient do
 
   defp stream_request(key, model, messages, tools, opts) do
     body =
-      %{model: model, messages: messages, temperature: 0.2, max_tokens: 800, stream: true}
+      %{
+        model: model,
+        messages: messages,
+        temperature: Keyword.get(opts, :temperature, 0.2),
+        max_tokens: Keyword.get(opts, :max_tokens, 800),
+        stream: true
+      }
       |> Map.put(:stream_options, %{include_usage: true})
       |> then(fn body -> if tools != [], do: Map.put(body, :tools, tools), else: body end)
 
@@ -194,4 +206,11 @@ defmodule Algoie.AI.OpenRouterClient do
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp maybe_put_response_format(body, opts) do
+    case Keyword.get(opts, :response_format) do
+      nil -> body
+      format -> Map.put(body, :response_format, format)
+    end
+  end
 end

@@ -18,7 +18,11 @@ defmodule Algoie.AI.UsageTracker do
 
     cost = calculate_cost(model, prompt, completion)
 
-    user_id = context |> Map.get(:actor, %{}) |> Map.get(:id)
+    user_id =
+      case Map.get(context, :actor) do
+        %{id: id} -> id
+        _ -> nil
+      end
 
     Repo.insert_all(@table, [
       %{

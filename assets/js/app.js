@@ -125,6 +125,62 @@ Hooks.AssistantChat = {
   },
 }
 
+Hooks.AISuggestions = {
+  mounted() {
+    this.onKeydown = (event) => {
+      if (event.key !== "Tab" || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return
+
+      const field = event.target.closest?.("[data-ai-field]")
+      if (!field || !this.el.contains(field)) return
+
+      const suggestion = this.suggestions()[field.dataset.aiField]
+      if (!suggestion || field.value === suggestion) return
+
+      event.preventDefault()
+      field.value = suggestion
+      field.dispatchEvent(new Event("input", {bubbles: true}))
+      field.dispatchEvent(new Event("change", {bubbles: true}))
+      field.focus()
+    }
+
+    this.el.addEventListener("keydown", this.onKeydown)
+    this.renderHints()
+  },
+  updated() {
+    this.renderHints()
+  },
+  destroyed() {
+    this.el.removeEventListener("keydown", this.onKeydown)
+  },
+  suggestions() {
+    try {
+      return JSON.parse(this.el.dataset.aiSuggestions || "{}")
+    } catch (_error) {
+      return {}
+    }
+  },
+  renderHints() {
+    this.el.querySelectorAll("[data-ai-generated-hint]").forEach((hint) => hint.remove())
+    const suggestions = this.suggestions()
+
+    this.el.querySelectorAll("[data-ai-field]").forEach((field) => {
+      const suggestion = suggestions[field.dataset.aiField]
+      if (!suggestion || suggestion === field.value) return
+
+      const hint = document.createElement("p")
+      hint.dataset.aiGeneratedHint = "true"
+      hint.className = "mt-1.5 flex items-start gap-1.5 text-xs text-primary/75"
+      hint.innerHTML = `<span class="mt-0.5 rounded bg-primary/10 px-1.5 py-0.5 font-bold text-primary">Tab</span><span class="min-w-0 truncate">${this.escape(suggestion)}</span>`
+      field.insertAdjacentElement("afterend", hint)
+    })
+  },
+  escape(value) {
+    const element = document.createElement("span")
+    element.textContent = value
+    return element.innerHTML
+  },
+}
+
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},

@@ -3,6 +3,8 @@ defmodule AlgoieWeb.ProductLive.Wizard do
 
   alias Algoie.Products.{Product, Variant, Tag, ProductTag, ProductCategory, ProductImage}
   alias Algoie.Media.MediaAsset
+  alias Algoie.AI.FormSuggestions
+  alias Algoie.PlatformAISettings
   alias Algoie.Products.VariantGenerator
 
   require Ash.Query
@@ -30,6 +32,13 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       |> assign(:total_steps, length(@steps))
       |> assign(:step_names, @steps)
       |> assign(:errors, [])
+      |> assign(:ai_suggestions, %{})
+      |> assign(:ai_loading, false)
+      |> assign(
+        :ai_enabled,
+        "ai.use" in socket.assigns.store_permissions and
+          PlatformAISettings.configured?(PlatformAISettings.get())
+      )
 
     socket =
       case params do
@@ -295,6 +304,20 @@ defmodule AlgoieWeb.ProductLive.Wizard do
     {:noreply, socket}
   end
 
+  def handle_event("suggest_fields", _params, %{assigns: %{mode: :edit}} = socket) do
+    context = %{actor: socket.assigns.current_user, store_id: socket.assigns.store_id}
+    values = socket.assigns.wizard_data
+
+    {:noreply,
+     socket
+     |> assign(:ai_loading, true)
+     |> start_async(:product_suggestions, fn ->
+       FormSuggestions.suggest("product", values, context)
+     end)}
+  end
+
+  def handle_event("suggest_fields", _params, socket), do: {:noreply, socket}
+
   def handle_event("update_field", %{"_target" => [field]} = params, socket) do
     # When phx-change is on an individual input, the payload may use the "value" key
     # instead of the field name key.
@@ -509,6 +532,18 @@ defmodule AlgoieWeb.ProductLive.Wizard do
       {:error, errors} ->
         {:noreply, assign(socket, :errors, errors)}
     end
+  end
+
+  @impl true
+  def handle_async(:product_suggestions, {:ok, {:ok, suggestions}}, socket) do
+    {:noreply, socket |> assign(:ai_suggestions, suggestions) |> assign(:ai_loading, false)}
+  end
+
+  def handle_async(:product_suggestions, _result, socket) do
+    {:noreply,
+     socket
+     |> assign(:ai_loading, false)
+     |> put_flash(:error, "AI suggestions could not be generated. Please try again.")}
   end
 
   @impl true

@@ -10,6 +10,19 @@
 >
   <.page_header title={if @mode == :edit, do: "Edit Product", else: "Create Product"}>
     <:subtitle>Step {@step + 1} of {@total_steps} — {step_label(@step)}</:subtitle>
+    <:actions>
+      <button
+        :if={@mode == :edit && @ai_enabled}
+        id="product-ai-suggest"
+        type="button"
+        phx-click="suggest_fields"
+        disabled={@ai_loading}
+        class="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-bold text-primary transition hover:-translate-y-0.5 hover:bg-primary/15 disabled:opacity-50"
+      >
+        <.icon name="hero-sparkles" class="size-4" />
+        {if @ai_loading, do: "Generating…", else: "Suggest with AI"}
+      </button>
+    </:actions>
   </.page_header>
 
   <%!-- Error display --%>
@@ -19,7 +32,12 @@
     </ul>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+  <div
+    id="product-ai-fields"
+    phx-hook="AISuggestions"
+    data-ai-suggestions={Jason.encode!(@ai_suggestions)}
+    class="grid grid-cols-1 gap-6 lg:grid-cols-4"
+  >
     <%!-- Step sidebar --%>
     <div class="lg:col-span-1">
       <.panel>
@@ -75,6 +93,7 @@
                 phx-change="update_field"
                 placeholder="e.g. Classic T-Shirt"
                 class="input input-bordered w-full"
+                data-ai-field="name"
               />
             </form>
           </div>
@@ -89,6 +108,7 @@
                 phx-change="update_field"
                 placeholder="auto-generated-from-name"
                 class="input input-bordered w-full"
+                data-ai-field="slug"
               />
             </form>
             <p class="text-xs text-base-content/40 mt-1">
@@ -105,6 +125,7 @@
                 placeholder="Describe your product..."
                 rows="4"
                 class="textarea textarea-bordered w-full"
+                data-ai-field="description"
               >{@wizard_data["description"]}</textarea>
             </form>
           </div>
@@ -383,6 +404,7 @@
                   phx-change="update_field"
                   placeholder={@wizard_data["slug"]}
                   class="input input-bordered w-full"
+                  data-ai-field="sku"
                 />
               </form>
               <p class="text-xs text-base-content/40 mt-1">
@@ -787,6 +809,7 @@
                 phx-change="update_field"
                 placeholder="Page title for search engines"
                 class="input input-bordered w-full"
+                data-ai-field="meta_title"
               />
             </form>
             <p class="text-xs text-base-content/40 mt-1">
@@ -803,6 +826,7 @@
                 placeholder="Brief description for search results"
                 rows="3"
                 class="textarea textarea-bordered w-full"
+                data-ai-field="meta_description"
               >{@wizard_data["meta_description"]}</textarea>
             </form>
             <p class="text-xs text-base-content/40 mt-1">
