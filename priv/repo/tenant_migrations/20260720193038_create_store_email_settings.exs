@@ -2,7 +2,7 @@ defmodule Algoie.Repo.TenantMigrations.CreateStoreEmailSettings do
   use Ecto.Migration
 
   def change do
-    create table(:store_email_settings, primary_key: false, prefix: prefix()) do
+    create_if_not_exists table(:store_email_settings, primary_key: false, prefix: prefix()) do
       add :id, :uuid, primary_key: true
       add :store_id, references(:stores, type: :uuid, on_delete: :delete_all), null: false
       add :use_platform, :boolean, null: false, default: true
@@ -21,6 +21,6 @@ defmodule Algoie.Repo.TenantMigrations.CreateStoreEmailSettings do
       timestamps(type: :utc_datetime_usec)
     end
 
-    create unique_index(:store_email_settings, [:store_id], prefix: prefix())
+    create_if_not_exists unique_index(:store_email_settings, [:store_id], prefix: prefix())
   end
 end

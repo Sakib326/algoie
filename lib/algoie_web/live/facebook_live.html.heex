@@ -1,0 +1,667 @@
+<Layouts.app flash={@flash} current_scope={@current_scope} shell="bare">
+  <.facebook_shell
+    active={if(@live_action == :index, do: :overview, else: @live_action)}
+    account={@facebook_account}
+    store_name={@store_name}
+    current_user={@current_user}
+  >
+    <%= if is_nil(@facebook_account) do %>
+      <.facebook_header
+        title="Facebook Studio"
+        description="A dedicated workspace for publishing, conversations, engagement and Page health."
+        icon="hero-chat-bubble-bottom-center-text"
+      />
+      <.facebook_disconnected />
+    <% else %>
+      <%= case @live_action do %>
+        <% :index -> %>
+          <.facebook_header
+            title="Overview"
+            description="Your Facebook Page command center."
+            icon="hero-squares-2x2"
+          >
+            <:actions>
+              <.link
+                navigate={~p"/dashboard/facebook/publishing"}
+                class="rounded-xl bg-[#0866ff] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
+              >
+                Create post
+              </.link>
+            </:actions>
+          </.facebook_header>
+          <section id="facebook-overview" class="space-y-6">
+            <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0866ff] to-[#0649b8] p-8 text-white shadow-xl shadow-blue-500/15">
+              <div class="relative z-10 max-w-2xl">
+                <p class="text-xs font-bold uppercase tracking-[0.22em] text-blue-100">
+                  Facebook Page workspace
+                </p>
+                <h3 class="mt-3 text-3xl font-bold tracking-tight">
+                  Everything organic, in one place.
+                </h3>
+                <p class="mt-3 text-sm leading-6 text-blue-100">
+                  Publish feed posts, Stories and Reels. Follow performance, respond to customers and automate comment replies.
+                </p>
+              </div>
+              <.icon
+                name="hero-chat-bubble-bottom-center-text"
+                class="absolute -bottom-12 -right-8 size-64 rotate-6 text-white/10"
+              />
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <.metric_card
+                label="Connection"
+                value={if(@data[:health_error], do: "Needs attention", else: "Active")}
+                icon="hero-signal"
+              />
+              <.metric_card
+                label="Recent posts"
+                value={to_string(length(@data[:posts] || []))}
+                icon="hero-document-text"
+              />
+              <.metric_card label="Formats" value="Feed · Story · Reel" icon="hero-play-circle" />
+              <.metric_card
+                label="Store timezone"
+                value={@store.timezone || "Asia/Dhaka"}
+                icon="hero-clock"
+              />
+            </div>
+            <div class="grid gap-5 lg:grid-cols-3">
+              <.quick_link
+                path={~p"/dashboard/facebook/publishing"}
+                title="Create content"
+                text="Publish now, schedule, or save a draft."
+                icon="hero-pencil-square"
+              />
+              <.quick_link
+                path={~p"/dashboard/facebook/inbox"}
+                title="Open inbox"
+                text="Read and reply to Page conversations."
+                icon="hero-inbox"
+              />
+              <.quick_link
+                path={~p"/dashboard/facebook/analytics"}
+                title="View performance"
+                text="Track reach, engagement and growth."
+                icon="hero-chart-bar-square"
+              />
+            </div>
+          </section>
+        <% :publishing -> %>
+          <.facebook_header
+            title="Create content"
+            description="Create feed posts, Stories, Reels, carousels and drafts for one or several Pages."
+            icon="hero-pencil-square"
+          />
+          <.form
+            for={@post_form}
+            id="facebook-publishing-form"
+            phx-change="validate-post"
+            phx-submit="publish"
+            class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]"
+          >
+            <div class="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+              <.input
+                field={@post_form[:content]}
+                type="textarea"
+                label="Post text"
+                rows="7"
+                placeholder="What do you want your audience to know?"
+              />
+              <div class="grid gap-4 sm:grid-cols-2">
+                <.input
+                  field={@post_form[:content_type]}
+                  type="select"
+                  label="Format"
+                  options={[{"Feed post", "feed"}, {"Story", "story"}, {"Reel", "reel"}]}
+                />
+                <.input
+                  field={@post_form[:media_type]}
+                  type="select"
+                  label="Media type"
+                  options={[{"Images", "image"}, {"Video", "video"}]}
+                />
+              </div>
+              <.input
+                field={@post_form[:media_urls]}
+                type="textarea"
+                label="Additional media URLs"
+                rows="4"
+                placeholder="One public HTTPS URL per line"
+              />
+              <.live_component
+                module={AlgoieWeb.Components.MediaManagerComponent}
+                id="facebook-media"
+                field={@post_form[:library_urls]}
+                multiple={true}
+                max_selected={10}
+                label="Media library"
+                helper="Upload images or select existing store media."
+                store_id={@store_id}
+                tenant={@tenant}
+                current_user={@current_user}
+              />
+              <p class="-mt-3 text-xs text-slate-500">
+                Images: up to 10, under 4 MB each. Video: one MP4/MOV. You can copy URLs from the <.link
+                  navigate={~p"/dashboard/media"}
+                  class="font-bold text-[#0866ff]"
+                >media library</.link>.
+              </p>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <.input field={@post_form[:title]} label="Reel title" />
+                <.input field={@post_form[:first_comment]} label="First comment" />
+              </div>
+              <.input
+                field={@post_form[:countries]}
+                label="Country visibility"
+                placeholder="US, GB, BD (optional)"
+              />
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <.input
+                  field={@post_form[:carousel]}
+                  type="checkbox"
+                  label="Create multi-link carousel (2–5 images)"
+                />
+                <div class="mt-4 grid gap-4">
+                  <.input field={@post_form[:carousel_link]} label="Carousel end-card URL" />
+                  <.input
+                    field={@post_form[:carousel_cards]}
+                    type="textarea"
+                    rows="4"
+                    label="Carousel cards"
+                    placeholder="https://item.url | Card title | Description (one per image)"
+                  />
+                </div>
+              </div>
+            </div>
+            <aside class="space-y-5">
+              <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 class="font-bold">Destination Pages</h3>
+                <div class="mt-4 space-y-3">
+                  <label
+                    :for={page <- @data[:pages] || []}
+                    class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 hover:border-blue-300"
+                  >
+                    <input
+                      type="checkbox"
+                      name="facebook_post[selected_pages][]"
+                      value={page["id"] || page["pageId"]}
+                      checked={
+                        (page["id"] || page["pageId"]) in List.wrap(
+                          @post_form[:selected_pages].value
+                        )
+                      }
+                      class="size-4 rounded border-slate-300 text-[#0866ff]"
+                    />
+                    <span class="min-w-0"><span class="block truncate text-sm font-bold">{page[
+                      "name"
+                    ] || page["pageName"] || "Facebook Page"}</span><span class="text-xs text-slate-500">{page[
+                      "id"
+                    ] || page["pageId"]}</span></span>
+                  </label>
+                  <p :if={(@data[:pages] || []) == []} class="text-sm text-slate-500">
+                    The account’s default Page will be used.
+                  </p>
+                </div>
+              </div>
+              <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <.input
+                  field={@post_form[:delivery]}
+                  type="select"
+                  label="Delivery"
+                  options={[
+                    {"Publish now", "now"},
+                    {"Schedule", "schedule"},
+                    {"Save Algoie draft", "zernio_draft"},
+                    {"Facebook Publishing Tools draft", "facebook_draft"}
+                  ]}
+                />
+                <div class="mt-4">
+                  <.input
+                    field={@post_form[:scheduled_for]}
+                    type="datetime-local"
+                    label={"Schedule time (#{@store.timezone})"}
+                  />
+                </div>
+                <button
+                  id="facebook-publish-button"
+                  type="submit"
+                  disabled={!@manage_social}
+                  class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0866ff] px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <.icon name="hero-paper-airplane" class="size-4" /> Continue
+                </button>
+              </div>
+            </aside>
+          </.form>
+        <% :posts -> %>
+          <.facebook_header
+            title="Posts & Calendar"
+            description="Review publishing state and manage scheduled, draft, published or failed posts."
+            icon="hero-calendar-days"
+          />
+          <.form
+            for={to_form(@data[:filters] || %{}, as: :filters)}
+            id="facebook-post-filters"
+            phx-submit="filter-posts"
+            class="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row"
+          >
+            <.input
+              field={to_form(@data[:filters] || %{}, as: :filters)[:search]}
+              placeholder="Search posts"
+            />
+            <.input
+              field={to_form(@data[:filters] || %{}, as: :filters)[:status]}
+              type="select"
+              prompt="All statuses"
+              options={[
+                {"Draft", "draft"},
+                {"Scheduled", "scheduled"},
+                {"Published", "published"},
+                {"Failed", "failed"}
+              ]}
+            />
+            <button class="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white">Filter</button>
+          </.form>
+          <div id="facebook-posts" class="space-y-3">
+            <.empty_state
+              :if={(@data[:posts] || []) == []}
+              icon="hero-document-text"
+              title="No Facebook posts found"
+              description="Create your first post or adjust the filters."
+            />
+            <article
+              :for={post <- @data[:posts] || []}
+              id={"facebook-post-#{post["_id"] || post["id"]}"}
+              class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2">
+                    <.status_badge status={post["status"] || post["state"] || "unknown"} /><span class="text-xs text-slate-400">{post[
+                      "scheduledFor"
+                    ] || post["publishedAt"] || post["createdAt"]}</span>
+                  </div><p class="mt-3 line-clamp-3 whitespace-pre-line text-sm leading-6 text-slate-700">
+                    {post["content"] || "Media-only Facebook post"}
+                  </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    :if={(post["status"] || "") == "failed"}
+                    phx-click="post-action"
+                    phx-value-action="retry"
+                    phx-value-id={post["_id"] || post["id"]}
+                    class="rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"
+                  >Retry</button>
+                  <button
+                    :if={(post["status"] || "") == "published"}
+                    phx-click="post-action"
+                    phx-value-action="unpublish"
+                    phx-value-id={post["_id"] || post["id"]}
+                    data-confirm="Unpublish this Facebook post?"
+                    class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700"
+                  >Unpublish</button>
+                  <button
+                    phx-click="post-action"
+                    phx-value-action="delete"
+                    phx-value-id={post["_id"] || post["id"]}
+                    data-confirm="Delete this post from Algoie and Zernio?"
+                    class="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                  >Delete</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        <% :analytics -> %>
+          <.facebook_header
+            title="Analytics"
+            description="Page and post performance for the selected period."
+            icon="hero-chart-bar-square"
+          />
+          <.locked_panel :if={@locked} title="Analytics requires a paid Zernio plan" />
+          <div :if={!@locked} id="facebook-analytics" class="space-y-6">
+            <form
+              method="get"
+              class="flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4"
+            >
+              <input
+                type="date"
+                name="from"
+                value={@data[:from]}
+                class="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              /><input
+                type="date"
+                name="to"
+                value={@data[:to]}
+                class="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              /><button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white">Apply</button>
+            </form>
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <.metric_card
+                label="Impressions"
+                value={metric(@data[:analytics], "impressions")}
+                icon="hero-eye"
+              />
+              <.metric_card
+                label="Engagement"
+                value={metric(@data[:analytics], "engagement")}
+                icon="hero-hand-thumb-up"
+              />
+              <.metric_card
+                label="Clicks"
+                value={metric(@data[:analytics], "clicks")}
+                icon="hero-cursor-arrow-rays"
+              />
+              <.metric_card
+                label="Followers"
+                value={metric(@data[:insights], "followers")}
+                icon="hero-user-group"
+              />
+            </div>
+            <pre class="max-h-[32rem] overflow-auto rounded-3xl bg-slate-950 p-6 text-xs leading-6 text-slate-300">{Jason.encode!(%{analytics: @data[:analytics], page_insights: @data[:insights]}, pretty: true)}</pre>
+          </div>
+        <% :inbox -> %>
+          <.facebook_header
+            title="Inbox"
+            description="Manage Facebook Messenger conversations without leaving Algoie."
+            icon="hero-inbox"
+          />
+          <.locked_panel :if={@locked} title="Inbox requires a paid Zernio plan" />
+          <div
+            :if={!@locked}
+            id="facebook-inbox"
+            class="grid min-h-[38rem] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[20rem_1fr]"
+          >
+            <aside class="border-b border-slate-200 lg:border-b-0 lg:border-r">
+              <div class="border-b border-slate-100 p-4 font-bold">Conversations</div><button
+                :for={conversation <- @data[:conversations] || []}
+                phx-click="select-conversation"
+                phx-value-id={conversation["_id"] || conversation["id"]}
+                class={[
+                  "block w-full border-b border-slate-100 p-4 text-left transition hover:bg-blue-50",
+                  @data[:selected_conversation] == (conversation["_id"] || conversation["id"]) &&
+                    "bg-blue-50"
+                ]}
+              ><span class="block truncate text-sm font-bold">{conversation["participantName"] ||
+                conversation["name"] || "Facebook customer"}</span><span class="mt-1 block truncate text-xs text-slate-500">{conversation[
+                "lastMessage"
+              ] || conversation["preview"]}</span></button><.empty_state
+                :if={(@data[:conversations] || []) == []}
+                icon="hero-inbox"
+                title="No conversations"
+                description="New Facebook messages appear here."
+              />
+            </aside>
+            <section class="flex min-h-[34rem] flex-col">
+              <div class="flex-1 space-y-3 overflow-y-auto p-5">
+                <div
+                  :for={message <- @data[:messages] || []}
+                  class={[
+                    "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
+                    if(message["direction"] in ["outbound", "sent"],
+                      do: "ml-auto bg-[#0866ff] text-white",
+                      else: "bg-slate-100 text-slate-800"
+                    )
+                  ]}
+                >
+                  {message["message"] || message["text"] || "Attachment"}
+                </div><p
+                  :if={is_nil(@data[:selected_conversation])}
+                  class="grid h-full place-items-center text-sm text-slate-400"
+                >
+                  Select a conversation
+                </p>
+              </div><.form
+                :if={@data[:selected_conversation]}
+                for={@message_form}
+                id="facebook-message-form"
+                phx-submit="send-message"
+                class="border-t border-slate-200 p-4"
+              >
+                <.input field={@message_form[:message]} placeholder="Write a reply…" /><div class="mt-3 grid gap-3 sm:grid-cols-2">
+                  <.input
+                    field={@message_form[:attachment_url]}
+                    placeholder="Optional attachment URL"
+                  /><.input
+                    field={@message_form[:tag]}
+                    type="select"
+                    prompt="Standard 24-hour reply"
+                    options={[
+                      {"Confirmed event update", "CONFIRMED_EVENT_UPDATE"},
+                      {"Post-purchase update", "POST_PURCHASE_UPDATE"},
+                      {"Account update", "ACCOUNT_UPDATE"},
+                      {"Human agent", "HUMAN_AGENT"}
+                    ]}
+                  />
+                </div><button class="mt-3 rounded-xl bg-[#0866ff] px-5 py-2.5 text-sm font-bold text-white">Send reply</button>
+              </.form>
+            </section>
+          </div>
+        <% :engagement -> %>
+          <.facebook_header
+            title="Comments & Reviews"
+            description="Moderate Page comments, send public or private replies, and respond to reviews."
+            icon="hero-chat-bubble-left-ellipsis"
+          />
+          <.locked_panel :if={@locked} title="Engagement tools require a paid Zernio plan" />
+          <div :if={!@locked} class="grid gap-6 xl:grid-cols-2">
+            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 class="text-lg font-bold">Comments</h3><div class="mt-5 space-y-4">
+                <.empty_state
+                  :if={(@data[:comments] || []) == []}
+                  icon="hero-chat-bubble-left"
+                  title="No comments"
+                  description="Facebook comments will appear here."
+                /><article
+                  :for={comment <- @data[:comments] || []}
+                  class="rounded-2xl border border-slate-200 p-4"
+                >
+                  <p class="text-sm font-bold">
+                    {comment["authorName"] || comment["from"] || "Facebook user"}
+                  </p><p class="mt-2 text-sm leading-6 text-slate-600">
+                    {comment["message"] || comment["text"]}
+                  </p><div class="mt-3 flex flex-wrap gap-2">
+                    <button
+                      phx-click="engagement-action"
+                      phx-value-action={if(comment["isHidden"], do: "unhide", else: "hide")}
+                      phx-value-post_id={comment["postId"]}
+                      phx-value-id={comment["id"] || comment["commentId"]}
+                      class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold"
+                    >{if(comment["isHidden"], do: "Unhide", else: "Hide")}</button><button
+                      phx-click="engagement-action"
+                      phx-value-action={if(comment["isLiked"], do: "unlike", else: "like")}
+                      phx-value-post_id={comment["postId"]}
+                      phx-value-id={comment["id"] || comment["commentId"]}
+                      class="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700"
+                    >{if(comment["isLiked"], do: "Unlike", else: "Like")}</button><button
+                      phx-click="engagement-action"
+                      phx-value-action="delete"
+                      phx-value-post_id={comment["postId"]}
+                      phx-value-id={comment["id"] || comment["commentId"]}
+                      data-confirm="Delete this Facebook comment?"
+                      class="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700"
+                    >Delete</button>
+                  </div><.form
+                    for={@reply_form}
+                    id={"comment-reply-#{comment["id"] || comment["commentId"]}"}
+                    phx-submit="reply"
+                    class="mt-3"
+                  >
+                    <input type="hidden" name="kind" value="comment" /><input
+                      type="hidden"
+                      name="entity_id"
+                      value={comment["id"] || comment["commentId"]}
+                    /><input type="hidden" name="post_id" value={comment["postId"]} /><div class="flex gap-2">
+                      <.input field={@reply_form[:message]} placeholder="Public reply" /><button class="rounded-xl bg-slate-900 px-4 text-xs font-bold text-white">Reply</button>
+                    </div>
+                  </.form>
+                </article>
+              </div>
+            </section>
+            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 class="text-lg font-bold">Page reviews</h3><div class="mt-5 space-y-4">
+                <.empty_state
+                  :if={(@data[:reviews] || []) == []}
+                  icon="hero-star"
+                  title="No reviews"
+                  description="Facebook Page reviews will appear here."
+                /><article
+                  :for={review <- @data[:reviews] || []}
+                  class="rounded-2xl border border-slate-200 p-4"
+                >
+                  <p class="font-bold">
+                    {review["reviewerName"] || review["authorName"] || "Facebook reviewer"} · {review[
+                      "rating"
+                    ] || "—"}/5
+                  </p><p class="mt-2 text-sm text-slate-600">
+                    {review["message"] || review["text"]}
+                  </p><.form
+                    for={@reply_form}
+                    id={"review-reply-#{review["id"] || review["reviewId"]}"}
+                    phx-submit="reply"
+                    class="mt-3"
+                  >
+                    <input type="hidden" name="kind" value="review" /><input
+                      type="hidden"
+                      name="entity_id"
+                      value={review["id"] || review["reviewId"]}
+                    /><div class="flex gap-2">
+                      <.input field={@reply_form[:message]} placeholder="Reply to review" /><button class="rounded-xl bg-slate-900 px-4 text-xs font-bold text-white">Reply</button>
+                    </div>
+                  </.form>
+                </article>
+              </div>
+            </section>
+          </div>
+        <% :automations -> %>
+          <.facebook_header
+            title="Comment automations"
+            description="Turn matching comments into instant public replies and Messenger follow-ups."
+            icon="hero-bolt"
+          />
+          <div class="grid gap-6 xl:grid-cols-[24rem_1fr]">
+            <.form
+              for={@automation_form}
+              id="facebook-automation-form"
+              phx-submit="save-automation"
+              class="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+            >
+              <h3 class="text-lg font-bold">New automation</h3><.input
+                field={@automation_form[:name]}
+                label="Name"
+                required
+              /><.input
+                field={@automation_form[:keywords]}
+                type="textarea"
+                label="Keywords"
+                placeholder="price, info, interested"
+                required
+              /><.input
+                field={@automation_form[:reply_message]}
+                type="textarea"
+                label="Public reply"
+              /><.input
+                field={@automation_form[:dm_message]}
+                type="textarea"
+                label="Private Messenger reply"
+              /><.input
+                field={@automation_form[:enabled]}
+                type="checkbox"
+                label="Enable immediately"
+              /><button class="w-full rounded-xl bg-[#0866ff] px-4 py-3 text-sm font-bold text-white">Create automation</button>
+            </.form>
+            <div class="space-y-3">
+              <.empty_state
+                :if={(@data[:automations] || []) == []}
+                icon="hero-bolt"
+                title="No automations"
+                description="Create a keyword automation to respond faster."
+              /><article
+                :for={automation <- @data[:automations] || []}
+                class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              >
+                <div class="flex items-start gap-4">
+                  <span class={[
+                    "mt-1 size-2.5 rounded-full",
+                    if(automation["enabled"], do: "bg-emerald-500", else: "bg-slate-300")
+                  ]}></span><div class="min-w-0 flex-1">
+                    <h3 class="font-bold">{automation["name"]}</h3><p class="mt-1 text-xs text-slate-500">
+                      {Enum.join(List.wrap(automation["keywords"]), ", ")}
+                    </p>
+                  </div><button
+                    phx-click="automation-action"
+                    phx-value-action={if(automation["enabled"], do: "disable", else: "enable")}
+                    phx-value-id={automation["_id"] || automation["id"]}
+                    class="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold"
+                  >{if(automation["enabled"], do: "Pause", else: "Enable")}</button><button
+                    phx-click="automation-action"
+                    phx-value-action="delete"
+                    phx-value-id={automation["_id"] || automation["id"]}
+                    data-confirm="Delete this automation?"
+                    class="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                  >Delete</button>
+                </div>
+              </article>
+            </div>
+          </div>
+        <% :settings -> %>
+          <.facebook_header
+            title="Facebook settings"
+            description="Page selection, connection health, Messenger menu and delivery diagnostics."
+            icon="hero-cog-6-tooth"
+          />
+          <div class="grid gap-6 xl:grid-cols-2">
+            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 class="text-lg font-bold">Connected Pages</h3><div class="mt-4 space-y-3">
+                <div
+                  :for={page <- @data[:pages] || []}
+                  class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"
+                >
+                  <div class="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-[#0866ff]">
+                    <.icon name="hero-flag" class="size-5" />
+                  </div><div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-bold">{page["name"] || page["pageName"]}</p><p class="text-xs text-slate-500">
+                      {page["id"] || page["pageId"]}
+                    </p>
+                  </div><button
+                    phx-click="set-default-page"
+                    phx-value-page_id={page["id"] || page["pageId"]}
+                    class="rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"
+                  >Set default</button>
+                </div>
+              </div><.link
+                navigate={~p"/dashboard/social"}
+                class="mt-4 inline-flex text-sm font-bold text-[#0866ff]"
+              >Manage or disconnect account →</.link>
+            </section>
+            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 class="text-lg font-bold">Account health</h3><pre class="mt-4 max-h-72 overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-300">{Jason.encode!(@data[:health] || %{}, pretty: true)}</pre>
+            </section>
+            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 class="text-lg font-bold">Messenger persistent menu</h3><p class="mt-1 text-xs text-slate-500">
+                Up to 3 top-level items and 5 nested items.
+              </p><.form
+                for={@menu_form}
+                id="messenger-menu-form"
+                phx-submit="save-menu"
+                class="mt-4"
+              >
+                <.input field={@menu_form[:json]} type="textarea" rows="12" label="Menu JSON" /><div class="mt-3 flex gap-2">
+                  <button class="rounded-xl bg-[#0866ff] px-4 py-2.5 text-sm font-bold text-white">Save menu</button><button
+                    type="button"
+                    phx-click="delete-menu"
+                    data-confirm="Remove the Messenger menu?"
+                    class="rounded-xl bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700"
+                  >Remove</button>
+                </div>
+              </.form>
+            </section>
+            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 class="text-lg font-bold">Webhook delivery</h3><p class="mt-1 text-xs text-slate-500">
+                Platform-managed signed events keep posts, account health, messages and engagement current.
+              </p><pre class="mt-4 max-h-64 overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-300">{Jason.encode!(@data[:webhooks] || %{}, pretty: true)}</pre>
+            </section>
+          </div>
+      <% end %>
+    <% end %>
+  </.facebook_shell>
+</Layouts.app>

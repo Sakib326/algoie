@@ -13,7 +13,7 @@ defmodule Algoie.SocialPublishing.SocialAccount do
     strategy(:context)
   end
 
-  @platforms ~w(twitter instagram facebook linkedin tiktok youtube pinterest reddit bluesky threads googlebusiness telegram snapchat whatsapp discord)
+  @platforms ~w(facebook instagram whatsapp tiktok)
 
   def platforms, do: @platforms
 
@@ -59,10 +59,14 @@ defmodule Algoie.SocialPublishing.SocialAccount do
       require_atomic?(false)
       accept([:platform, :status, :metadata, :social_profile_id])
     end
+
+    destroy :destroy do
+      primary?(true)
+    end
   end
 
   policies do
-    policy action_type([:read, :create, :update]) do
+    policy action_type([:read, :create, :update, :destroy]) do
       authorize_if(Algoie.Policies.Checks.ActorIsSystem)
       authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "settings"})
       authorize_if({Algoie.Policies.Checks.ActorHasStoreAccess, area: "social"})

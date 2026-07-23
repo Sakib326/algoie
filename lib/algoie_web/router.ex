@@ -33,6 +33,11 @@ defmodule AlgoieWeb.Router do
     plug AlgoieWeb.Plugs.RequireStore
   end
 
+  scope "/api", AlgoieWeb do
+    pipe_through :api
+    post "/webhooks/zernio", ZernioWebhookController, :receive
+  end
+
   # ═══════════════════════════════════════════════════════════
   # PLATFORM ROUTES (apex host only — e.g. algoie.com / localhost)
   # ═══════════════════════════════════════════════════════════
@@ -132,6 +137,14 @@ defmodule AlgoieWeb.Router do
       live "/dashboard/assistant", AiAssistantLive, :index
       live "/dashboard/settings", StoreSettingsLive, :edit
       live "/dashboard/social", SocialPublishingLive, :index
+      live "/dashboard/facebook", FacebookLive, :index
+      live "/dashboard/facebook/publishing", FacebookLive, :publishing
+      live "/dashboard/facebook/posts", FacebookLive, :posts
+      live "/dashboard/facebook/analytics", FacebookLive, :analytics
+      live "/dashboard/facebook/inbox", FacebookLive, :inbox
+      live "/dashboard/facebook/engagement", FacebookLive, :engagement
+      live "/dashboard/facebook/automations", FacebookLive, :automations
+      live "/dashboard/facebook/settings", FacebookLive, :settings
       live "/dashboard/social/callback", SocialPublishingLive, :callback
       live "/dashboard/settings/social/callback", StoreSettingsLive, :social_callback
       live "/dashboard/settings/email", StoreEmailSettingsLive, :edit

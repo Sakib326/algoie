@@ -4,7 +4,7 @@ defmodule AlgoieWeb.StoreSettingsLive do
   alias Algoie.Stores.Store
   alias Algoie.SocialPublishing
 
-  @oauth_platforms ~w(twitter instagram facebook linkedin tiktok youtube pinterest reddit threads googlebusiness snapchat whatsapp discord)
+  @oauth_platforms ~w(facebook instagram whatsapp tiktok)
 
   @impl true
   def mount(_params, _session, socket) do
@@ -35,6 +35,15 @@ defmodule AlgoieWeb.StoreSettingsLive do
   end
 
   @impl true
+  def handle_params(
+        %{"platform" => "facebook", "step" => "select_page"} = params,
+        _uri,
+        %{assigns: %{live_action: :social_callback}} = socket
+      ) do
+    callback_path = "/dashboard/social/callback?" <> URI.encode_query(params)
+    {:noreply, redirect(socket, to: callback_path)}
+  end
+
   def handle_params(_params, _uri, %{assigns: %{live_action: :social_callback}} = socket) do
     case socket.assigns.social_profile do
       nil ->
@@ -133,7 +142,12 @@ defmodule AlgoieWeb.StoreSettingsLive do
         assign(socket, social_profile: nil, social_accounts: [])
 
       {:ok, profile} ->
-        accounts = Ash.load!(profile, :accounts, AlgoieWeb.Scope.opts(socket)).accounts
+        accounts =
+          profile
+          |> Ash.load!(:accounts, AlgoieWeb.Scope.opts(socket))
+          |> Map.fetch!(:accounts)
+          |> Enum.filter(&(Atom.to_string(&1.platform) in @oauth_platforms))
+
         assign(socket, social_profile: profile, social_accounts: accounts)
 
       _ ->

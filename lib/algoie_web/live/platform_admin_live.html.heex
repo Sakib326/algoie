@@ -99,7 +99,7 @@
             for={@social_publishing_form}
             id="social-publishing-settings-form"
             phx-submit="save-social-publishing"
-            class="mt-6 grid gap-4 md:grid-cols-[16rem_minmax(0,1fr)_auto] md:items-end"
+            class="mt-6 grid gap-4 md:grid-cols-2"
           >
             <.input
               field={@social_publishing_form[:active_adapter]}
@@ -114,10 +114,31 @@
               placeholder={SocialPublishingSetting.masked_key(@social_publishing_settings)}
               autocomplete="new-password"
             />
-            <.ui_button id="save-social-publishing-settings" type="submit" variant="primary"><.icon
-              name="hero-check"
-              class="size-4"
-            /> Save provider</.ui_button>
+            <.input field={@social_publishing_form[:webhook_id]} label="Zernio webhook ID" />
+            <.input
+              field={@social_publishing_form[:webhook_secret]}
+              type="password"
+              label="Zernio webhook signing secret"
+              placeholder={
+                if(@social_publishing_settings.webhook_secret_ciphertext,
+                  do: "•••• configured",
+                  else: "Not configured"
+                )
+              }
+              autocomplete="new-password"
+            />
+            <div class="md:col-span-2 rounded-xl bg-base-200 px-4 py-3 text-xs text-base-content/60">
+              Webhook callback:
+              <span class="font-mono font-semibold">{AlgoieWeb.PublicURL.apex(
+                "/api/webhooks/zernio"
+              )}</span>
+            </div>
+            <div class="md:col-span-2 flex justify-end">
+              <.ui_button id="save-social-publishing-settings" type="submit" variant="primary"><.icon
+                name="hero-check"
+                class="size-4"
+              /> Save provider</.ui_button>
+            </div>
           </.form>
         </section>
         <%= if @section == :overview do %>

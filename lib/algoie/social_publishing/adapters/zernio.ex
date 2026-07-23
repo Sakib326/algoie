@@ -4,7 +4,7 @@ defmodule Algoie.SocialPublishing.Adapters.Zernio do
   alias Algoie.SocialPublishingSetting
 
   @base_url "https://zernio.com/api/v1"
-  @oauth_platforms ~w(twitter instagram facebook linkedin tiktok youtube pinterest reddit threads googlebusiness snapchat whatsapp discord)
+  @oauth_platforms ~w(facebook instagram whatsapp tiktok)
 
   def supported_platforms, do: @oauth_platforms
 
@@ -35,11 +35,11 @@ defmodule Algoie.SocialPublishing.Adapters.Zernio do
   @impl true
   def connect_url(profile_id, platform, redirect_url)
       when platform in @oauth_platforms do
+    params = [profileId: profile_id, redirect_url: redirect_url]
+    params = if platform == "facebook", do: Keyword.put(params, :headless, true), else: params
+
     with {:ok, %{"authUrl" => url}} <-
-           request(:get, "/connect/#{platform}", nil,
-             profileId: profile_id,
-             redirect_url: redirect_url
-           ) do
+           request(:get, "/connect/#{platform}", nil, params) do
       {:ok, url}
     else
       {:ok, _} -> {:error, :invalid_provider_response}
@@ -61,13 +61,50 @@ defmodule Algoie.SocialPublishing.Adapters.Zernio do
     end
   end
 
-  defp request(method, path, body, params \\ []) do
+  @impl true
+  def delete_account(account_id) when is_binary(account_id) do
+    case request(:delete, "/accounts/#{URI.encode(account_id)}", nil) do
+      {:ok, _response} -> :ok
+      {:error, {:provider_error, 404, _response}} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
+  def create_post(payload) when is_map(payload), do: request(:post, "/posts", payload)
+
+  @impl true
+  def list_facebook_pages(profile_id, temp_token) do
+    case request(:get, "/connect/facebook/select-page", nil,
+           profileId: profile_id,
+           tempToken: temp_token
+         ) do
+      {:ok, %{"pages" => pages}} when is_list(pages) -> {:ok, pages}
+      {:ok, _} -> {:error, :invalid_provider_response}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
+  def select_facebook_page(profile_id, page_id, temp_token, user_profile, redirect_url) do
+    body = %{
+      profileId: profile_id,
+      pageId: page_id,
+      tempToken: temp_token,
+      userProfile: user_profile,
+      redirect_url: redirect_url
+    }
+
+    request(:post, "/connect/facebook/select-page", body)
+  end
+
+  def request(method, path, body, params \\ [], extra_headers \\ []) do
     settings = SocialPublishingSetting.get()
 
     with api_key when is_binary(api_key) <- SocialPublishingSetting.api_key(settings),
          false <- api_key == "" do
       opts = [
-        headers: [{"authorization", "Bearer #{api_key}"}],
+        headers: [{"authorization", "Bearer #{api_key}"} | extra_headers],
         params: params,
         receive_timeout: 15_000
       ]

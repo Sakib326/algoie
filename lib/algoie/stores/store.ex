@@ -26,6 +26,7 @@ defmodule Algoie.Stores.Store do
     attribute(:city, :string)
     attribute(:country, :string, allow_nil?: false, default: "Bangladesh")
     attribute(:currency, :string, allow_nil?: false, default: "BDT")
+    attribute(:timezone, :string, allow_nil?: false, default: "Asia/Dhaka")
     attribute(:logo_url, :string)
     attribute(:invoice_prefix, :string, allow_nil?: false, default: "INV")
 
@@ -67,6 +68,7 @@ defmodule Algoie.Stores.Store do
         :city,
         :country,
         :currency,
+        :timezone,
         :logo_url,
         :invoice_prefix
       ])
@@ -95,6 +97,7 @@ defmodule Algoie.Stores.Store do
         :city,
         :country,
         :currency,
+        :timezone,
         :logo_url,
         :invoice_prefix
       ])

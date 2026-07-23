@@ -3,7 +3,7 @@ defmodule Algoie.Repo.TenantMigrations.AddStoreStaffPermissions do
 
   def change do
     alter table(:store_staff, prefix: prefix()) do
-      add :permissions, {:array, :text}
+      add_if_not_exists :permissions, {:array, :text}
     end
   end
 end

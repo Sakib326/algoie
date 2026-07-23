@@ -2,7 +2,7 @@ defmodule Algoie.SocialPublishing do
   @moduledoc "Provider-independent social publishing entry point."
 
   alias Algoie.SocialPublishingSetting
-  alias Algoie.SocialPublishing.{SocialAccount, SocialProfile}
+  alias Algoie.SocialPublishing.{AccountRegistry, SocialAccount, SocialProfile}
 
   require Ash.Query
 
@@ -19,6 +19,29 @@ defmodule Algoie.SocialPublishing do
     do: adapter().connect_url(profile_id, platform, redirect_url)
 
   def list_accounts(profile_id), do: adapter().list_accounts(profile_id)
+
+  def delete_account(%SocialAccount{} = account, opts) do
+    with :ok <- adapter().delete_account(account.provider_account_id),
+         :ok <- Ash.destroy(account, opts) do
+      AccountRegistry.delete(account.provider_account_id)
+      :ok
+    end
+  end
+
+  def create_post(payload), do: adapter().create_post(payload)
+
+  def list_facebook_pages(profile_id, temp_token),
+    do: adapter().list_facebook_pages(profile_id, temp_token)
+
+  def select_facebook_page(profile_id, page_id, temp_token, user_profile, redirect_url),
+    do:
+      adapter().select_facebook_page(
+        profile_id,
+        page_id,
+        temp_token,
+        user_profile,
+        redirect_url
+      )
 
   def get_or_create_profile(store, opts) do
     case profile_for_store(store.id, opts) do
@@ -37,9 +60,13 @@ defmodule Algoie.SocialPublishing do
   def sync_accounts(%SocialProfile{} = profile, opts) do
     with {:ok, accounts} <- list_accounts(profile.provider_profile_id) do
       Enum.reduce_while(accounts, {:ok, []}, fn account, {:ok, synced} ->
-        case upsert_account(profile, account, opts) do
-          {:ok, record} -> {:cont, {:ok, [record | synced]}}
-          {:error, reason} -> {:halt, {:error, reason}}
+        if account["platform"] in SocialAccount.platforms() do
+          case upsert_account(profile, account, opts) do
+            {:ok, record} -> {:cont, {:ok, [record | synced]}}
+            {:error, reason} -> {:halt, {:error, reason}}
+          end
+        else
+          {:cont, {:ok, synced}}
         end
       end)
     end
@@ -68,9 +95,19 @@ defmodule Algoie.SocialPublishing do
         metadata: raw
       }
 
-      case existing do
-        nil -> Ash.create(SocialAccount, attrs, opts)
-        account -> Ash.update(account, Map.drop(attrs, [:provider_account_id]), opts)
+      result =
+        case existing do
+          nil -> Ash.create(SocialAccount, attrs, opts)
+          account -> Ash.update(account, Map.drop(attrs, [:provider_account_id]), opts)
+        end
+
+      case result do
+        {:ok, account} ->
+          register_account(account, profile.store_id, opts)
+          {:ok, account}
+
+        error ->
+          error
       end
     end
   end
@@ -89,5 +126,19 @@ defmodule Algoie.SocialPublishing do
     if platform in platforms,
       do: {:ok, String.to_existing_atom(platform)},
       else: {:error, :unsupported_platform}
+  end
+
+  defp register_account(account, store_id, opts) do
+    tenant = Keyword.get(opts, :tenant)
+
+    if is_binary(tenant) do
+      AccountRegistry.upsert(%{
+        provider_account_id: account.provider_account_id,
+        tenant: tenant,
+        store_id: store_id,
+        local_account_id: account.id,
+        platform: Atom.to_string(account.platform)
+      })
+    end
   end
 end

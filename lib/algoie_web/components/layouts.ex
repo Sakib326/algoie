@@ -280,6 +280,13 @@ defmodule AlgoieWeb.Layouts do
               active={@active == :campaigns}
             />
             <.nav_item
+              :if={allowed?(@store_permissions, "social.view")}
+              navigate="/dashboard/facebook"
+              icon="hero-chat-bubble-bottom-center-text"
+              label="Facebook"
+              active={@active == :facebook}
+            />
+            <.nav_item
               :if={allowed?(@store_permissions, "ai.use")}
               navigate="/dashboard/assistant"
               icon="hero-sparkles"

@@ -10,6 +10,9 @@ defmodule Algoie.SocialPublishingSetting do
     field :active_adapter, :string, default: "zernio"
     field :api_key_ciphertext, :string
     field :api_key, :string, virtual: true, redact: true
+    field :webhook_id, :string
+    field :webhook_secret_ciphertext, :string
+    field :webhook_secret, :string, virtual: true, redact: true
     timestamps(type: :utc_datetime_usec)
   end
 
@@ -18,9 +21,10 @@ defmodule Algoie.SocialPublishingSetting do
 
   def changeset(settings, attrs) do
     settings
-    |> cast(attrs, [:active_adapter, :api_key])
+    |> cast(attrs, [:active_adapter, :api_key, :webhook_id, :webhook_secret])
     |> validate_inclusion(:active_adapter, ["zernio"])
     |> encrypt_key_change()
+    |> encrypt_webhook_secret_change()
   end
 
   def save(attrs) do
@@ -33,6 +37,11 @@ defmodule Algoie.SocialPublishingSetting do
   def api_key(%__MODULE__{api_key_ciphertext: value}), do: decrypt(value)
   def configured?(settings), do: settings.api_key_ciphertext not in [nil, ""]
 
+  def webhook_secret(%__MODULE__{webhook_secret_ciphertext: value}) when value in [nil, ""],
+    do: nil
+
+  def webhook_secret(%__MODULE__{webhook_secret_ciphertext: value}), do: decrypt(value)
+
   def masked_key(settings),
     do: if(configured?(settings), do: "•••• configured", else: "Not configured")
 
@@ -40,6 +49,13 @@ defmodule Algoie.SocialPublishingSetting do
     case get_change(changeset, :api_key) do
       value when value in [nil, ""] -> changeset
       value -> put_change(changeset, :api_key_ciphertext, encrypt(value))
+    end
+  end
+
+  defp encrypt_webhook_secret_change(changeset) do
+    case get_change(changeset, :webhook_secret) do
+      value when value in [nil, ""] -> changeset
+      value -> put_change(changeset, :webhook_secret_ciphertext, encrypt(value))
     end
   end
 

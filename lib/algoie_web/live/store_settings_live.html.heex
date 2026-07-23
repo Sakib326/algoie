@@ -58,6 +58,15 @@
                 maxlength="12"
                 required
               /><.input field={@form[:currency]} label="Currency" value="BDT" disabled />
+              <.input
+                field={@form[:timezone]}
+                type="select"
+                label="Store timezone"
+                options={[
+                  {"Dhaka (UTC+06:00)", "Asia/Dhaka"},
+                  {"UTC", "Etc/UTC"}
+                ]}
+              />
             </div>
           </.panel>
           <.panel class="p-6">

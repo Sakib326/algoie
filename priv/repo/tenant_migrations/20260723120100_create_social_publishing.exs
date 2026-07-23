@@ -1,7 +1,7 @@
 defmodule Algoie.Repo.TenantMigrations.CreateSocialPublishing do
   use Ecto.Migration
 
-  @platforms ~w(twitter instagram facebook linkedin tiktok youtube pinterest reddit bluesky threads googlebusiness telegram snapchat whatsapp discord)
+  @platforms ~w(facebook instagram whatsapp tiktok)
 
   def up do
     create_if_not_exists table(:social_profiles, primary_key: false, prefix: prefix()) do
@@ -15,12 +15,11 @@ defmodule Algoie.Repo.TenantMigrations.CreateSocialPublishing do
       timestamps(type: :utc_datetime_usec)
     end
 
-    create unique_index(:social_profiles, [:store_id], prefix: prefix(), if_not_exists: true)
+    create_if_not_exists unique_index(:social_profiles, [:store_id], prefix: prefix())
 
-    create unique_index(:social_profiles, [:provider_profile_id],
-             prefix: prefix(),
-             if_not_exists: true
-           )
+    create_if_not_exists unique_index(:social_profiles, [:provider_profile_id],
+                           prefix: prefix()
+                         )
 
     create_if_not_exists table(:social_accounts, primary_key: false, prefix: prefix()) do
       add :id, :uuid, primary_key: true, default: fragment("gen_random_uuid()")
@@ -36,12 +35,11 @@ defmodule Algoie.Repo.TenantMigrations.CreateSocialPublishing do
       timestamps(type: :utc_datetime_usec)
     end
 
-    create unique_index(:social_accounts, [:provider_account_id],
-             prefix: prefix(),
-             if_not_exists: true
-           )
+    create_if_not_exists unique_index(:social_accounts, [:provider_account_id],
+                           prefix: prefix()
+                         )
 
-    create index(:social_accounts, [:social_profile_id], prefix: prefix(), if_not_exists: true)
+    create_if_not_exists index(:social_accounts, [:social_profile_id], prefix: prefix())
 
     create constraint(:social_accounts, :social_accounts_platform_check,
              check: "platform IN (#{Enum.map_join(@platforms, ",", &"'#{&1}'")})",

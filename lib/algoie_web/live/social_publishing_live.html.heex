@@ -8,7 +8,65 @@
   page_title={@page_title}
   active={:social}
 >
-  <div class="mx-auto max-w-6xl space-y-8">
+  <div :if={@facebook_connection} class="mx-auto max-w-3xl space-y-6">
+    <div class="overflow-hidden rounded-3xl border border-base-300 bg-base-100 shadow-xl shadow-primary/5">
+      <div class="border-b border-base-300 bg-gradient-to-br from-primary/10 via-base-100 to-base-100 p-7 sm:p-9">
+        <div class="flex items-start gap-4">
+          <span class="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-content shadow-lg shadow-primary/20">
+            <.icon name="hero-flag" class="size-6" />
+          </span>
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+              Facebook connection
+            </p>
+            <h1 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Choose a Page</h1>
+            <p class="mt-2 text-sm leading-6 text-base-content/60">
+              Select the Facebook Page you want to publish to from Algoie.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div id="facebook-page-picker" class="space-y-3 p-5 sm:p-7">
+        <button
+          :for={page <- @facebook_pages}
+          id={"select-facebook-page-#{page["id"]}"}
+          type="button"
+          phx-click="select-facebook-page"
+          phx-value-page-id={page["id"]}
+          class="group flex w-full items-center gap-4 rounded-2xl border border-base-300 p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/5 disabled:pointer-events-none disabled:opacity-60"
+        >
+          <span class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-content">
+            <.icon name="hero-building-storefront" class="size-5" />
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate font-semibold">{page["name"] || "Facebook Page"}</span>
+            <span class="mt-0.5 block text-xs text-base-content/45">Page ID: {page["id"]}</span>
+          </span>
+          <.icon
+            name="hero-chevron-right"
+            class="size-5 text-base-content/30 transition group-hover:translate-x-1 group-hover:text-primary"
+          />
+        </button>
+        <div
+          :if={@facebook_pages == []}
+          class="rounded-2xl border border-dashed border-base-300 p-10 text-center"
+        >
+          <.icon name="hero-exclamation-circle" class="mx-auto size-8 text-base-content/30" />
+          <p class="mt-3 font-semibold">No Facebook Pages found</p>
+          <p class="mt-1 text-sm text-base-content/50">
+            Make sure your Facebook account manages at least one Page.
+          </p>
+        </div>
+      </div>
+    </div>
+    <.link
+      navigate={~p"/dashboard/social"}
+      class="inline-flex items-center gap-2 text-sm font-semibold text-base-content/55 transition hover:text-primary"
+    >
+      <.icon name="hero-arrow-left" class="size-4" /> Cancel and return
+    </.link>
+  </div>
+  <div :if={is_nil(@facebook_connection)} class="mx-auto max-w-6xl space-y-8">
     <div class="relative overflow-hidden rounded-3xl border border-base-300 bg-gradient-to-br from-primary/10 via-base-100 to-base-100 p-7 shadow-sm sm:p-10">
       <div class="relative z-10 max-w-2xl">
         <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary">Social workspace</p><h1 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -46,7 +104,7 @@
         <div
           :for={account <- @social_accounts}
           id={"social-account-#{account.id}"}
-          class="rounded-2xl border border-base-300 p-4"
+          class="rounded-2xl border border-base-300 p-4 transition hover:border-primary/20 hover:shadow-sm"
         >
           <div class="flex items-center gap-3">
             <span class="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><.icon
@@ -56,7 +114,15 @@
               <p class="font-semibold capitalize">{account.platform}</p><p class="text-xs text-success">
                 Connected
               </p>
-            </div>
+            </div><button
+              id={"delete-social-account-#{account.id}"}
+              type="button"
+              phx-click="delete-account"
+              phx-value-id={account.id}
+              data-confirm={"Remove this #{account.platform} account? It will also be disconnected from the social provider."}
+              class="ml-auto inline-flex size-9 items-center justify-center rounded-xl text-base-content/35 transition hover:bg-error/10 hover:text-error"
+              aria-label={"Remove #{account.platform} account"}
+            ><.icon name="hero-trash" class="size-4" /></button>
           </div>
         </div>
       </div>
@@ -64,9 +130,12 @@
     <section class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-sm sm:p-8">
       <h2 class="text-xl font-bold">Add a channel</h2><p class="mt-1 text-sm text-base-content/50">
         The provider handles authorization and any required page or organization selection.
-      </p><div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      </p><div
+        :if={@available_platforms != []}
+        class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+      >
         <button
-          :for={platform <- @platforms}
+          :for={platform <- @available_platforms}
           id={"connect-#{platform}"}
           type="button"
           phx-click="connect"
@@ -76,9 +145,14 @@
           name="hero-plus-circle"
           class="size-5 text-primary transition group-hover:rotate-90"
         /><p class="mt-3 text-sm font-semibold capitalize">{platform}</p></button>
-      </div><p class="mt-5 text-xs text-base-content/45">
-        Bluesky and Telegram use non-OAuth credential flows and will be added separately.
-      </p>
+      </div>
+      <div
+        :if={@available_platforms == []}
+        class="mt-6 flex items-center gap-3 rounded-2xl border border-success/20 bg-success/5 p-4 text-sm text-success"
+      >
+        <.icon name="hero-check-circle" class="size-5 shrink-0" />
+        All available channels are connected.
+      </div>
     </section>
   </div>
 </Layouts.dashboard>
