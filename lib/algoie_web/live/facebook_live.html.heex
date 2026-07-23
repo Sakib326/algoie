@@ -1,9 +1,18 @@
 <Layouts.app flash={@flash} current_scope={@current_scope} shell="bare">
   <.facebook_shell
-    active={if(@live_action == :index, do: :overview, else: @live_action)}
+    active={
+      cond do
+        @live_action == :index -> :overview
+        @live_action == :inbox && @inbox_tab == "messages" -> :messages
+        @live_action == :inbox && @inbox_tab == "comments" -> :comments
+        true -> @live_action
+      end
+    }
     account={@facebook_account}
     store_name={@store_name}
     current_user={@current_user}
+    collapsed={@sidebar_collapsed}
+    page={active_page(@data, @session_page_id, @facebook_account)}
   >
     <%= if is_nil(@facebook_account) do %>
       <.facebook_header
@@ -13,6 +22,26 @@
       />
       <.facebook_disconnected />
     <% else %>
+      <div
+        :if={@loading}
+        id="facebook-loading-bar"
+        class="fixed inset-x-0 top-0 z-50 h-1 overflow-hidden bg-blue-100"
+      >
+        <div class="h-full w-1/3 animate-pulse rounded-full bg-[#0866ff]"></div>
+      </div>
+      <% active_page = active_page(@data, @session_page_id, @facebook_account) %>
+      <div
+        :if={account_expired?(@facebook_account)}
+        id="facebook-token-expired"
+        class="mb-5 flex flex-col gap-3 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 sm:flex-row sm:items-center"
+      >
+        <.icon name="hero-exclamation-triangle" class="size-5 shrink-0 text-red-600" />
+        <p class="font-semibold">Facebook token expired — reconnect to keep posting.</p>
+        <.link
+          navigate={~p"/dashboard/social"}
+          class="rounded-md bg-red-600 px-3.5 py-2 text-center text-xs font-bold text-white sm:ml-auto"
+        >Reconnect</.link>
+      </div>
       <%= case @live_action do %>
         <% :index -> %>
           <.facebook_header
@@ -88,32 +117,87 @@
           </section>
         <% :publishing -> %>
           <.facebook_header
-            title="Create content"
-            description="Create feed posts, Stories, Reels, carousels and drafts for one or several Pages."
+            title="Post Composer"
+            description="Compose once, preview the Facebook rendering, and publish to one or more Pages."
             icon="hero-pencil-square"
           />
+          <div
+            :if={@provider_error}
+            id="facebook-composer-error"
+            class="mb-4 flex items-start gap-3 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          >
+            <.icon name="hero-exclamation-circle" class="mt-0.5 size-5 shrink-0 text-red-600" /><div>
+              <p class="font-bold">This post is not ready</p><p class="mt-0.5">
+                {@provider_error}
+              </p>
+            </div>
+          </div>
           <.form
             for={@post_form}
             id="facebook-publishing-form"
             phx-change="validate-post"
             phx-submit="publish"
-            class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]"
+            class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_25rem]"
           >
             <div class="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-              <.input
-                field={@post_form[:content]}
-                type="textarea"
-                label="Post text"
-                rows="7"
-                placeholder="What do you want your audience to know?"
-              />
-              <div class="grid gap-4 sm:grid-cols-2">
+              <fieldset id="facebook-content-modes">
+                <legend class="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Content type
+                </legend>
+                <div class="grid grid-cols-4 rounded-xl bg-slate-100 p-1">
+                  <label
+                    :for={
+                      {label, value} <- [
+                        {"Feed", "feed"},
+                        {"Story", "story"},
+                        {"Reel", "reel"},
+                        {"Draft", "draft"}
+                      ]
+                    }
+                    class={[
+                      "cursor-pointer rounded-lg px-2 py-2.5 text-center text-xs font-bold transition",
+                      post_mode(@post_form) == value && "bg-white text-[#0866ff] shadow-sm",
+                      post_mode(@post_form) != value && "text-slate-500 hover:text-slate-800"
+                    ]}
+                  >
+                    <input
+                      type="radio"
+                      class="sr-only"
+                      name="facebook_post[content_type]"
+                      value={value}
+                      checked={post_mode(@post_form) == value}
+                    />{label}
+                  </label>
+                </div>
+              </fieldset>
+              <div
+                :if={post_mode(@post_form) == "story"}
+                class="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm font-semibold text-blue-800"
+              >
+                Stories don't display captions.
+              </div>
+              <div :if={post_mode(@post_form) != "story"} class="space-y-2">
                 <.input
-                  field={@post_form[:content_type]}
-                  type="select"
-                  label="Format"
-                  options={[{"Feed post", "feed"}, {"Story", "story"}, {"Reel", "reel"}]}
+                  field={@post_form[:content]}
+                  type="textarea"
+                  label={if(post_mode(@post_form) == "reel", do: "Caption", else: "Post text")}
+                  rows="7"
+                  maxlength="63206"
+                  placeholder="What do you want your audience to know?"
                 />
+                <div class="flex justify-between text-xs">
+                  <span :if={text_length(@post_form) > 480} class="font-semibold text-amber-700">— feed cutoff, rest hidden behind “See more” —</span><span class="ml-auto tabular-nums text-slate-400">{text_length(
+                    @post_form
+                  )}/63,206</span>
+                </div>
+                <.input
+                  :if={post_mode(@post_form) == "reel"}
+                  field={@post_form[:title]}
+                  label="Reel title"
+                  maxlength="255"
+                />
+              </div>
+              <div>
                 <.input
                   field={@post_form[:media_type]}
                   type="select"
@@ -132,8 +216,18 @@
                 module={AlgoieWeb.Components.MediaManagerComponent}
                 id="facebook-media"
                 field={@post_form[:library_urls]}
-                multiple={true}
-                max_selected={10}
+                multiple={
+                  post_mode(@post_form) in ["feed", "draft"] &&
+                    @post_form[:media_type].value == "image"
+                }
+                max_selected={
+                  if(
+                    post_mode(@post_form) in ["feed", "draft"] &&
+                      @post_form[:media_type].value == "image",
+                    do: 10,
+                    else: 1
+                  )
+                }
                 label="Media library"
                 helper="Upload images or select existing store media."
                 store_id={@store_id}
@@ -141,27 +235,68 @@
                 current_user={@current_user}
               />
               <p class="-mt-3 text-xs text-slate-500">
-                Images: up to 10, under 4 MB each. Video: one MP4/MOV. You can copy URLs from the <.link
+                {if(post_mode(@post_form) == "reel",
+                  do: "One vertical video, 3–60 seconds. Reels perform best at 9:16.",
+                  else:
+                    if(post_mode(@post_form) == "story",
+                      do: "One image or video. Use 1080 × 1920 for the safe area.",
+                      else: "Up to 10 images or one video, never both. Images 4 MB · video 4 GB."
+                    )
+                )} You can copy URLs from the <.link
                   navigate={~p"/dashboard/media"}
                   class="font-bold text-[#0866ff]"
                 >media library</.link>.
               </p>
-              <div class="grid gap-4 sm:grid-cols-2">
-                <.input field={@post_form[:title]} label="Reel title" />
-                <.input field={@post_form[:first_comment]} label="First comment" />
+              <div :if={post_mode(@post_form) != "story"}>
+                <.input
+                  field={@post_form[:first_comment]}
+                  label="Auto-post as first comment"
+                  disabled={post_mode(@post_form) == "draft"}
+                />
+                <p :if={post_mode(@post_form) == "draft"} class="mt-1 text-xs text-slate-500">
+                  Not posted on drafts
+                </p>
               </div>
-              <.input
-                field={@post_form[:countries]}
-                label="Country visibility"
-                placeholder="US, GB, BD (optional)"
-              />
-              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <div
+                :if={post_mode(@post_form) != "story"}
+                class="rounded-2xl border border-slate-200 p-4"
+              >
+                <.input
+                  field={@post_form[:geo_enabled]}
+                  type="checkbox"
+                  label="Restrict visibility by country"
+                />
+                <div :if={@post_form[:geo_enabled].value in [true, "true", "on"]} class="mt-3">
+                  <.input
+                    field={@post_form[:countries]}
+                    label="Countries"
+                    placeholder="US, GB, BD — maximum 25"
+                  />
+                </div>
+              </div>
+              <div
+                :if={post_mode(@post_form) in ["feed", "draft"]}
+                class="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+              >
                 <.input
                   field={@post_form[:carousel]}
                   type="checkbox"
                   label="Create multi-link carousel (2–5 images)"
+                  disabled={@post_form[:media_type].value == "video"}
                 />
-                <div class="mt-4 grid gap-4">
+                <p
+                  :if={@post_form[:media_type].value == "video"}
+                  class="mt-2 text-xs text-slate-500"
+                >
+                  Remove the video or switch to Images to create a carousel.
+                </p>
+                <div
+                  :if={
+                    @post_form[:carousel].value in [true, "true", "on"] &&
+                      @post_form[:media_type].value == "image"
+                  }
+                  class="mt-4 grid gap-4"
+                >
                   <.input field={@post_form[:carousel_link]} label="Carousel end-card URL" />
                   <.input
                     field={@post_form[:carousel_cards]}
@@ -170,11 +305,74 @@
                     label="Carousel cards"
                     placeholder="https://item.url | Card title | Description (one per image)"
                   />
+                  <p class="text-xs leading-5 text-slate-500">
+                    Add one row per image in the same order. Titles show about 35 characters and descriptions about 30; Facebook stores up to 255 characters for each.
+                  </p>
                 </div>
               </div>
             </div>
-            <aside class="space-y-5">
-              <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <aside class="space-y-5 xl:sticky xl:top-28">
+              <section
+                id="facebook-live-preview"
+                class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+              >
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+                  <div>
+                    <p class="text-sm font-bold">Live preview</p><p class="text-[11px] text-slate-400">
+                      What people will see
+                    </p>
+                  </div><span class="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase text-blue-700">{post_mode(
+                    @post_form
+                  )}</span>
+                </div>
+                <div class="p-5">
+                  <div class="flex items-center gap-3">
+                    <span class="flex size-10 items-center justify-center rounded-full bg-blue-100 text-[#0866ff]"><.icon
+                      name="hero-flag"
+                      class="size-5"
+                    /></span><div>
+                      <p class="text-sm font-bold">
+                        {if(active_page, do: page_name(active_page), else: "Your Page")}
+                      </p><p class="text-[11px] text-slate-400">Just now · Public</p>
+                    </div>
+                  </div>
+                  <div :if={post_mode(@post_form) != "story"} class="mt-3 text-sm leading-5">
+                    <p class="whitespace-pre-line">
+                      {@post_form[:content].value |> to_string() |> String.slice(0, 480)}
+                    </p><span
+                      :if={text_length(@post_form) > 480}
+                      class="font-semibold text-slate-500"
+                    >See more</span>
+                  </div>
+                  <div class={[
+                    "mt-4 grid min-h-52 place-items-center bg-slate-100 text-center text-slate-400",
+                    post_mode(@post_form) in ["story", "reel"] &&
+                      "mx-auto aspect-[9/16] max-h-80 rounded-xl",
+                    post_mode(@post_form) in ["feed", "draft"] && "-mx-5"
+                  ]}>
+                    <div>
+                      <.icon
+                        name={
+                          if(@post_form[:media_type].value == "video",
+                            do: "hero-play-circle",
+                            else: "hero-photo"
+                          )
+                        }
+                        class="mx-auto size-9"
+                      /><p class="mt-2 text-xs">
+                        {length(selected_media(@post_form))} media selected
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex justify-around border-t border-slate-100 pt-3 text-xs font-semibold text-slate-500">
+                    <span>Like</span><span>Comment</span><span>Share</span>
+                  </div>
+                </div>
+              </section>
+              <div
+                :if={length(@data[:pages] || []) > 1}
+                class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+              >
                 <h3 class="font-bold">Destination Pages</h3>
                 <div class="mt-4 space-y-3">
                   <label
@@ -204,18 +402,24 @@
                 </div>
               </div>
               <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <p
+                  :if={post_mode(@post_form) == "draft"}
+                  class="mb-3 rounded-md bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600"
+                >
+                  Draft mode saves this post without publishing.
+                </p>
                 <.input
                   field={@post_form[:delivery]}
                   type="select"
                   label="Delivery"
+                  disabled={post_mode(@post_form) == "draft"}
                   options={[
                     {"Publish now", "now"},
                     {"Schedule", "schedule"},
-                    {"Save Algoie draft", "zernio_draft"},
-                    {"Facebook Publishing Tools draft", "facebook_draft"}
+                    {"Save as draft", "zernio_draft"}
                   ]}
                 />
-                <div class="mt-4">
+                <div :if={@post_form[:delivery].value == "schedule"} class="mt-4">
                   <.input
                     field={@post_form[:scheduled_for]}
                     type="datetime-local"
@@ -225,11 +429,29 @@
                 <button
                   id="facebook-publish-button"
                   type="submit"
-                  disabled={!@manage_social}
+                  disabled={
+                    !@manage_social || account_expired?(@facebook_account) ||
+                      (post_mode(@post_form) == "story" &&
+                         @post_form[:delivery].value == "zernio_draft")
+                  }
                   class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0866ff] px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <.icon name="hero-paper-airplane" class="size-4" /> Continue
+                  <.icon name="hero-paper-airplane" class="size-4" /> {if(
+                    @post_form[:delivery].value == "schedule",
+                    do: "Schedule",
+                    else:
+                      if(@post_form[:delivery].value == "zernio_draft",
+                        do: "Save draft",
+                        else: "Publish now"
+                      )
+                  )}
                 </button>
+                <p
+                  :if={post_mode(@post_form) == "story"}
+                  class="mt-2 text-center text-xs text-slate-400"
+                >
+                  Drafts aren't supported for Stories
+                </p>
               </div>
             </aside>
           </.form>
@@ -243,11 +465,18 @@
             for={to_form(@data[:filters] || %{}, as: :filters)}
             id="facebook-post-filters"
             phx-submit="filter-posts"
-            class="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row"
+            class="mb-4 flex flex-col gap-2 border-y border-slate-200 py-3 lg:flex-row lg:items-center"
           >
+            <div class="min-w-0 flex-1">
+              <.input
+                field={to_form(@data[:filters] || %{}, as: :filters)[:search]}
+                placeholder="Search post content"
+              />
+            </div>
             <.input
-              field={to_form(@data[:filters] || %{}, as: :filters)[:search]}
-              placeholder="Search posts"
+              field={to_form(@data[:filters] || %{}, as: :filters)[:source]}
+              type="select"
+              options={[{"Created in Algoie", "zernio"}, {"Published on Facebook", "external"}]}
             />
             <.input
               field={to_form(@data[:filters] || %{}, as: :filters)[:status]}
@@ -256,13 +485,26 @@
               options={[
                 {"Draft", "draft"},
                 {"Scheduled", "scheduled"},
+                {"Publishing", "publishing"},
                 {"Published", "published"},
-                {"Failed", "failed"}
+                {"Partial", "partial"},
+                {"Failed", "failed"},
+                {"Cancelled", "cancelled"}
               ]}
             />
-            <button class="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white">Filter</button>
+            <.input
+              field={to_form(@data[:filters] || %{}, as: :filters)[:sort_by]}
+              type="select"
+              options={[{"Newest first", "date"}, {"Top engagement", "engagement"}]}
+            />
+            <.input
+              field={to_form(@data[:filters] || %{}, as: :filters)[:view]}
+              type="select"
+              options={[{"List", "list"}, {"Calendar", "calendar"}]}
+            />
+            <button class="rounded-md bg-slate-900 px-5 py-2.5 text-sm font-bold text-white">Apply</button>
           </.form>
-          <div id="facebook-posts" class="space-y-3">
+          <div id="facebook-posts" class="border border-slate-200 bg-white">
             <.empty_state
               :if={(@data[:posts] || []) == []}
               icon="hero-document-text"
@@ -270,46 +512,134 @@
               description="Create your first post or adjust the filters."
             />
             <article
-              :for={post <- @data[:posts] || []}
-              id={"facebook-post-#{post["_id"] || post["id"]}"}
-              class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              :for={
+                post <-
+                  if((@data[:filters] || %{})["view"] == "calendar",
+                    do: [],
+                    else: @data[:posts] || []
+                  )
+              }
+              id={"facebook-post-#{post_id(post)}"}
+              class="border-b border-slate-100 p-4 last:border-0"
             >
-              <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-slate-100">
+                  <img
+                    :if={post_thumbnail(post)}
+                    src={post_thumbnail(post)}
+                    class="size-full object-cover"
+                  /><.icon
+                    :if={is_nil(post_thumbnail(post))}
+                    name="hero-document-text"
+                    class="size-6 text-slate-400"
+                  />
+                </div>
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2">
                     <.status_badge status={post["status"] || post["state"] || "unknown"} /><span class="text-xs text-slate-400">{post[
                       "scheduledFor"
                     ] || post["publishedAt"] || post["createdAt"]}</span>
-                  </div><p class="mt-3 line-clamp-3 whitespace-pre-line text-sm leading-6 text-slate-700">
+                  </div><p class="mt-2 line-clamp-2 whitespace-pre-line text-sm leading-5 text-slate-700">
                     {post["content"] || "Media-only Facebook post"}
+                  </p><p
+                    :if={post_error(post)}
+                    class="mt-1 line-clamp-1 text-xs font-medium text-red-600"
+                  >
+                    {post_error(post)}
                   </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
+                  <a
+                    :if={post_public_url(post)}
+                    href={post_public_url(post)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"
+                  >View on Facebook</a>
                   <button
-                    :if={(post["status"] || "") == "failed"}
+                    :if={
+                      (post["status"] || "") in ["failed", "partial"] &&
+                        (@data[:filters] || %{})["source"] != "external"
+                    }
                     phx-click="post-action"
                     phx-value-action="retry"
-                    phx-value-id={post["_id"] || post["id"]}
-                    class="rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"
+                    phx-value-id={post_id(post)}
+                    class="rounded-md bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"
                   >Retry</button>
                   <button
-                    :if={(post["status"] || "") == "published"}
+                    :if={
+                      (post["status"] || "") in ["published", "partial"] &&
+                        (@data[:filters] || %{})["source"] != "external"
+                    }
                     phx-click="post-action"
                     phx-value-action="unpublish"
-                    phx-value-id={post["_id"] || post["id"]}
+                    phx-value-id={post_id(post)}
                     data-confirm="Unpublish this Facebook post?"
-                    class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700"
+                    class="rounded-md bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700"
                   >Unpublish</button>
                   <button
+                    :if={
+                      (post["status"] || "") in ["draft", "scheduled", "failed", "cancelled"] &&
+                        (@data[:filters] || %{})["source"] != "external"
+                    }
                     phx-click="post-action"
                     phx-value-action="delete"
-                    phx-value-id={post["_id"] || post["id"]}
-                    data-confirm="Delete this post from Algoie and Zernio?"
-                    class="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                    phx-value-id={post_id(post)}
+                    data-confirm="Delete this draft or scheduled post?"
+                    class="rounded-md bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
                   >Delete</button>
                 </div>
               </div>
             </article>
+            <div
+              :if={(@data[:filters] || %{})["view"] == "calendar"}
+              class="divide-y divide-slate-100"
+            >
+              <section
+                :for={{day, posts} <- posts_by_day(@data[:posts] || [])}
+                class="grid min-h-28 sm:grid-cols-[9rem_1fr]"
+              >
+                <div class="border-r border-slate-100 bg-slate-50 p-4">
+                  <p class="text-xs font-bold text-slate-900">{day}</p><p class="mt-1 text-[10px] text-slate-400">
+                    {length(posts)} post(s)
+                  </p>
+                </div><div class="grid gap-2 p-3 md:grid-cols-2 xl:grid-cols-3">
+                  <article :for={post <- posts} class="rounded-md border border-slate-200 p-3">
+                    <div class="flex items-center gap-2">
+                      <.status_badge status={post["status"] || "unknown"} /><span class="text-[10px] text-slate-400">{post[
+                        "scheduledFor"
+                      ] || post["publishedAt"] || post["createdAt"]}</span>
+                    </div><p class="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">
+                      {post["content"] || "Media-only post"}
+                    </p>
+                  </article>
+                </div>
+              </section>
+            </div>
+          </div>
+          <% pagination = @data[:pagination] || %{} %>
+          <div
+            :if={
+              is_integer(pagination["page"]) && is_integer(pagination["pages"]) &&
+                pagination["pages"] > 1
+            }
+            class="mt-4 flex items-center justify-between text-xs text-slate-500"
+          >
+            <span>Page {pagination["page"]} of {pagination["pages"]} · {pagination["total"]} posts</span><div class="flex gap-2">
+              <.link
+                :if={pagination["page"] > 1}
+                patch={
+                  ~p"/dashboard/facebook/posts?#{Map.put(@data[:filters] || %{}, "page", pagination["page"] - 1)}"
+                }
+                class="rounded-md border border-slate-200 px-3 py-2 font-semibold"
+              >Previous</.link><.link
+                :if={pagination["page"] < pagination["pages"]}
+                patch={
+                  ~p"/dashboard/facebook/posts?#{Map.put(@data[:filters] || %{}, "page", pagination["page"] + 1)}"
+                }
+                class="rounded-md border border-slate-200 px-3 py-2 font-semibold"
+              >Next</.link>
+            </div>
           </div>
         <% :analytics -> %>
           <.facebook_header
@@ -318,7 +648,222 @@
             icon="hero-chart-bar-square"
           />
           <.locked_panel :if={@locked} title="Analytics requires a paid Zernio plan" />
-          <div :if={!@locked} id="facebook-analytics" class="space-y-6">
+          <div :if={!@locked} id="facebook-analytics-dashboard" class="space-y-4">
+            <nav class="flex gap-6 border-b border-slate-200">
+              <button
+                :for={{label, tab} <- [{"Posting analytics", "posts"}, {"Page insights", "page"}]}
+                phx-click="select-analytics-tab"
+                phx-value-tab={tab}
+                class={[
+                  "border-b-2 px-1 pb-3 text-sm font-semibold transition",
+                  @analytics_tab == tab && "border-slate-900 text-slate-900",
+                  @analytics_tab != tab &&
+                    "border-transparent text-slate-400 hover:text-slate-700"
+                ]}
+              >{label}</button>
+            </nav>
+            <form method="get" class="flex flex-wrap items-center gap-2 py-1">
+              <span class="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600">Facebook</span><span class="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600">All sources</span><select
+                name="range"
+                class="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700"
+              ><option value="7" selected={@data[:range] == "7"}>Last 7 days</option><option
+                value="30"
+                selected={@data[:range] in [nil, "30"]}
+              >
+                Last 30 days
+              </option><option value="90" selected={@data[:range] == "90"}>Last 90 days</option><option
+                value="365"
+                selected={@data[:range] == "365"}
+              >
+                Last year
+              </option></select><button class="rounded-md bg-slate-900 px-4 py-2 text-xs font-bold text-white">Apply</button>
+            </form>
+            <%= if @analytics_tab == "posts" do %>
+              <section class="grid overflow-hidden border border-slate-200 sm:grid-cols-2 xl:grid-cols-5">
+                <div
+                  :for={
+                    {label, key, icon} <- [
+                      {"Engagement rate", "engagementRate", "hero-arrow-trending-up"},
+                      {"Total reach", "reach", "hero-eye"},
+                      {"Impressions", "impressions", "hero-chart-bar"},
+                      {"Posts this period", "postCount", "hero-document-text"},
+                      {"Total views", "views", "hero-play-circle"}
+                    ]
+                  }
+                  class="border-b border-slate-200 p-4 sm:border-r xl:border-b-0"
+                >
+                  <p class="text-xs font-medium text-slate-500">{label}</p><div class="mt-2 flex items-center gap-2">
+                    <.icon name={icon} class="size-4 text-slate-400" /><p class="text-xl font-bold tabular-nums">
+                      {analytics_total(@data, key)}
+                    </p>
+                  </div><p class="mt-1 text-[10px] font-semibold text-emerald-600">
+                    ↗ current period
+                  </p>
+                </div>
+              </section>
+              <section class="grid gap-3 xl:grid-cols-2">
+                <div
+                  :for={
+                    {title, key, color} <- [
+                      {"Posts over time", "postCount", "bg-blue-500"},
+                      {"Likes over time", "likes", "bg-rose-500"}
+                    ]
+                  }
+                  class="border border-slate-200 p-5"
+                >
+                  <div class="flex justify-between">
+                    <div>
+                      <h3 class="text-sm font-bold">{title}</h3><p class="mt-0.5 text-xs text-slate-400">
+                        Daily totals · selected period
+                      </p>
+                    </div>
+                  </div>
+                  <div class="mt-6 flex h-44 items-end gap-1 border-b border-slate-200 px-1">
+                    <div
+                      :for={day <- daily_metrics(@data)}
+                      class="group flex h-full min-w-0 flex-1 items-end justify-center"
+                      title={day["date"]}
+                    >
+                      <span
+                        class={[
+                          "w-full max-w-5 rounded-t-sm opacity-85 transition group-hover:opacity-100",
+                          color
+                        ]}
+                        style={"height: #{if(key == "postCount", do: max(2, round((day["postCount"] || 0) / max(Enum.max(Enum.map(daily_metrics(@data), &(&1["postCount"] || 0)), fn -> 1 end), 1) * 100)), else: bar_height(day, key, max_daily(@data, key)))}%"}
+                      ></span>
+                    </div>
+                    <p
+                      :if={daily_metrics(@data) == []}
+                      class="m-auto self-center text-xs text-slate-400"
+                    >
+                      No daily data in this period
+                    </p>
+                  </div>
+                </div>
+              </section>
+              <section class="overflow-hidden border border-slate-200">
+                <div class="border-b border-slate-200 px-5 py-4">
+                  <h3 class="text-sm font-bold">Platform breakdown</h3>
+                </div><div class="overflow-x-auto">
+                  <table class="w-full min-w-[50rem] text-left text-xs">
+                    <thead class="bg-slate-50 text-slate-500">
+                      <tr>
+                        <th class="px-5 py-3">Platform</th><th>Posts</th><th>Likes</th><th>
+                          Comments
+                        </th><th>Shares</th><th>Clicks</th><th>Views</th><th>Impressions</th><th>
+                          Reach
+                        </th>
+                      </tr>
+                    </thead><tbody>
+                      <tr
+                        :for={row <- platform_breakdown(@data)}
+                        class="border-t border-slate-100"
+                      >
+                        <td class="px-5 py-3 font-semibold">
+                          <span class="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-[#0866ff] text-[10px] font-bold text-white">f</span>Facebook
+                        </td><td>{row["postCount"] || 0}</td><td>{row["likes"] || 0}</td><td>
+                          {row["comments"] || 0}
+                        </td><td>{row["shares"] || 0}</td><td>{row["clicks"] || 0}</td><td>
+                          {row["views"] || 0}
+                        </td><td>{row["impressions"] || 0}</td><td>{row["reach"] || 0}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+              <section class="overflow-hidden border border-slate-200">
+                <div class="border-b border-slate-200 px-5 py-4">
+                  <h3 class="text-sm font-bold">Top performing posts</h3>
+                </div><div class="overflow-x-auto">
+                  <table class="w-full min-w-[54rem] text-left text-xs">
+                    <thead class="bg-slate-50 text-slate-500">
+                      <tr>
+                        <th class="px-5 py-3">Post</th><th>Likes</th><th>Comments</th><th>
+                          Shares
+                        </th><th>Clicks</th><th>Views</th><th>Impressions</th><th>Reach</th><th>
+                          ER
+                        </th>
+                      </tr>
+                    </thead><tbody>
+                      <tr
+                        :for={post <- Enum.take(analytics_posts(@data), 10)}
+                        class="border-t border-slate-100"
+                      >
+                        <td class="max-w-sm px-5 py-3">
+                          <p class="truncate font-medium">{post["content"] || "Media post"}</p><p class="text-[10px] text-slate-400">
+                            {post["publishedAt"] || post["scheduledFor"]}
+                          </p>
+                        </td><td>{get_in(post, ["analytics", "likes"]) || 0}</td><td>
+                          {get_in(post, ["analytics", "comments"]) || 0}
+                        </td><td>{get_in(post, ["analytics", "shares"]) || 0}</td><td>
+                          {get_in(post, ["analytics", "clicks"]) || 0}
+                        </td><td>{get_in(post, ["analytics", "views"]) || 0}</td><td>
+                          {get_in(post, ["analytics", "impressions"]) || 0}
+                        </td><td>{get_in(post, ["analytics", "reach"]) || 0}</td><td>
+                          {get_in(post, ["analytics", "engagementRate"]) || 0}%
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            <% else %>
+              <div class="mb-3 flex flex-col gap-2 border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-800 sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  <strong>Facebook Page data</strong>
+                  · {@data[:insights] && @data[:insights]["dateRange"] &&
+                    @data[:insights]["dateRange"]["since"]} to {@data[:insights] &&
+                    @data[:insights]["dateRange"] && @data[:insights]["dateRange"]["until"]}
+                </p><p>
+                  {(@data[:insights] && @data[:insights]["dataDelay"]) ||
+                    "Meta data may be delayed."}
+                </p>
+              </div>
+              <p :if={@data[:range] in ["90", "365"]} class="mb-3 text-xs text-amber-700">
+                Page Insights is limited by Meta to the latest 89 days; Posting Analytics still uses the full selected period.
+              </p>
+              <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <.metric_card
+                  label="Media views"
+                  value={insight_total(@data[:insights], "page_media_view")}
+                  icon="hero-eye"
+                /><.metric_card
+                  label="Page views"
+                  value={insight_total(@data[:insights], "page_views_total")}
+                  icon="hero-chart-bar"
+                /><.metric_card
+                  label="Post engagements"
+                  value={insight_total(@data[:insights], "page_post_engagements")}
+                  icon="hero-hand-thumb-up"
+                /><.metric_card
+                  label="Video views"
+                  value={insight_total(@data[:insights], "page_video_views")}
+                  icon="hero-play-circle"
+                /><.metric_card
+                  label="Video watch time"
+                  value={insight_total(@data[:insights], "page_video_view_time")}
+                  icon="hero-clock"
+                /><.metric_card
+                  label="Page follows"
+                  value={insight_total(@data[:insights], "page_follows")}
+                  icon="hero-user-group"
+                /><div title="Estimated from daily snapshots">
+                  <.metric_card
+                    label="Followers gained ⓘ"
+                    value={insight_total(@data[:insights], "followers_gained")}
+                    icon="hero-arrow-trending-up"
+                  />
+                </div><div title="Estimated from daily snapshots">
+                  <.metric_card
+                    label="Followers lost ⓘ"
+                    value={insight_total(@data[:insights], "followers_lost")}
+                    icon="hero-arrow-trending-down"
+                  />
+                </div>
+              </div>
+            <% end %>
+          </div>
+          <div :if={!@locked} id="facebook-analytics-legacy" class="hidden">
             <form
               method="get"
               class="flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4"
@@ -335,16 +880,38 @@
                 class="rounded-xl border border-slate-200 px-3 py-2 text-sm"
               /><button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white">Apply</button>
             </form>
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <nav class="inline-flex rounded-xl bg-slate-100 p-1">
+              <button
+                :for={{label, tab} <- [{"Post metrics", "posts"}, {"Page insights", "page"}]}
+                phx-click="select-analytics-tab"
+                phx-value-tab={tab}
+                class={[
+                  "rounded-lg px-4 py-2 text-sm font-bold transition",
+                  @analytics_tab == tab && "bg-white text-[#0866ff] shadow-sm",
+                  @analytics_tab != tab && "text-slate-500"
+                ]}
+              >{label}</button>
+            </nav>
+            <div :if={@analytics_tab == "posts"} class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <.metric_card
                 label="Impressions"
                 value={metric(@data[:analytics], "impressions")}
                 icon="hero-eye"
               />
               <.metric_card
-                label="Engagement"
-                value={metric(@data[:analytics], "engagement")}
-                icon="hero-hand-thumb-up"
+                label="Likes"
+                value={metric(@data[:analytics], "likes")}
+                icon="hero-heart"
+              />
+              <.metric_card
+                label="Comments"
+                value={metric(@data[:analytics], "comments")}
+                icon="hero-chat-bubble-left"
+              />
+              <.metric_card
+                label="Shares"
+                value={metric(@data[:analytics], "shares")}
+                icon="hero-share"
               />
               <.metric_card
                 label="Clicks"
@@ -352,27 +919,74 @@
                 icon="hero-cursor-arrow-rays"
               />
               <.metric_card
-                label="Followers"
-                value={metric(@data[:insights], "followers")}
-                icon="hero-user-group"
+                label="Views"
+                value={metric(@data[:analytics], "views")}
+                icon="hero-play-circle"
               />
             </div>
-            <pre class="max-h-[32rem] overflow-auto rounded-3xl bg-slate-950 p-6 text-xs leading-6 text-slate-300">{Jason.encode!(%{analytics: @data[:analytics], page_insights: @data[:insights]}, pretty: true)}</pre>
+            <div :if={@analytics_tab == "page"} class="space-y-4">
+              <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <.metric_card
+                  label="Media views"
+                  value={metric(@data[:insights], "media_views")}
+                  icon="hero-eye"
+                />
+                <.metric_card
+                  label="Post engagements"
+                  value={metric(@data[:insights], "post_engagements")}
+                  icon="hero-hand-thumb-up"
+                />
+                <.metric_card
+                  label="Video views"
+                  value={metric(@data[:insights], "video_views")}
+                  icon="hero-play-circle"
+                />
+                <.metric_card
+                  label="Follower count"
+                  value={metric(@data[:insights], "follower_count")}
+                  icon="hero-user-group"
+                />
+                <div title="Estimated from daily snapshots">
+                  <.metric_card
+                    label="Followers gained ⓘ"
+                    value={metric(@data[:insights], "followers_gained")}
+                    icon="hero-arrow-trending-up"
+                  />
+                </div>
+                <div title="Estimated from daily snapshots">
+                  <.metric_card
+                    label="Followers lost ⓘ"
+                    value={metric(@data[:insights], "followers_lost")}
+                    icon="hero-arrow-trending-down"
+                  />
+                </div>
+              </div>
+              <p class="text-xs text-slate-500">
+                Follower gains and losses are estimated from daily snapshots. Exports use current Meta metric names.
+              </p>
+            </div>
           </div>
         <% :inbox -> %>
           <.facebook_header
-            title="Inbox"
-            description="Manage Facebook Messenger conversations without leaving Algoie."
-            icon="hero-inbox"
+            title={if(@inbox_tab == "comments", do: "Comments", else: "Messages")}
+            description={
+              if(@inbox_tab == "comments",
+                do: "Read and reply to comments on your Facebook posts.",
+                else: "Manage Facebook Messenger conversations without leaving Algoie."
+              )
+            }
+            icon={if(@inbox_tab == "comments", do: "hero-chat-bubble-left", else: "hero-inbox")}
           />
           <.locked_panel :if={@locked} title="Inbox requires a paid Zernio plan" />
           <div
-            :if={!@locked}
+            :if={!@locked && @inbox_tab == "messages"}
             id="facebook-inbox"
-            class="grid min-h-[38rem] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[20rem_1fr]"
+            class="grid h-[calc(100vh-18rem)] min-h-[32rem] max-h-[48rem] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[20rem_1fr]"
           >
-            <aside class="border-b border-slate-200 lg:border-b-0 lg:border-r">
-              <div class="border-b border-slate-100 p-4 font-bold">Conversations</div><button
+            <aside class="min-h-0 overflow-y-auto border-b border-slate-200 [scrollbar-gutter:stable] lg:border-b-0 lg:border-r">
+              <div class="sticky top-0 z-10 border-b border-slate-100 bg-white p-4 font-bold">
+                Conversations
+              </div><button
                 :for={conversation <- @data[:conversations] || []}
                 phx-click="select-conversation"
                 phx-value-id={conversation["_id"] || conversation["id"]}
@@ -391,19 +1005,28 @@
                 description="New Facebook messages appear here."
               />
             </aside>
-            <section class="flex min-h-[34rem] flex-col">
-              <div class="flex-1 space-y-3 overflow-y-auto p-5">
+            <section class="flex min-h-0 flex-col overflow-hidden">
+              <div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-5 [scrollbar-gutter:stable]">
                 <div
                   :for={message <- @data[:messages] || []}
                   class={[
                     "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
-                    if(message["direction"] in ["outbound", "sent"],
+                    if(message["direction"] in ["outgoing", "outbound", "sent"],
                       do: "ml-auto bg-[#0866ff] text-white",
                       else: "bg-slate-100 text-slate-800"
                     )
                   ]}
                 >
-                  {message["message"] || message["text"] || "Attachment"}
+                  <p>{message["message"] || message["text"] || "Attachment"}</p>
+                  <div class="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">
+                    <span :if={message["isEdited"]}>edited ·</span><span>{message["createdAt"]}</span><span :if={
+                      message["direction"] == "outgoing"
+                    }>{case message["deliveryStatus"] do
+                      "read" -> "✓✓"
+                      "delivered" -> "✓✓"
+                      _ -> "✓"
+                    end}</span>
+                  </div>
                 </div><p
                   :if={is_nil(@data[:selected_conversation])}
                   class="grid h-full place-items-center text-sm text-slate-400"
@@ -415,27 +1038,220 @@
                 for={@message_form}
                 id="facebook-message-form"
                 phx-submit="send-message"
-                class="border-t border-slate-200 p-4"
+                class="shrink-0 border-t border-slate-200 bg-white p-4 shadow-[0_-8px_24px_rgba(15,23,42,0.05)]"
               >
-                <.input field={@message_form[:message]} placeholder="Write a reply…" /><div class="mt-3 grid gap-3 sm:grid-cols-2">
-                  <.input
-                    field={@message_form[:attachment_url]}
-                    placeholder="Optional attachment URL"
-                  /><.input
-                    field={@message_form[:tag]}
-                    type="select"
-                    prompt="Standard 24-hour reply"
-                    options={[
-                      {"Confirmed event update", "CONFIRMED_EVENT_UPDATE"},
-                      {"Post-purchase update", "POST_PURCHASE_UPDATE"},
-                      {"Account update", "ACCOUNT_UPDATE"},
-                      {"Human agent", "HUMAN_AGENT"}
-                    ]}
-                  />
-                </div><button class="mt-3 rounded-xl bg-[#0866ff] px-5 py-2.5 text-sm font-bold text-white">Send reply</button>
+                <div class="flex gap-2">
+                  <.input field={@message_form[:message]} placeholder="Write a reply…" /><button class="shrink-0 rounded-md bg-[#0866ff] px-5 text-sm font-bold text-white">Send</button>
+                </div>
               </.form>
             </section>
           </div>
+          <section
+            :if={!@locked && @inbox_tab == "comments"}
+            id="facebook-inbox-comments"
+            class="grid h-[calc(100vh-15rem)] min-h-[34rem] max-h-[52rem] overflow-hidden border border-slate-200 bg-white lg:grid-cols-[32rem_minmax(0,1fr)]"
+          >
+            <aside class="min-h-0 overflow-y-auto border-b border-slate-200 [scrollbar-gutter:stable] lg:border-b-0 lg:border-r">
+              <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+                <div>
+                  <h3 class="text-sm font-bold">Posts</h3><p class="text-[11px] text-slate-400">
+                    Posts with Facebook comments
+                  </p>
+                </div><span class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">{length(
+                  @data[:comment_posts] || []
+                )}</span>
+              </div>
+              <button
+                :for={post <- @data[:comment_posts] || []}
+                id={"comment-post-#{comment_post_id(post)}"}
+                phx-click="select-comment-post"
+                phx-value-id={comment_post_id(post)}
+                class={[
+                  "flex w-full gap-3 border-b border-slate-100 p-4 text-left transition hover:bg-slate-50",
+                  comment_post_id(@data[:selected_comment_post] || %{}) == comment_post_id(post) &&
+                    "bg-blue-50/60"
+                ]}
+              >
+                <div class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-slate-100">
+                  <img :if={post["picture"]} src={post["picture"]} class="size-full object-cover" /><.icon
+                    :if={is_nil(post["picture"])}
+                    name="hero-photo"
+                    class="size-5 text-slate-400"
+                  />
+                </div><div class="min-w-0 flex-1">
+                  <p class="line-clamp-2 text-sm font-medium leading-5 text-slate-900">
+                    {comment_post_title(post)}
+                  </p><div class="mt-1.5 flex items-center gap-2 text-[11px] text-slate-400">
+                    <span class="inline-flex size-4 items-center justify-center rounded-full bg-[#0866ff] text-[9px] font-bold text-white">f</span><span class="truncate">@{post[
+                      "accountUsername"
+                    ] || "facebook"}</span>
+                  </div><div class="mt-1 flex items-center gap-3 text-[11px] text-slate-500">
+                    <span><.icon name="hero-chat-bubble-left" class="mr-1 inline size-3" />{post[
+                      "commentCount"
+                    ] || 0}</span><span>{post["createdTime"]}</span>
+                  </div>
+                </div>
+              </button>
+              <.empty_state
+                :if={(@data[:comment_posts] || []) == [] && !@loading}
+                icon="hero-chat-bubble-left"
+                title="No commented posts"
+                description="Posts with new comments will appear here."
+              />
+            </aside>
+            <section class="flex min-h-0 flex-col overflow-hidden">
+              <div
+                :if={is_nil(@data[:selected_comment_post])}
+                class="grid h-full place-items-center text-center"
+              >
+                <div>
+                  <span class="mx-auto flex size-12 items-center justify-center rounded-full bg-slate-100"><.icon
+                    name="hero-chat-bubble-left-right"
+                    class="size-6 text-slate-400"
+                  /></span><h3 class="mt-3 text-sm font-bold">Select a post</h3><p class="mt-1 text-xs text-slate-400">
+                    Select a post to view and manage its comments.
+                  </p>
+                </div>
+              </div>
+              <%= if post = @data[:selected_comment_post] do %>
+                <header class="shrink-0 border-b border-slate-200 px-5 py-4">
+                  <p class="line-clamp-1 text-sm font-bold">{comment_post_title(post)}</p><p class="mt-1 text-xs text-slate-400">
+                    {post["commentCount"] || 0} comments · @{post["accountUsername"] || "facebook"}
+                  </p>
+                </header>
+                <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 [scrollbar-gutter:stable]">
+                  <article
+                    :for={comment <- @data[:comments] || []}
+                    id={"facebook-comment-#{comment["id"]}"}
+                    class="flex gap-3 border-b border-slate-100 pb-4 last:border-0"
+                  >
+                    <div class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100">
+                      <img
+                        :if={get_in(comment, ["from", "picture"])}
+                        src={get_in(comment, ["from", "picture"])}
+                        class="size-full object-cover"
+                      /><.icon
+                        :if={is_nil(get_in(comment, ["from", "picture"]))}
+                        name="hero-user"
+                        class="size-4 text-slate-400"
+                      />
+                    </div><div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2">
+                        <p class="text-sm font-bold">{comment_author(comment)}</p><span class="text-[10px] text-slate-400">{comment[
+                          "createdTime"
+                        ]}</span>
+                      </div><p class="mt-1 whitespace-pre-line text-sm leading-5 text-slate-700">
+                        {comment["message"]}
+                      </p><div class="mt-2 flex flex-wrap gap-3 text-[11px] font-semibold">
+                        <button
+                          :if={comment["canLike"] != false}
+                          phx-click="engagement-action"
+                          phx-value-action={if(comment["isLiked"], do: "unlike", else: "like")}
+                          phx-value-post_id={comment_post_id(post)}
+                          phx-value-id={comment["id"]}
+                          class="text-slate-500 hover:text-blue-600"
+                        >{if(comment["isLiked"], do: "Unlike", else: "Like")} · {comment[
+                          "likeCount"
+                        ] || 0}</button><button
+                          :if={comment["canHide"]}
+                          phx-click="engagement-action"
+                          phx-value-action={if(comment["isHidden"], do: "unhide", else: "hide")}
+                          phx-value-post_id={comment_post_id(post)}
+                          phx-value-id={comment["id"]}
+                          class="text-slate-500 hover:text-amber-600"
+                        >{if(comment["isHidden"], do: "Unhide", else: "Hide")}</button><button
+                          :if={comment["canDelete"]}
+                          phx-click="engagement-action"
+                          phx-value-action="delete"
+                          phx-value-post_id={comment_post_id(post)}
+                          phx-value-id={comment["id"]}
+                          class="text-red-500"
+                        >Delete</button>
+                      </div>
+                      <div
+                        :for={reply <- comment["replies"] || []}
+                        class="mt-3 flex gap-2 rounded-lg bg-slate-50 p-3"
+                      >
+                        <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-white"><.icon
+                          name="hero-user"
+                          class="size-3.5 text-slate-400"
+                        /></span><div>
+                          <p class="text-xs font-bold">{comment_author(reply)}</p><p class="mt-1 text-xs text-slate-600">
+                            {reply["message"]}
+                          </p>
+                        </div>
+                      </div>
+                      <.form
+                        :if={comment["canReply"] != false}
+                        for={@reply_form}
+                        id={"thread-comment-reply-#{comment["id"]}"}
+                        phx-submit="reply"
+                        class="mt-3 flex gap-2"
+                      >
+                        <input type="hidden" name="kind" value="comment" /><input
+                          type="hidden"
+                          name="entity_id"
+                          value={comment["id"]}
+                        /><input type="hidden" name="post_id" value={comment_post_id(post)} /><input
+                          type="hidden"
+                          name="account_id"
+                          value={post["accountId"]}
+                        /><.input field={@reply_form[:message]} placeholder="Write a reply…" /><button class="rounded-md bg-slate-900 px-4 text-xs font-bold text-white">Reply</button>
+                      </.form>
+                    </div>
+                  </article>
+                  <p
+                    :if={(@data[:comments] || []) == [] && !@loading}
+                    class="grid h-full place-items-center text-sm text-slate-400"
+                  >
+                    No comments on this post.
+                  </p>
+                </div>
+              <% end %>
+            </section>
+          </section>
+          <section
+            :if={!@locked && @inbox_tab == "reviews"}
+            id="facebook-inbox-reviews"
+            class="space-y-3"
+          >
+            <.empty_state
+              :if={(@data[:reviews] || []) == []}
+              icon="hero-star"
+              title="No reviews"
+              description="Page reviews will appear here."
+            />
+            <article
+              :for={review <- @data[:reviews] || []}
+              class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+              <div class="flex items-start gap-3">
+                <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600"><.icon
+                  name="hero-star"
+                  class="size-5"
+                /></span><div class="flex-1">
+                  <p class="text-sm font-bold">
+                    {review["reviewerName"] || review["authorName"] || "Facebook reviewer"} · {review[
+                      "rating"
+                    ] || "—"}/5
+                  </p><p class="mt-2 text-sm leading-6 text-slate-600">
+                    {review["message"] || review["text"]}
+                  </p><.form
+                    for={@reply_form}
+                    id={"inbox-review-reply-#{review["id"] || review["reviewId"]}"}
+                    phx-submit="reply"
+                    class="mt-4 flex gap-2"
+                  >
+                    <input type="hidden" name="kind" value="review" /><input
+                      type="hidden"
+                      name="entity_id"
+                      value={review["id"] || review["reviewId"]}
+                    /><.input field={@reply_form[:message]} placeholder="Reply to this review" /><button class="rounded-xl bg-slate-900 px-4 text-xs font-bold text-white">Reply</button>
+                  </.form>
+                </div>
+              </div>
+            </article>
+          </section>
         <% :engagement -> %>
           <.facebook_header
             title="Comments & Reviews"
@@ -456,7 +1272,7 @@
                   class="rounded-2xl border border-slate-200 p-4"
                 >
                   <p class="text-sm font-bold">
-                    {comment["authorName"] || comment["from"] || "Facebook user"}
+                    {comment_author(comment)}
                   </p><p class="mt-2 text-sm leading-6 text-slate-600">
                     {comment["message"] || comment["text"]}
                   </p><div class="mt-3 flex flex-wrap gap-2">

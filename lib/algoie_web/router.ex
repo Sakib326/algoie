@@ -144,7 +144,6 @@ defmodule AlgoieWeb.Router do
       live "/dashboard/facebook/inbox", FacebookLive, :inbox
       live "/dashboard/facebook/engagement", FacebookLive, :engagement
       live "/dashboard/facebook/automations", FacebookLive, :automations
-      live "/dashboard/facebook/settings", FacebookLive, :settings
       live "/dashboard/social/callback", SocialPublishingLive, :callback
       live "/dashboard/settings/social/callback", StoreSettingsLive, :social_callback
       live "/dashboard/settings/email", StoreEmailSettingsLive, :edit

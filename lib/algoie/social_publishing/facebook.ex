@@ -8,7 +8,10 @@ defmodule Algoie.SocialPublishing.Facebook do
   def update_post(id, payload), do: mutate(:put, "/posts/#{segment(id)}", payload)
   def delete_post(id), do: mutate(:delete, "/posts/#{segment(id)}")
   def retry_post(id), do: mutate(:post, "/posts/#{segment(id)}/retry", %{})
-  def unpublish_post(id), do: mutate(:post, "/posts/#{segment(id)}/unpublish", %{})
+
+  def unpublish_post(id),
+    do: mutate(:post, "/posts/#{segment(id)}/unpublish", %{"platform" => "facebook"})
+
   def edit_published_post(id, payload), do: mutate(:post, "/posts/#{segment(id)}/edit", payload)
 
   def create_post(payload),
@@ -17,7 +20,7 @@ defmodule Algoie.SocialPublishing.Facebook do
   def pages(account_id), do: get("/accounts/#{segment(account_id)}/facebook-page")
 
   def set_default_page(account_id, page_id),
-    do: mutate(:post, "/accounts/#{segment(account_id)}/facebook-page", %{pageId: page_id})
+    do: mutate(:put, "/accounts/#{segment(account_id)}/facebook-page", %{selectedPageId: page_id})
 
   def health(profile_id),
     do: get("/accounts/health", profileId: profile_id, platform: "facebook")
@@ -25,6 +28,8 @@ defmodule Algoie.SocialPublishing.Facebook do
   def account_health(account_id), do: get("/accounts/#{segment(account_id)}/health")
 
   def analytics(params), do: get("/analytics", facebook_params(params))
+
+  def daily_metrics(params), do: get("/analytics/daily-metrics", facebook_params(params))
 
   def page_insights(account_id, params),
     do: get("/analytics/facebook/page-insights", Keyword.put(params, :accountId, account_id))
@@ -63,17 +68,31 @@ defmodule Algoie.SocialPublishing.Facebook do
         request_headers()
       )
 
-  def hide_comment(post_id, comment_id),
-    do: mutate(:post, comment_action_path(post_id, comment_id, "hide"), %{})
+  def hide_comment(post_id, comment_id, account_id),
+    do: mutate(:post, comment_action_path(post_id, comment_id, "hide"), %{accountId: account_id})
 
-  def unhide_comment(post_id, comment_id),
-    do: mutate(:delete, comment_action_path(post_id, comment_id, "hide"))
+  def unhide_comment(post_id, comment_id, account_id),
+    do:
+      request(
+        :delete,
+        comment_action_path(post_id, comment_id, "hide"),
+        nil,
+        [accountId: account_id],
+        request_headers()
+      )
 
-  def like_comment(post_id, comment_id),
-    do: mutate(:post, comment_action_path(post_id, comment_id, "like"), %{})
+  def like_comment(post_id, comment_id, account_id),
+    do: mutate(:post, comment_action_path(post_id, comment_id, "like"), %{accountId: account_id})
 
-  def unlike_comment(post_id, comment_id),
-    do: mutate(:delete, comment_action_path(post_id, comment_id, "like"))
+  def unlike_comment(post_id, comment_id, account_id),
+    do:
+      request(
+        :delete,
+        comment_action_path(post_id, comment_id, "like"),
+        nil,
+        [accountId: account_id],
+        request_headers()
+      )
 
   def private_reply(post_id, comment_id, payload),
     do: mutate(:post, comment_action_path(post_id, comment_id, "private-reply"), payload)
