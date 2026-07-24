@@ -281,10 +281,10 @@ defmodule AlgoieWeb.Layouts do
             />
             <.nav_item
               :if={allowed?(@store_permissions, "social.view")}
-              navigate="/dashboard/facebook"
+              navigate="/dashboard/studio"
               icon="hero-chat-bubble-bottom-center-text"
-              label="Facebook"
-              active={@active == :facebook}
+              label="Channel Studio"
+              active={@active in [:facebook, :studio]}
             />
             <.nav_item
               :if={allowed?(@store_permissions, "ai.use")}
@@ -382,6 +382,178 @@ defmodule AlgoieWeb.Layouts do
 
       <.flash_group flash={@flash} />
     </div>
+    """
+  end
+
+  attr :flash, :map, required: true
+  attr :current_user, :any, required: true
+  attr :store_name, :string, default: "Store"
+  attr :page_title, :string, default: "Channel Studio"
+  attr :live_action, :atom, required: true
+  slot :inner_block, required: true
+
+  def channel_studio(assigns) do
+    ~H"""
+    <div id="channel-studio-shell" class="min-h-screen bg-slate-50 text-slate-950">
+      <input id="studio-sidebar-toggle" type="checkbox" class="peer sr-only" />
+      <aside class="fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 peer-checked:translate-x-0 lg:translate-x-0">
+        <div class="flex h-16 items-center gap-3 border-b border-slate-200 px-4">
+          <.link navigate={~p"/dashboard/studio"} class="flex min-w-0 flex-1 items-center gap-3">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white"><.icon
+              name="hero-share"
+              class="size-5"
+            /></span>
+            <span class="min-w-0"><span class="block truncate font-bold">Channel Studio</span><span class="block truncate text-[11px] text-slate-400">{@store_name}</span></span>
+          </.link>
+          <label
+            for="studio-sidebar-toggle"
+            class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 lg:hidden"
+            aria-label="Close Studio navigation"
+          ><.icon name="hero-x-mark" class="size-5" /></label>
+        </div>
+        <nav
+          id="studio-sidebar-navigation"
+          class="min-h-0 flex-1 space-y-1 overflow-y-auto p-3"
+          aria-label="Channel Studio"
+        >
+          <.studio_nav_item
+            action={@live_action}
+            target={:index}
+            path={~p"/dashboard/studio"}
+            label="Overview"
+            icon="hero-squares-2x2"
+          />
+          <.studio_nav_item
+            action={@live_action}
+            target={:create}
+            path={~p"/dashboard/studio/create"}
+            label="Create"
+            icon="hero-pencil-square"
+          />
+          <.studio_nav_item
+            action={@live_action}
+            target={:posts}
+            path={~p"/dashboard/studio/posts"}
+            label="Posts"
+            icon="hero-rectangle-stack"
+          />
+          <.studio_nav_item
+            action={@live_action}
+            target={:calendar}
+            path={~p"/dashboard/studio/calendar"}
+            label="Calendar"
+            icon="hero-calendar-days"
+          />
+          <p class="px-3 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            Inbox
+          </p>
+          <.studio_nav_item
+            action={@live_action}
+            target={:messages}
+            path={~p"/dashboard/studio/inbox/messages"}
+            label="Messages"
+            icon="hero-chat-bubble-left-right"
+          />
+          <.studio_nav_item
+            action={@live_action}
+            target={:comments}
+            path={~p"/dashboard/studio/inbox/comments"}
+            label="Comments"
+            icon="hero-chat-bubble-bottom-center-text"
+          />
+          <p class="px-3 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            Performance
+          </p>
+          <.studio_nav_item
+            action={@live_action}
+            target={:analytics}
+            path={~p"/dashboard/studio/analytics"}
+            label="Analytics"
+            icon="hero-chart-bar"
+          />
+          <.studio_nav_item
+            action={@live_action}
+            target={:ads}
+            path={~p"/dashboard/studio/ads"}
+            label="Meta Ads"
+            icon="hero-megaphone"
+          />
+          <.studio_nav_item
+            action={@live_action}
+            target={:conversions}
+            path={~p"/dashboard/studio/conversions"}
+            label="Conversions"
+            icon="hero-circle-stack"
+          />
+          <p class="px-3 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            Messaging
+          </p>
+          <.studio_nav_item
+            action={@live_action}
+            target={:whatsapp}
+            path={~p"/dashboard/studio/whatsapp"}
+            label="WhatsApp"
+            icon="hero-device-phone-mobile"
+          />
+        </nav>
+        <div class="border-t border-slate-200 p-3">
+          <.link
+            navigate={~p"/dashboard"}
+            class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+          ><.icon name="hero-arrow-left" class="size-4" /> Back to store dashboard</.link>
+          <div class="mt-2 flex items-center gap-3 rounded-xl px-3 py-2">
+            <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">{String.first(
+              to_string(@current_user.email || "?")
+            )
+            |> String.upcase()}</span><div class="min-w-0 flex-1">
+              <p class="truncate text-xs font-semibold">
+                {@current_user.name || @current_user.email}
+              </p><p class="truncate text-[10px] text-slate-400">{@current_user.email}</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <label
+        for="studio-sidebar-toggle"
+        class="fixed inset-0 z-40 hidden bg-slate-950/40 backdrop-blur-sm peer-checked:block lg:hidden"
+        aria-label="Close Studio navigation"
+      ></label>
+      <div class="min-h-screen lg:pl-64">
+        <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6">
+          <label
+            for="studio-sidebar-toggle"
+            class="flex size-9 cursor-pointer items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
+            aria-label="Open Studio navigation"
+          ><.icon name="hero-bars-3" class="size-5" /></label>
+          <div class="min-w-0">
+            <p class="truncate text-sm font-bold">{@page_title}</p><p class="truncate text-[11px] text-slate-400">
+              {@store_name}
+            </p>
+          </div><div class="ml-auto"><.theme_toggle /></div>
+        </header>
+        <main>{render_slot(@inner_block)}</main>
+      </div>
+      <.flash_group flash={@flash} />
+    </div>
+    """
+  end
+
+  attr :action, :atom, required: true
+  attr :target, :atom, required: true
+  attr :path, :string, required: true
+  attr :label, :string, required: true
+  attr :icon, :string, required: true
+
+  defp studio_nav_item(assigns) do
+    ~H"""
+    <.link
+      navigate={@path}
+      class={[
+        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition",
+        @action == @target && "bg-blue-50 text-blue-700",
+        @action != @target && "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+      ]}
+    ><.icon name={@icon} class="size-5 shrink-0" /><span>{@label}</span></.link>
     """
   end
 

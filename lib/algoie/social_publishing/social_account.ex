@@ -13,7 +13,7 @@ defmodule Algoie.SocialPublishing.SocialAccount do
     strategy(:context)
   end
 
-  @platforms ~w(facebook instagram whatsapp tiktok)
+  @platforms ~w(facebook instagram whatsapp tiktok metaads)
 
   def platforms, do: @platforms
 

@@ -27,6 +27,7 @@ defmodule AlgoieWeb.Live.OnDashboardMount do
     AlgoieWeb.AiAssistantLive => "ai.use",
     AlgoieWeb.StoreSettingsLive => "settings.view",
     AlgoieWeb.SocialPublishingLive => "social.view",
+    AlgoieWeb.ChannelStudioLive => "social.view",
     AlgoieWeb.FacebookLive => "social.view",
     AlgoieWeb.StoreEmailSettingsLive => "settings.view",
     AlgoieWeb.TeamLive.Index => "team.view"
@@ -76,6 +77,11 @@ defmodule AlgoieWeb.Live.OnDashboardMount do
   end
 
   defp allowed_view?(AlgoieWeb.FacebookLive, permissions) do
+    "social.view" in permissions or "settings.view" in permissions or
+      "settings.manage" in permissions
+  end
+
+  defp allowed_view?(AlgoieWeb.ChannelStudioLive, permissions) do
     "social.view" in permissions or "settings.view" in permissions or
       "settings.manage" in permissions
   end

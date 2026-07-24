@@ -137,6 +137,16 @@ defmodule AlgoieWeb.Router do
       live "/dashboard/assistant", AiAssistantLive, :index
       live "/dashboard/settings", StoreSettingsLive, :edit
       live "/dashboard/social", SocialPublishingLive, :index
+      live "/dashboard/studio", ChannelStudioLive, :index
+      live "/dashboard/studio/create", ChannelStudioLive, :create
+      live "/dashboard/studio/posts", ChannelStudioLive, :posts
+      live "/dashboard/studio/calendar", ChannelStudioLive, :calendar
+      live "/dashboard/studio/inbox/messages", ChannelStudioLive, :messages
+      live "/dashboard/studio/inbox/comments", ChannelStudioLive, :comments
+      live "/dashboard/studio/analytics", ChannelStudioLive, :analytics
+      live "/dashboard/studio/ads", ChannelStudioLive, :ads
+      live "/dashboard/studio/whatsapp", ChannelStudioLive, :whatsapp
+      live "/dashboard/studio/conversions", ChannelStudioLive, :conversions
       live "/dashboard/facebook", FacebookLive, :index
       live "/dashboard/facebook/publishing", FacebookLive, :publishing
       live "/dashboard/facebook/posts", FacebookLive, :posts

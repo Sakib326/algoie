@@ -1,0 +1,987 @@
+<Layouts.channel_studio
+  flash={@flash}
+  current_user={@current_user}
+  store_name={@store_name}
+  page_title={@page_title}
+  live_action={@live_action}
+>
+  <div id="channel-studio" class="min-h-[calc(100vh-4rem)] bg-[#f6f7fb] text-slate-950">
+    <header class="sticky top-16 z-20 border-b border-slate-200/80 bg-white/90 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-xl">
+      <div class="flex min-h-16 items-center gap-4 px-4 sm:px-6">
+        <div class="min-w-0">
+          <p class="truncate text-base font-black tracking-tight">Channel Studio</p>
+          <p class="hidden text-xs text-slate-500 sm:block">
+            Content, conversations, ads and conversions
+          </p>
+        </div>
+        <div class="ml-auto flex items-center gap-2 overflow-x-auto py-2">
+          <.link
+            :if={@channel_accounts == []}
+            navigate={~p"/dashboard/social"}
+            class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700"
+          >
+            <.icon name="hero-plus" class="size-4" /> Connect channels
+          </.link>
+          <div
+            :for={account <- @channel_accounts}
+            id={"studio-account-#{account.id}"}
+            class="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm"
+          >
+            <span class={[
+              "size-2 rounded-full",
+              account_connected?(account) && "bg-emerald-500",
+              !account_connected?(account) && "bg-red-500"
+            ]}></span>
+            <span class="max-w-32 truncate text-xs font-semibold">{account_name(account)}</span>
+            <span class="text-[10px] text-slate-400">{platform_name(account.platform)}</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div
+      :if={@provider_error}
+      id="studio-provider-error"
+      class="mx-4 mt-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:mx-6"
+    >
+      <.icon name="hero-exclamation-triangle" class="mt-0.5 size-5 shrink-0" />
+      <div>
+        <p class="font-semibold">Channel request failed</p><p class="mt-0.5">{@provider_error}</p>
+      </div>
+    </div>
+
+    <div :if={@loading} id="studio-loading" class="h-0.5 overflow-hidden bg-blue-100">
+      <div class="h-full w-1/3 animate-pulse rounded-full bg-blue-600"></div>
+    </div>
+
+    <main class="p-4 sm:p-6">
+      <section
+        :if={@live_action == :index}
+        id="studio-overview"
+        class="mx-auto max-w-7xl space-y-6"
+      >
+        <div class="relative overflow-hidden rounded-[2rem] bg-slate-950 p-7 text-white shadow-2xl shadow-slate-950/10 sm:p-10">
+          <div class="pointer-events-none absolute -right-20 -top-32 size-96 rounded-full bg-blue-500/25 blur-3xl">
+          </div>
+          <div class="pointer-events-none absolute -bottom-32 left-1/3 size-72 rounded-full bg-violet-500/20 blur-3xl">
+          </div>
+          <div class="relative">
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-blue-300">
+              Unified workspace
+            </p>
+            <h1 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+              Your channels, without blurred boundaries
+            </h1>
+            <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+              Publish to Facebook, Instagram and TikTok. Handle Facebook, Instagram and WhatsApp messages. Manage paid media and Meta Pixel separately.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-2">
+              <.link
+                navigate={~p"/dashboard/studio/create"}
+                class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50"
+              >
+                <.icon name="hero-plus" class="size-4" /> Create post
+              </.link>
+              <.link
+                navigate={~p"/dashboard/studio/inbox/messages"}
+                class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/15"
+              >
+                <.icon name="hero-inbox" class="size-4" /> Open inbox
+              </.link>
+            </div>
+          </div>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <.channel_card
+            :for={platform <- [:facebook, :instagram, :whatsapp, :tiktok, :metaads]}
+            platform={platform}
+            account={Enum.find(@channel_accounts, &(&1.platform == platform))}
+          />
+        </div>
+      </section>
+
+      <section
+        :if={@live_action == :create}
+        id="studio-composer"
+        class="mx-auto grid max-w-7xl gap-6 xl:grid-cols-[minmax(0,1fr)_380px]"
+      >
+        <.form
+          for={@post_form}
+          id="studio-post-form"
+          phx-change="validate-post"
+          phx-submit="publish"
+          class="space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
+        >
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Create</p>
+            <h1 class="mt-1 text-2xl font-bold">Publish organic content</h1>
+            <p class="mt-1 text-sm text-slate-500">
+              Every selected destination is validated against its own API contract.
+            </p>
+          </div>
+          <fieldset>
+            <legend class="text-sm font-semibold">Destinations</legend>
+            <div class="mt-3 grid gap-3 sm:grid-cols-3">
+              <label
+                :for={
+                  account <-
+                    Enum.filter(
+                      @channel_accounts,
+                      &(&1.platform in [:facebook, :instagram, :tiktok] and
+                          account_connected?(&1))
+                    )
+                }
+                class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50/40"
+              >
+                <input
+                  type="checkbox"
+                  name="studio_post[targets][]"
+                  value={"#{account.platform}:#{account.provider_account_id}"}
+                  checked={selected_target?(@post_form, account)}
+                  class="size-4 rounded border-slate-300 text-blue-600"
+                />
+                <span class="min-w-0"><span class="block text-sm font-semibold">{platform_name(
+                  account.platform
+                )}</span><span class="block truncate text-xs text-slate-400">{account_name(
+                  account
+                )}</span></span>
+              </label>
+            </div>
+            <p
+              :if={
+                @channel_accounts
+                |> Enum.filter(&(&1.platform in [:facebook, :instagram, :tiktok]))
+                |> Enum.empty?()
+              }
+              class="mt-3 rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500"
+            >
+              Connect Facebook, Instagram or TikTok from
+              <.link navigate={~p"/dashboard/social"} class="font-semibold text-blue-600">Channels</.link>
+              first.
+            </p>
+          </fieldset>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <.input
+              field={@post_form[:content_type]}
+              type="select"
+              label="Content type"
+              options={[
+                {"Feed", "feed"},
+                {"Story", "story"},
+                {"Reel", "reel"}
+              ]}
+            />
+            <.input
+              field={@post_form[:media_type]}
+              type="select"
+              label="Media type"
+              options={[{"Images", "image"}, {"Video", "video"}]}
+            />
+          </div>
+          <.input
+            field={@post_form[:content]}
+            type="textarea"
+            label="Caption or post text"
+            placeholder="Write a caption that works across the selected channels."
+          />
+          <.input
+            field={@post_form[:media_urls]}
+            type="textarea"
+            label="Public media URLs"
+            placeholder="One direct HTTPS URL per line"
+          />
+          <div class="grid gap-4 sm:grid-cols-2">
+            <.input
+              field={@post_form[:delivery]}
+              type="select"
+              label="Delivery"
+              options={[{"Publish now", "now"}, {"Schedule", "schedule"}, {"Save draft", "draft"}]}
+            />
+            <.input
+              :if={@post_form[:delivery].value == "schedule"}
+              field={@post_form[:scheduled_for]}
+              type="datetime-local"
+              label="Publish time"
+            />
+          </div>
+          <div
+            :if={
+              Enum.any?(
+                List.wrap(@post_form[:targets].value),
+                &String.starts_with?(&1, "tiktok:")
+              )
+            }
+            class="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2"
+          >
+            <.input
+              field={@post_form[:privacy_level]}
+              type="select"
+              label="TikTok privacy"
+              options={
+                if tiktok_privacy_options(@data) == [],
+                  do: [{"Public", "PUBLIC_TO_EVERYONE"}],
+                  else: tiktok_privacy_options(@data)
+              }
+            />
+            <.input
+              field={@post_form[:description]}
+              type="textarea"
+              label="TikTok photo description"
+            />
+            <label class="flex items-start gap-3 text-sm sm:col-span-2"><input
+              type="checkbox"
+              name="studio_post[consent]"
+              value="true"
+              checked={@post_form[:consent].value in [true, "true", "on"]}
+              class="mt-0.5 size-4 rounded"
+            /><span><span class="font-semibold">TikTok publishing consent</span><span class="mt-0.5 block text-xs text-slate-500">Required by TikTok for third-party publishing.</span></span></label>
+          </div>
+          <div
+            :if={@post_errors != %{}}
+            id="studio-post-errors"
+            class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          >
+            <p class="font-semibold">Resolve these platform requirements</p>
+            <div :for={{platform, errors} <- @post_errors} class="mt-2">
+              <p class="font-semibold capitalize">{platform_name(to_string(platform))}</p>
+              <ul class="mt-1 list-disc space-y-1 pl-5">
+                <li :for={{_field, message} <- List.wrap(errors)}>{message}</li>
+              </ul>
+            </div>
+          </div>
+          <div class="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-end gap-3 border-t border-slate-200 bg-white/95 px-5 py-4 backdrop-blur sm:-mx-7 sm:-mb-7 sm:px-7">
+            <button
+              id="studio-publish-button"
+              type="submit"
+              disabled={!@manage_channels or @post_errors != %{}}
+              class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <.icon name="hero-paper-airplane" class="size-4" /> Publish
+            </button>
+          </div>
+        </.form>
+        <aside class="self-start rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-48">
+          <p class="text-sm font-semibold">Preview</p>
+          <div class="mt-4 rounded-xl border border-slate-200 p-4">
+            <div class="flex items-center gap-3">
+              <span class="size-10 rounded-full bg-slate-200"></span><div>
+                <p class="text-sm font-semibold">
+                  {@channel_accounts
+                  |> List.first()
+                  |> then(&if(&1, do: account_name(&1), else: "Your account"))}
+                </p><p class="text-xs text-slate-400">Just now · Public</p>
+              </div>
+            </div><p class="mt-4 whitespace-pre-wrap text-sm leading-6">
+              {@post_form[:content].value || "Your post preview appears here."}
+            </p>
+          </div>
+          <p class="mt-3 text-xs leading-5 text-slate-400">
+            Facebook folds around 480 characters; Instagram around 125 characters.
+          </p>
+        </aside>
+      </section>
+
+      <section
+        :if={@live_action in [:posts, :calendar]}
+        id="studio-content-library"
+        class="mx-auto max-w-7xl space-y-4"
+      >
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-bold">
+              {if @live_action == :calendar, do: "Content calendar", else: "Posts"}
+            </h1><p class="mt-1 text-sm text-slate-500">
+              Facebook, Instagram and TikTok organic content.
+            </p>
+          </div><.link
+            navigate={~p"/dashboard/studio/create"}
+            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+          >Create post</.link>
+        </div>
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div :if={Map.get(@data, :posts, []) == []} class="p-12 text-center">
+            <.icon name="hero-rectangle-stack" class="mx-auto size-9 text-slate-300" /><p class="mt-3 font-semibold">
+              No posts in this view
+            </p>
+          </div>
+          <article
+            :for={post <- Map.get(@data, :posts, [])}
+            id={"studio-post-#{post_id(post)}"}
+            class="group flex gap-4 border-b border-slate-100 p-4 transition hover:bg-slate-50/80 last:border-0 sm:p-5"
+          >
+            <div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+              <.icon name="hero-photo" class="size-5 text-slate-400" />
+            </div><div class="min-w-0 flex-1">
+              <p class="line-clamp-2 text-sm font-medium">{post["content"] || "Media post"}</p><div class="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
+                <span class="capitalize">{post["status"] || "draft"}</span><span>{post[
+                  "scheduledFor"
+                ] || post["publishedAt"] || post["createdAt"]}</span>
+              </div>
+            </div><div
+              :if={@manage_channels}
+              class="flex shrink-0 items-center gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"
+            >
+              <button
+                :if={post["status"] in ["failed", "partial"]}
+                id={"retry-post-#{post_id(post)}"}
+                phx-click="post-action"
+                phx-value-action="retry"
+                phx-value-id={post_id(post)}
+                data-confirm="Retry publishing this post now?"
+                class="rounded-lg p-2 text-slate-400 transition hover:bg-blue-50 hover:text-blue-700"
+                aria-label="Retry post"
+              ><.icon name="hero-arrow-path" class="size-4" /></button>
+              <button
+                :if={post["status"] in ["draft", "scheduled", "failed"]}
+                id={"delete-post-#{post_id(post)}"}
+                phx-click="post-action"
+                phx-value-action="delete"
+                phx-value-id={post_id(post)}
+                data-confirm="Delete this post? This cannot be undone."
+                class="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                aria-label="Delete post"
+              ><.icon name="hero-trash" class="size-4" /></button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section
+        :if={@live_action == :messages}
+        id="studio-inbox"
+        class="mx-auto h-[calc(100vh-13rem)] max-w-7xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+      >
+        <div class="grid h-full md:grid-cols-[340px_minmax(0,1fr)]">
+          <aside class="flex min-h-0 flex-col border-r border-slate-200">
+            <div class="border-b border-slate-200 p-4">
+              <h1 class="text-xl font-bold">Messages</h1><p class="text-xs text-slate-500">
+                Facebook · Instagram · WhatsApp
+              </p>
+            </div><div id="conversation-list" class="min-h-0 flex-1 overflow-y-auto">
+              <div :if={Map.get(@data, :conversations, []) == []} class="px-6 py-12 text-center">
+                <.icon name="hero-inbox" class="mx-auto size-9 text-slate-300" />
+                <p class="mt-3 text-sm font-semibold">No conversations returned</p>
+                <p
+                  :if={get_in(@data, [:provider_meta, "accountsFailed"]) in [nil, 0]}
+                  class="mt-1 text-xs leading-5 text-slate-400"
+                >
+                  New Facebook and Instagram conversations will appear here.
+                </p>
+                <p
+                  :if={get_in(@data, [:provider_meta, "accountsFailed"]) not in [nil, 0]}
+                  class="mt-1 text-xs leading-5 text-red-500"
+                >
+                  {get_in(@data, [:provider_meta, "accountsFailed"])} connected account(s) could not be queried. Reconnect the affected channel.
+                </p>
+              </div>
+              <button
+                :for={conversation <- Map.get(@data, :conversations, [])}
+                id={"conversation-#{conversation_id(conversation)}"}
+                phx-click="select-conversation"
+                phx-value-id={conversation_id(conversation)}
+                class={[
+                  "block w-full border-b border-slate-100 p-4 text-left transition hover:bg-slate-50",
+                  @data[:selected_conversation] == conversation_id(conversation) && "bg-blue-50"
+                ]}
+              ><p class="truncate text-sm font-semibold">{participant_name(conversation)}</p><p class="mt-1 truncate text-xs text-slate-500">
+                {conversation["lastMessage"] || "Open conversation"}
+              </p></button>
+            </div>
+          </aside>
+          <div class="flex min-h-0 flex-col">
+            <div class="border-b border-slate-200 p-4 font-semibold">
+              {if @data[:selected_conversation], do: "Conversation", else: "Select a conversation"}
+            </div><div
+              id="message-history"
+              class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4 sm:p-6"
+            >
+              <p
+                :if={!@data[:selected_conversation]}
+                class="mt-20 text-center text-sm text-slate-400"
+              >
+                Select a conversation to load its history.
+              </p><div
+                :for={message <- Map.get(@data, :messages, [])}
+                class={[
+                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm",
+                  message["direction"] in ["outbound", "outgoing", "sent"] &&
+                    "ml-auto bg-blue-600 text-white",
+                  message["direction"] not in ["outbound", "outgoing", "sent"] &&
+                    "bg-white shadow-sm"
+                ]}
+              >
+                {message_text(message)}
+              </div>
+            </div><.form
+              :if={@data[:selected_conversation]}
+              for={@message_form}
+              id="message-reply-form"
+              phx-submit="send-message"
+              class="border-t border-slate-200 bg-white p-3"
+            >
+              <div class="flex gap-2">
+                <.input
+                  field={@message_form[:message]}
+                  type="text"
+                  class="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                  placeholder="Reply…"
+                /><button
+                  id="send-message-button"
+                  type="submit"
+                  disabled={!@manage_channels}
+                  class="rounded-xl bg-blue-600 px-4 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                ><.icon
+                  name="hero-paper-airplane"
+                  class="size-4"
+                /></button>
+              </div>
+            </.form>
+          </div>
+        </div>
+      </section>
+
+      <section
+        :if={@live_action == :comments}
+        id="studio-comments"
+        class="mx-auto max-w-7xl space-y-4"
+      >
+        <div>
+          <h1 class="text-2xl font-bold">Comments</h1><p class="mt-1 text-sm text-slate-500">
+            Only posts with comments are returned. TikTok and WhatsApp are excluded.
+          </p>
+        </div><div class="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[360px_minmax(0,1fr)]">
+          <div class="border-r border-slate-200">
+            <div
+              :if={Map.get(@data, :comment_posts, []) == []}
+              class="p-12 text-center text-sm text-slate-400"
+            >
+              <p class="font-semibold text-slate-600">No commented posts returned</p>
+              <p
+                :if={get_in(@data, [:provider_meta, "accountsFailed"]) in [nil, 0]}
+                class="mt-1 text-xs"
+              >
+                Posts appear after they receive a Facebook or Instagram comment.
+              </p>
+              <p
+                :if={get_in(@data, [:provider_meta, "accountsFailed"]) not in [nil, 0]}
+                class="mt-1 text-xs text-red-500"
+              >
+                {get_in(@data, [:provider_meta, "accountsFailed"])} connected account(s) could not be queried. Reconnect the affected channel.
+              </p>
+            </div><button
+              :for={post <- Map.get(@data, :comment_posts, [])}
+              id={"comment-post-#{comment_post_id(post)}"}
+              phx-click="select-comment-post"
+              phx-value-id={comment_post_id(post)}
+              phx-value-account-id={comment_account_id(post)}
+              class={[
+                "block w-full border-b border-slate-100 p-5 text-left transition hover:bg-slate-50 last:border-0",
+                @data[:selected_comment_post] == comment_post_id(post) && "bg-blue-50"
+              ]}
+            >
+              <p class="line-clamp-2 font-semibold">
+                {post["content"] || post["message"] || "Media post"}
+              </p><p class="mt-2 text-xs text-slate-500">
+                {post["commentCount"] || post["commentsCount"] || 0} comments · {post["platform"]}
+              </p>
+            </button>
+          </div>
+          <div class="flex min-h-[480px] flex-col bg-slate-50/70">
+            <div class="border-b border-slate-200 bg-white px-5 py-4">
+              <p class="font-bold">Conversation</p>
+              <p class="text-xs text-slate-400">Reply publicly from the connected page.</p>
+            </div>
+            <div id="comment-thread" class="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
+              <div
+                :if={!@data[:selected_comment_post]}
+                class="grid h-full min-h-72 place-items-center text-center text-sm text-slate-400"
+              >
+                <div>
+                  <.icon name="hero-chat-bubble-left-right" class="mx-auto size-9 text-slate-300" /><p class="mt-3">
+                    Choose a post to read and reply to comments.
+                  </p>
+                </div>
+              </div>
+              <article
+                :for={comment <- Map.get(@data, :comments, [])}
+                class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-sm font-bold">{comment_author(comment)}</p><span class="text-[11px] text-slate-400">{comment[
+                    "createdTime"
+                  ]}</span>
+                </div>
+                <p class="mt-2 text-sm leading-6 text-slate-600">{comment["message"]}</p>
+              </article>
+            </div>
+            <.form
+              :if={@data[:selected_comment_post]}
+              for={@comment_form}
+              id="comment-reply-form"
+              phx-submit="reply-comment"
+              class="border-t border-slate-200 bg-white p-4"
+            >
+              <div class="flex gap-2">
+                <.input
+                  field={@comment_form[:message]}
+                  type="text"
+                  class="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                  placeholder="Write a public reply…"
+                /><button
+                  id="comment-reply-button"
+                  type="submit"
+                  disabled={!@manage_channels}
+                  class="rounded-xl bg-slate-950 px-4 text-white transition hover:bg-blue-700 disabled:opacity-40"
+                ><.icon name="hero-arrow-up" class="size-4" /></button>
+              </div>
+            </.form>
+          </div>
+        </div>
+      </section>
+
+      <section
+        :if={@live_action == :analytics}
+        id="studio-analytics"
+        class="mx-auto max-w-7xl space-y-5"
+      >
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-bold">Organic analytics</h1><p class="mt-1 text-sm text-slate-500">
+              Paid reporting remains in Ads.
+            </p>
+          </div><form phx-change="change-range">
+            <select
+              name="range"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            ><option
+              :for={
+                {label, value} <- [
+                  {"Last 7 days", "7"},
+                  {"Last 30 days", "30"},
+                  {"Last 90 days", "90"},
+                  {"Last 6 months", "180"},
+                  {"Last year", "365"}
+                ]
+              }
+              value={value}
+              selected={@range == value}
+            >
+              {label}
+            </option></select>
+          </form>
+        </div><.metric_grid data={Map.get(@data, :analytics, %{})} />
+        <div class="grid gap-5 xl:grid-cols-3">
+          <.insight_panel
+            title="Facebook Page Insights"
+            data={Map.get(@data, :facebook_insights)}
+            metrics={[
+              {"Media views", "media_views"},
+              {"Post engagements", "post_engagements"},
+              {"Followers", "follower_count"}
+            ]}
+          />
+          <.insight_panel
+            title="Instagram Insights"
+            data={Map.get(@data, :instagram_insights)}
+            metrics={[
+              {"Reach", "reach"},
+              {"Views", "views"},
+              {"Interactions", "total_interactions"},
+              {"Saves", "saves"}
+            ]}
+          />
+          <.insight_panel
+            title="TikTok account"
+            data={Map.get(@data, :tiktok_insights)}
+            metrics={[
+              {"Followers", "follower_count"},
+              {"Following", "following_count"},
+              {"Likes", "likes_count"},
+              {"Videos", "video_count"}
+            ]}
+          />
+        </div>
+      </section>
+
+      <section :if={@live_action == :ads} id="studio-ads" class="mx-auto max-w-7xl space-y-5">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Paid media</p><h1 class="mt-1 text-2xl font-bold">
+            Meta Ads
+          </h1><p class="mt-1 text-sm text-slate-500">
+            Campaigns, ad sets and ads remain separate from organic posts.
+          </p>
+        </div><div
+          :if={is_nil(Enum.find(@channel_accounts, &(&1.platform == :metaads)))}
+          class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+        >
+          <h2 class="font-bold">Connect a Meta Ads account</h2><p class="mt-1 text-sm text-slate-500">
+            Uses an eligible Facebook or Instagram connection from this profile.
+          </p><div class="mt-5 flex gap-2">
+            <button
+              :for={platform <- ["facebook", "instagram"]}
+              :if={Enum.any?(@channel_accounts, &(Atom.to_string(&1.platform) == platform))}
+              phx-click="connect-meta-ads"
+              phx-value-platform={platform}
+              disabled={!@manage_channels}
+              class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/15 transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >Connect through {platform_name(platform)}</button>
+          </div>
+        </div><div
+          :if={Enum.any?(@channel_accounts, &(&1.platform == :metaads))}
+          class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+        >
+          <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div>
+              <h2 class="font-bold">Campaigns</h2><p class="text-xs text-slate-400">
+                Live hierarchy from your Meta ad account
+              </p>
+            </div>
+            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{length(
+              ad_campaigns(Map.get(@data, :ad_tree))
+            )}</span>
+          </div>
+          <div :if={ad_campaigns(Map.get(@data, :ad_tree)) == []} class="p-12 text-center">
+            <.icon name="hero-megaphone" class="mx-auto size-10 text-slate-300" /><p class="mt-3 font-semibold">
+              No campaigns returned
+            </p><p class="mt-1 text-sm text-slate-400">
+              Create campaigns in Meta Ads Manager; they will appear here.
+            </p>
+          </div>
+          <article
+            :for={campaign <- ad_campaigns(Map.get(@data, :ad_tree))}
+            class="flex items-center gap-4 border-b border-slate-100 px-5 py-4 transition hover:bg-slate-50 last:border-0"
+          >
+            <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><.icon
+              name="hero-megaphone"
+              class="size-5"
+            /></span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-bold">{campaign_name(campaign)}</p><p class="mt-1 truncate text-xs text-slate-400">
+                {campaign["objective"] || "Meta campaign"}
+              </p>
+            </div>
+            <span class={[
+              "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide",
+              campaign_status(campaign) in ["ACTIVE", "active"] &&
+                "bg-emerald-50 text-emerald-700",
+              campaign_status(campaign) not in ["ACTIVE", "active"] &&
+                "bg-slate-100 text-slate-500"
+            ]}>{campaign_status(campaign)}</span>
+          </article>
+        </div>
+      </section>
+
+      <section
+        :if={@live_action == :whatsapp}
+        id="studio-whatsapp"
+        class="mx-auto max-w-7xl space-y-5"
+      >
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">
+            Business messaging
+          </p><h1 class="mt-1 text-2xl font-bold">WhatsApp</h1><p class="mt-1 text-sm text-slate-500">
+            Inbox, approved templates and broadcasts—not organic posts.
+          </p>
+        </div><div
+          :if={is_nil(Enum.find(@channel_accounts, &(&1.platform == :whatsapp)))}
+          class="rounded-2xl border border-slate-200 bg-white p-8"
+        >
+          <p class="font-semibold">Connect a WhatsApp Business Account to continue.</p><.link
+            navigate={~p"/dashboard/social"}
+            class="mt-4 inline-flex rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+          >Connect WhatsApp</.link>
+        </div><div
+          :if={Enum.any?(@channel_accounts, &(&1.platform == :whatsapp))}
+          class="grid gap-4 lg:grid-cols-3"
+        >
+          <.summary_card
+            title="Number health"
+            value={if Map.get(@data, :number_info), do: "Connected", else: "Unavailable"}
+            icon="hero-signal"
+          /><.summary_card
+            title="Templates"
+            value={length(Map.get(@data, :templates, []))}
+            icon="hero-document-text"
+          /><.summary_card title="Free-form window" value="24 hours" icon="hero-clock" />
+        </div>
+        <div
+          :if={Enum.any?(@channel_accounts, &(&1.platform == :whatsapp))}
+          class="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_400px]"
+        >
+          <div class="space-y-5">
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                <div>
+                  <h2 class="font-bold">Message templates</h2><p class="text-xs text-slate-400">
+                    Synchronized directly from WhatsApp
+                  </p>
+                </div><span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{length(
+                  Map.get(@data, :templates, [])
+                )}</span>
+              </div>
+              <div
+                :if={Map.get(@data, :templates, []) == []}
+                class="p-10 text-center text-sm text-slate-400"
+              >
+                No templates yet. Submit your first message template.
+              </div>
+              <article
+                :for={template <- Map.get(@data, :templates, [])}
+                class="border-b border-slate-100 p-5 last:border-0"
+              >
+                <div class="flex items-start justify-between gap-4">
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-bold">{template["name"]}</p><p class="mt-1 text-xs text-slate-400">
+                      {template["language"]} · {template["category"]}
+                    </p>
+                  </div><span class={[
+                    "rounded-full px-2.5 py-1 text-[10px] font-bold",
+                    template["status"] == "APPROVED" && "bg-emerald-50 text-emerald-700",
+                    template["status"] == "PENDING" && "bg-amber-50 text-amber-700",
+                    template["status"] not in ["APPROVED", "PENDING"] && "bg-red-50 text-red-700"
+                  ]}>{template["status"]}</span>
+                </div>
+                <p
+                  :if={template_body(template)}
+                  class="mt-3 line-clamp-2 text-sm leading-6 text-slate-600"
+                >
+                  {template_body(template)}
+                </p>
+              </article>
+            </section>
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div class="border-b border-slate-200 px-5 py-4">
+                <h2 class="font-bold">Broadcasts</h2><p class="text-xs text-slate-400">
+                  Draft, verify, then send with explicit confirmation
+                </p>
+              </div>
+              <div
+                :if={Map.get(@data, :broadcasts, []) == []}
+                class="p-10 text-center text-sm text-slate-400"
+              >
+                No broadcasts created.
+              </div>
+              <article
+                :for={broadcast <- Map.get(@data, :broadcasts, [])}
+                class="flex items-center gap-4 border-b border-slate-100 p-5 last:border-0"
+              >
+                <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><.icon
+                  name="hero-paper-airplane"
+                  class="size-5"
+                /></span><div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-bold">{broadcast["name"]}</p><p class="mt-1 text-xs capitalize text-slate-400">
+                    {broadcast["status"] || "draft"}
+                  </p>
+                </div>
+                <button
+                  :if={broadcast["status"] in [nil, "draft"]}
+                  id={"send-broadcast-#{broadcast["id"]}"}
+                  phx-click="send-broadcast"
+                  phx-value-id={broadcast["id"]}
+                  data-confirm="Start sending this broadcast now?"
+                  disabled={!@manage_channels}
+                  class="rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-40"
+                >Send now</button>
+              </article>
+            </section>
+          </div>
+          <aside class="space-y-5">
+            <.form
+              for={@template_form}
+              id="whatsapp-template-form"
+              phx-submit="create-template"
+              class="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+              <div>
+                <p class="font-bold">New template</p><p class="mt-1 text-xs leading-5 text-slate-400">
+                  Custom templates are reviewed by Meta and may take up to 24 hours.
+                </p>
+              </div>
+              <.input
+                field={@template_form[:name]}
+                type="text"
+                label="Template name"
+                placeholder="order_update"
+                required
+              />
+              <div class="grid grid-cols-2 gap-3">
+                <.input
+                  field={@template_form[:category]}
+                  type="select"
+                  label="Category"
+                  options={[{"Utility", "UTILITY"}, {"Marketing", "MARKETING"}]}
+                /><.input field={@template_form[:language]} type="text" label="Language" />
+              </div>
+              <.input
+                field={@template_form[:body]}
+                type="textarea"
+                label="Message body"
+                placeholder="Your order {{1}} is ready."
+                required
+              />
+              <button
+                id="create-template-button"
+                type="submit"
+                phx-disable-with="Submitting…"
+                disabled={!@manage_channels}
+                class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-40"
+              >Submit template</button>
+            </.form>
+            <.form
+              for={@broadcast_form}
+              id="whatsapp-broadcast-form"
+              phx-submit="create-broadcast"
+              class="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+              <div>
+                <p class="font-bold">New broadcast draft</p><p class="mt-1 text-xs leading-5 text-slate-400">
+                  Use an approved template for business-initiated messages.
+                </p>
+              </div>
+              <.input
+                field={@broadcast_form[:name]}
+                type="text"
+                label="Internal name"
+                placeholder="Friday delivery update"
+                required
+              />
+              <.input
+                field={@broadcast_form[:template_name]}
+                type="select"
+                label="Approved template"
+                prompt="Choose a template"
+                options={
+                  for template <- Map.get(@data, :templates, []),
+                      template["status"] == "APPROVED",
+                      do: {template["name"], template["name"]}
+                }
+                required
+              />
+              <.input
+                field={@broadcast_form[:template_language]}
+                type="text"
+                label="Template language"
+              />
+              <.input
+                field={@broadcast_form[:recipients]}
+                type="textarea"
+                label="Recipients"
+                placeholder="+15551234567\n+447700900123"
+                required
+              />
+              <p class="text-[11px] leading-5 text-slate-400">
+                One international number per line. Sending remains a separate confirmed action.
+              </p>
+              <button
+                id="create-broadcast-button"
+                type="submit"
+                phx-disable-with="Creating draft…"
+                disabled={!@manage_channels}
+                class="w-full rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-40"
+              >Create broadcast draft</button>
+            </.form>
+          </aside>
+        </div>
+      </section>
+
+      <section
+        :if={@live_action == :conversions}
+        id="studio-conversions"
+        class="mx-auto max-w-7xl space-y-5"
+      >
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-violet-600">
+            Data & conversions
+          </p><h1 class="mt-1 text-2xl font-bold">Meta Pixel</h1><p class="mt-1 text-sm text-slate-500">
+            Pixels belong to Meta Ads. Creating a Pixel does not install it, and Meta provides no delete API.
+          </p>
+        </div><div
+          :if={is_nil(Enum.find(@channel_accounts, &(&1.platform == :metaads)))}
+          class="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-500"
+        >
+          Connect Meta Ads before managing Pixels or Conversions API events.
+        </div><div
+          :if={Enum.any?(@channel_accounts, &(&1.platform == :metaads))}
+          class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]"
+        >
+          <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-200 p-5">
+              <h2 class="font-bold">Pixels</h2>
+            </div>
+            <div
+              :if={Map.get(@data, :pixels, []) == []}
+              class="p-10 text-center text-sm text-slate-400"
+            >
+              No accessible Meta Pixels found.
+            </div>
+            <article
+              :for={pixel <- Map.get(@data, :pixels, [])}
+              class="border-b border-slate-100 p-5 last:border-0"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="font-semibold">{pixel["name"] || "Meta Pixel"}</p><p class="mt-1 text-xs text-slate-400">
+                    {pixel["id"]}
+                  </p>
+                </div><span class={[
+                  "rounded-full px-2 py-1 text-[10px] font-bold uppercase",
+                  pixel["installed"] && "bg-emerald-50 text-emerald-700",
+                  !pixel["installed"] && "bg-amber-50 text-amber-700"
+                ]}>{if pixel["installed"], do: "Receiving events", else: "Not installed"}</span>
+              </div>
+            </article>
+          </div>
+          <aside class="self-start rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-48">
+            <h2 class="font-bold">Create Meta Pixel</h2><p class="mt-1 text-xs leading-5 text-slate-500">
+              This creates a real Pixel immediately. It cannot be deleted and will not be retried automatically.
+            </p>
+            <.form
+              for={@pixel_form}
+              id="create-pixel-form"
+              phx-submit="create-pixel"
+              class="mt-5 space-y-4"
+            >
+              <.input field={@pixel_form[:name]} type="text" label="Pixel name" required />
+              <.input
+                field={@pixel_form[:ad_account_id]}
+                type="select"
+                label="Owning ad account"
+                prompt="Choose an ad account"
+                options={
+                  Enum.map(Map.get(@data, :ad_accounts, []), &{&1["name"] || &1["id"], &1["id"]})
+                }
+                required
+              />
+              <label class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"><input
+                type="checkbox"
+                name="pixel[confirmed]"
+                value="true"
+                checked={@pixel_form[:confirmed].value in [true, "true", "on"]}
+                class="mt-0.5 size-4 rounded"
+              /><span>I understand this creates a non-deletable Meta Pixel and does not install it on my website.</span></label>
+              <button
+                id="create-pixel-button"
+                type="submit"
+                phx-disable-with="Creating once…"
+                disabled={!@manage_channels || @pixel_creating}
+                class="w-full rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >Create Pixel</button>
+            </.form>
+            <div
+              :if={@data[:created_pixel]}
+              id="created-pixel-result"
+              class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4"
+            >
+              <p class="text-sm font-semibold text-emerald-900">Pixel created</p><p class="mt-1 text-xs text-emerald-800">
+                ID: {@data.created_pixel["id"]}
+              </p><pre
+                :if={@data.created_pixel["code"]}
+                class="mt-3 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-3 text-[10px] text-slate-100"
+              >{@data.created_pixel["code"]}</pre>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+</Layouts.channel_studio>

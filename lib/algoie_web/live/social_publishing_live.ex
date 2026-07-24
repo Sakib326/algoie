@@ -5,7 +5,8 @@ defmodule AlgoieWeb.SocialPublishingLive do
   require Ash.Query
   alias Algoie.Stores.Store
 
-  @platforms ~w(facebook instagram whatsapp tiktok)
+  @oauth_platforms ~w(facebook instagram whatsapp tiktok)
+  @account_platforms @oauth_platforms ++ ~w(metaads)
 
   def mount(_params, _session, socket) do
     case Ash.get(Store, socket.assigns.store_id, AlgoieWeb.Scope.opts(socket)) do
@@ -14,8 +15,8 @@ defmodule AlgoieWeb.SocialPublishingLive do
          socket
          |> assign(:store, store)
          |> assign(:page_title, "Social publishing")
-         |> assign(:platforms, @platforms)
-         |> assign(:available_platforms, @platforms)
+         |> assign(:platforms, @oauth_platforms)
+         |> assign(:available_platforms, @oauth_platforms)
          |> assign(:facebook_connection, nil)
          |> assign(:facebook_pages, [])
          |> load_social()}
@@ -76,7 +77,8 @@ defmodule AlgoieWeb.SocialPublishingLive do
 
   def handle_params(_params, _uri, socket), do: {:noreply, socket}
 
-  def handle_event("connect", %{"platform" => platform}, socket) when platform in @platforms do
+  def handle_event("connect", %{"platform" => platform}, socket)
+      when platform in @oauth_platforms do
     if connected_platform?(socket.assigns.social_accounts, platform) do
       {:noreply, put_flash(socket, :info, "#{platform_name(platform)} is already connected")}
     else
@@ -196,7 +198,7 @@ defmodule AlgoieWeb.SocialPublishingLive do
           SocialAccount
           |> Ash.Query.filter(social_profile_id == ^profile.id)
           |> Ash.read!(AlgoieWeb.Scope.opts(socket))
-          |> Enum.filter(&(Atom.to_string(&1.platform) in @platforms))
+          |> Enum.filter(&(Atom.to_string(&1.platform) in @account_platforms))
 
         assign_social(socket, profile, accounts)
 
@@ -211,7 +213,7 @@ defmodule AlgoieWeb.SocialPublishingLive do
     assign(socket,
       social_profile: profile,
       social_accounts: accounts,
-      available_platforms: @platforms -- connected_platforms
+      available_platforms: @oauth_platforms -- connected_platforms
     )
   end
 

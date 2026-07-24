@@ -1,7 +1,7 @@
 defmodule Algoie.SocialPublishing.Facebook do
-  @moduledoc "Facebook-specific Zernio operations used by Facebook Studio."
+  @moduledoc "Facebook operations used by Channel Studio."
 
-  alias Algoie.SocialPublishing.Adapters.Zernio
+  alias Algoie.ChannelStudio
 
   def list_posts(params), do: get("/posts", facebook_params(params))
   def get_post(id), do: get("/posts/#{segment(id)}")
@@ -134,7 +134,7 @@ defmodule Algoie.SocialPublishing.Facebook do
     do: request(method, path, body, [], request_headers())
 
   defp request(method, path, body, params, headers \\ []),
-    do: Zernio.request(method, path, body, compact_params(params), headers)
+    do: ChannelStudio.request(method, path, body, compact_params(params), headers)
 
   defp request_headers, do: [{"x-request-id", Ecto.UUID.generate()}]
 

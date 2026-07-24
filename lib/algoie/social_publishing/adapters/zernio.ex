@@ -1,5 +1,6 @@
 defmodule Algoie.SocialPublishing.Adapters.Zernio do
   @behaviour Algoie.SocialPublishing.Adapter
+  @behaviour Algoie.ChannelStudio.Provider
 
   alias Algoie.SocialPublishingSetting
 
@@ -98,6 +99,7 @@ defmodule Algoie.SocialPublishing.Adapters.Zernio do
     request(:post, "/connect/facebook/select-page", body)
   end
 
+  @impl Algoie.ChannelStudio.Provider
   def request(method, path, body, params \\ [], extra_headers \\ []) do
     settings = SocialPublishingSetting.get()
 
